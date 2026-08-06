@@ -1,0 +1,13 @@
+{
+  "description": "Probinary offers tailored binary options trading tools and analytics to help investors make informed decisions and maximize returns efficiently.",
+  "icons": {
+    "icon": "/logo.png"
+  },
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
