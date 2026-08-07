@@ -7,11 +7,68 @@ import Markets from './pages/Markets'
 import { TradingProvider } from './state/trading'
 import { TopNavProvider } from './state/topNav'
 import Wallet from './pages/Wallet'
+import SuperAdminConsole from './pages/SuperAdminConsole'
 
 export type Page = 'dashboard' | 'terminal' | 'markets' | 'portfolio' | 'analytics' | 'wallet' | 'leaderboard' | 'settings'
 
+const ACCESS_TOKEN_BY_LINK_KEY: Record<string, string> = {
+  adminsim: 'sim-admin',
+  superadmin: 'sim-super-admin',
+}
+
+function getLinkAccessKey() {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const params = new URLSearchParams(window.location.search)
+  const queryKey = params.get('access') || params.get('role')
+  if (queryKey) {
+    return queryKey.trim().toLowerCase()
+  }
+
+  const pathKey = window.location.pathname.replace(/\/+$/g, '').split('/').filter(Boolean).pop()
+  if (pathKey) {
+    const normalizedPathKey = pathKey.trim().toLowerCase()
+    if (normalizedPathKey === 'adminsim' || normalizedPathKey === 'superadmin') {
+      return normalizedPathKey
+    }
+  }
+
+  const hashKey = window.location.hash.replace(/^#\/?/, '').trim().toLowerCase()
+  if (hashKey === 'adminsim' || hashKey === 'superadmin') {
+    return hashKey
+  }
+
+  return null
+}
+
+function applyLinkAccessToken() {
+  const accessKey = getLinkAccessKey()
+  if (!accessKey) {
+    return null
+  }
+
+  const token = ACCESS_TOKEN_BY_LINK_KEY[accessKey]
+  if (!token) {
+    return null
+  }
+
+  window.localStorage.setItem('pb.auth.token', token)
+  return accessKey
+}
+
 export default function App() {
-  const [page, setPage] = useState<Page | null>(null)
+  const [accessMode] = useState<string | null>(() => applyLinkAccessToken())
+  const [page, setPage] = useState<Page | null>(() => (accessMode ? 'terminal' : null))
+
+  if (accessMode === 'superadmin') {
+    return (
+      <TradingProvider>
+        <SuperAdminConsole />
+      </TradingProvider>
+    )
+  }
 
   return (
     <TradingProvider>

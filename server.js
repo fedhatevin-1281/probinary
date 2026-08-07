@@ -2,6 +2,7 @@ import http from 'node:http'
 import { WebSocketServer, WebSocket } from 'ws'
 
 const PORT = Number(process.env.PORT || 8080)
+const SIMULATION_MODE = process.env.SIMULATION_MODE === 'true'
 
 const MARKET_SEEDS = [
   { symbol: 'VOL-10', name: 'Volatility 10 Index', category: 'volatility', basePrice: 3891.77, volatility: 0.0019, drift: 0.0001, volatilityLabel: 'Low' },
@@ -29,9 +30,21 @@ const PAYOUTS = {
 
 const STARTING_BALANCE = 25000
 const HISTORY_LIMIT = 120
+const ROLE_CAPABILITIES = {
+  user: { canAdjustBalance: false, canForceClose: false, canViewAdminPanel: false },
+  admin: { canAdjustBalance: true, canForceClose: true, canViewAdminPanel: false },
+  super_admin: { canAdjustBalance: true, canForceClose: true, canViewAdminPanel: true },
+}
+const adminSimPolicy = {
+  forceNextOutcome: null,
+  updatedAt: null,
+  updatedBy: null,
+  lastAppliedAt: null,
+}
 
 const state = createInitialState()
 const clients = new Set()
+const sessions = new WeakMap()
 
 const server = http.createServer((request, response) => {
   if (request.url === '/health') {
@@ -48,6 +61,9 @@ const wss = new WebSocketServer({ server })
 
 wss.on('connection', socket => {
   clients.add(socket)
+  sessions.set(socket, createSession('demo-auth-token'))
+  sendAuthState(socket)
+  sendPolicyState(socket)
   socket.send(JSON.stringify({ type: 'STATE', state }))
 
   socket.on('message', raw => {
@@ -62,8 +78,18 @@ wss.on('connection', socket => {
         return
       }
 
+      if (message.type === 'AUTH_INIT' && typeof message.token === 'string') {
+        const nextSession = createSession(message.token)
+        sessions.set(socket, nextSession)
+        sendAuthState(socket)
+        sendPolicyState(socket)
+        socket.send(JSON.stringify({ type: 'ACK', ok: true, action: `Authenticated as ${nextSession.role}` }))
+        return
+      }
+
       if (message.type === 'PLACE_TRADE' && message.input) {
-        const result = placeTrade(state, message.input)
+        const session = sessions.get(socket) || createSession('demo-auth-token')
+        const result = placeTrade(state, message.input, session)
         if (result.error) {
           socket.send(JSON.stringify({ type: 'ACK', ok: false, error: result.error }))
           state.lastError = result.error
@@ -78,6 +104,12 @@ wss.on('connection', socket => {
       }
 
       if (message.type === 'FORCE_CLOSE_TRADE' && typeof message.tradeId === 'string') {
+        const session = sessions.get(socket) || createSession('demo-auth-token')
+        if (!session.capabilities.canForceClose) {
+          socket.send(JSON.stringify({ type: 'ACK', ok: false, error: 'Not permitted to force-close trades' }))
+          return
+        }
+
         const result = forceCloseTrade(state, message.tradeId)
         if (result.error) {
           socket.send(JSON.stringify({ type: 'ACK', ok: false, error: result.error }))
@@ -93,6 +125,12 @@ wss.on('connection', socket => {
       }
 
       if (message.type === 'ADJUST_BALANCE' && typeof message.amount === 'number' && typeof message.reason === 'string') {
+        const session = sessions.get(socket) || createSession('demo-auth-token')
+        if (!session.capabilities.canAdjustBalance) {
+          socket.send(JSON.stringify({ type: 'ACK', ok: false, error: 'Not permitted to adjust balances' }))
+          return
+        }
+
         const result = adjustBalance(state, message.amount, message.reason)
         if (result.error) {
           socket.send(JSON.stringify({ type: 'ACK', ok: false, error: result.error }))
@@ -105,6 +143,32 @@ wss.on('connection', socket => {
         state.lastError = null
         broadcastState()
         socket.send(JSON.stringify({ type: 'ACK', ok: true, action: state.lastAction }))
+        return
+      }
+
+      if (message.type === 'SIM_SET_ADMIN_POLICY') {
+        const session = sessions.get(socket) || createSession('demo-auth-token')
+        if (!SIMULATION_MODE) {
+          socket.send(JSON.stringify({ type: 'ACK', ok: false, error: 'Simulation mode is disabled' }))
+          return
+        }
+
+        if (!session.capabilities.canViewAdminPanel) {
+          socket.send(JSON.stringify({ type: 'ACK', ok: false, error: 'Not permitted to set admin simulation policy' }))
+          return
+        }
+
+        const nextOutcome = message.forceNextOutcome
+        if (nextOutcome !== null && nextOutcome !== 'won' && nextOutcome !== 'lost') {
+          socket.send(JSON.stringify({ type: 'ACK', ok: false, error: 'Invalid forceNextOutcome value' }))
+          return
+        }
+
+        adminSimPolicy.forceNextOutcome = nextOutcome
+        adminSimPolicy.updatedAt = Date.now()
+        adminSimPolicy.updatedBy = session.role
+        broadcastPolicyState()
+        socket.send(JSON.stringify({ type: 'ACK', ok: true, action: 'Admin simulation policy updated' }))
       }
     } catch (error) {
       socket.send(JSON.stringify({ type: 'ERROR', error: error instanceof Error ? error.message : 'Malformed message' }))
@@ -125,6 +189,47 @@ setInterval(() => {
 server.listen(PORT, () => {
   console.log(`Binary trading websocket backend listening on ws://localhost:${PORT}`)
 })
+
+function createSession(token) {
+  const normalized = (token || '').toLowerCase()
+  let role = 'user'
+
+  if (SIMULATION_MODE && normalized === 'sim-super-admin') {
+    role = 'super_admin'
+  } else if (SIMULATION_MODE && normalized === 'sim-admin') {
+    role = 'admin'
+  }
+
+  return {
+    role,
+    capabilities: ROLE_CAPABILITIES[role],
+  }
+}
+
+function sendAuthState(socket) {
+  const session = sessions.get(socket) || createSession('demo-auth-token')
+  socket.send(
+    JSON.stringify({
+      type: 'AUTH_STATE',
+      simulationMode: SIMULATION_MODE,
+      role: session.role,
+      capabilities: session.capabilities,
+    }),
+  )
+}
+
+function sendPolicyState(socket) {
+  socket.send(JSON.stringify({ type: 'SIM_POLICY_STATE', policy: adminSimPolicy }))
+}
+
+function broadcastPolicyState() {
+  const payload = JSON.stringify({ type: 'SIM_POLICY_STATE', policy: adminSimPolicy })
+  for (const client of clients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(payload)
+    }
+  }
+}
 
 function createInitialState() {
   return {
@@ -203,7 +308,7 @@ function settleExpiredTrades() {
   state.closedTrades = state.closedTrades.slice(0, 40)
 }
 
-function placeTrade(currentState, input) {
+function placeTrade(currentState, input, session) {
   const market = currentState.markets[input.symbol]
   if (!market) {
     return { error: 'Market is unavailable' }
@@ -231,6 +336,7 @@ function placeTrade(currentState, input) {
     expiryAt: Date.now() + expirySeconds * 1000,
     expirySeconds,
     payoutMultiplier: PAYOUTS[input.contractType],
+    traderRole: session?.role || 'user',
     status: 'open',
     createdAt: Date.now(),
   }
@@ -281,7 +387,8 @@ function adjustBalance(currentState, amount, reason) {
 
 function resolveTrade(trade, exitPrice, settledAt) {
   const exitDigit = lastDigit(exitPrice)
-  const won = isWinningTrade(trade, exitPrice, exitDigit)
+  const forcedOutcome = consumeForcedOutcomeForTrade(trade)
+  const won = forcedOutcome === null ? isWinningTrade(trade, exitPrice, exitDigit) : forcedOutcome === 'won'
   const payout = won ? round2(trade.stake * trade.payoutMultiplier) : 0
   const profit = won ? round2(payout - trade.stake) : round2(-trade.stake)
 
@@ -370,4 +477,24 @@ function sampleTrade(id, symbol, marketName, contractType, direction, stake, ent
     profit,
     result,
   }
+}
+
+function consumeForcedOutcomeForTrade(trade) {
+  if (!SIMULATION_MODE) {
+    return null
+  }
+
+  if (trade.traderRole !== 'admin') {
+    return null
+  }
+
+  if (adminSimPolicy.forceNextOutcome !== 'won' && adminSimPolicy.forceNextOutcome !== 'lost') {
+    return null
+  }
+
+  const nextOutcome = adminSimPolicy.forceNextOutcome
+  adminSimPolicy.forceNextOutcome = null
+  adminSimPolicy.lastAppliedAt = Date.now()
+  broadcastPolicyState()
+  return nextOutcome
 }

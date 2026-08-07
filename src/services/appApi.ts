@@ -5,7 +5,21 @@ export interface ApiRequestOptions extends RequestInit {
 
 const DEFAULT_RETRY_COUNT = 2
 const DEFAULT_RETRY_DELAY_MS = 400
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080"
+
+function resolveApiBaseUrl() {
+  const configured = import.meta.env.VITE_API_URL
+  if (configured) {
+    return configured
+  }
+
+  if (typeof window !== "undefined") {
+    return window.location.origin
+  }
+
+  return "http://localhost:8080"
+}
+
+const API_BASE = resolveApiBaseUrl()
 
 function wait(ms: number) {
   return new Promise(resolve => window.setTimeout(resolve, ms))

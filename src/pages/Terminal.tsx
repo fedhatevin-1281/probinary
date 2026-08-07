@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { marketLabel, useTrading } from '../state/trading'
 import LastDigitStatistics from '../components/LastDigitStatistics'
 
@@ -189,7 +189,7 @@ function LineChart({ history, livePrice }: { history: number[]; livePrice: numbe
 }
 
 export default function Terminal() {
-  const { marketList, markets, selectedMarket, selectMarket, openTrades, recentTrades, placeTrade, forceCloseTrade, lastError, lastAction } = useTrading()
+  const { marketList, markets, selectedMarket, selectMarket, openTrades, recentTrades, placeTrade, forceCloseTrade, lastError, lastAction, role, simulationMode, capabilities, adminPolicy, setAdminPolicy } = useTrading()
   const [timeframe, setTimeframe] = useState<TimeFrame>('5m')
   const [chartMode, setChartMode] = useState<ChartMode>('candles')
   const [bottomTab, setBottomTab] = useState('positions')
@@ -197,6 +197,11 @@ export default function Terminal() {
   const [prediction, setPrediction] = useState<'rise' | 'fall' | 'even' | 'odd' | 'match' | 'differ'>('rise')
   const [stake, setStake] = useState('50')
   const [expirySeconds, setExpirySeconds] = useState('30')
+  const [forcedOutcome, setForcedOutcome] = useState<'none' | 'won' | 'lost'>(adminPolicy.forceNextOutcome ?? 'none')
+
+  useEffect(() => {
+    setForcedOutcome(adminPolicy.forceNextOutcome ?? 'none')
+  }, [adminPolicy.forceNextOutcome])
 
   const liveMarket = markets[selectedMarket.symbol] ?? selectedMarket
   const candles = buildCandlesFromHistory(liveMarket.history, timeframe === '15m' ? 80 : timeframe === '5m' ? 70 : timeframe === '1m' ? 54 : 42)
@@ -206,6 +211,71 @@ export default function Terminal() {
   const pctChange = (priceChange / (candles[0]?.open ?? 1)) * 100
   const feedback = lastError ?? lastAction ?? 'Binary contracts settle automatically at expiry.'
   const payoutMultiplier = contractType === 'match-differ' ? 2.15 : contractType === 'even-odd' ? 1.8 : 1.82
+
+  const applyAdminPolicy = () => {
+    const nextOutcome = forcedOutcome === 'none' ? null : forcedOutcome
+    const result = setAdminPolicy(nextOutcome)
+    if (!result.ok) {
+      return
+    }
+  }
+
+  if (simulationMode && role === 'super_admin') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#09090F', padding: 20, gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <div className="font-display" style={{ fontSize: 24, fontWeight: 700, color: '#FFFFFF' }}>Super Admin Control Console</div>
+            <div style={{ fontSize: 13, color: '#71717A', marginTop: 6 }}>Simulation controls for AdminSim accounts only. Trading controls are disabled in this mode.</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#F59E0B', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 999, padding: '4px 8px', letterSpacing: '0.06em' }}>
+              SIMULATION
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#A855F7', border: '1px solid rgba(168,85,247,0.45)', borderRadius: 999, padding: '4px 8px', letterSpacing: '0.06em' }}>
+              ROLE SUPER_ADMIN
+            </span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 520px)', gap: 16 }}>
+          <div style={{ padding: 16, borderRadius: 12, background: '#12121A', border: '1px solid rgba(245,158,11,0.28)' }}>
+            <div style={{ fontSize: 11, color: '#F59E0B', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+              AdminSim Policy
+            </div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              <div>
+                <div className="field-label">Force next AdminSim outcome</div>
+                <select className="field-input" value={forcedOutcome} onChange={e => setForcedOutcome(e.target.value as 'none' | 'won' | 'lost')}>
+                  <option value="none">No override</option>
+                  <option value="won">Force win</option>
+                  <option value="lost">Force loss</option>
+                </select>
+              </div>
+
+              <button className="btn-primary" style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 13 }} onClick={applyAdminPolicy} disabled={!capabilities.canViewAdminPanel}>
+                Apply policy to AdminSim
+              </button>
+
+              <div style={{ fontSize: 12, color: '#A1A1AA', lineHeight: 1.6, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10, padding: 10 }}>
+                Pending override: {adminPolicy.forceNextOutcome ? adminPolicy.forceNextOutcome.toUpperCase() : 'NONE'}
+                <br />
+                Updated by: {adminPolicy.updatedBy ?? 'N/A'}
+                <br />
+                Last updated: {adminPolicy.updatedAt ? new Date(adminPolicy.updatedAt).toLocaleString() : 'Never'}
+                <br />
+                Last applied: {adminPolicy.lastAppliedAt ? new Date(adminPolicy.lastAppliedAt).toLocaleString() : 'Never'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ padding: '10px 12px', borderRadius: 12, background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.18)', color: lastError ? '#EF4444' : '#A1A1AA', fontSize: 12, lineHeight: 1.5 }}>
+          {feedback}
+        </div>
+      </div>
+    )
+  }
 
   const placeBinaryTrade = () => {
     const result = placeTrade({
@@ -263,6 +333,17 @@ export default function Terminal() {
         </div>
 
         <div style={{ flex: 1 }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {simulationMode && (
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#F59E0B', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 999, padding: '4px 8px', letterSpacing: '0.06em' }}>
+              SIMULATION
+            </span>
+          )}
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#A855F7', border: '1px solid rgba(168,85,247,0.45)', borderRadius: 999, padding: '4px 8px', letterSpacing: '0.06em' }}>
+            ROLE {role.toUpperCase()}
+          </span>
+        </div>
 
         <div style={{ display: 'flex', gap: 3 }}>
           {(['1m', '5m', '15m', '1h'] as TimeFrame[]).map(tf => (
@@ -523,6 +604,32 @@ export default function Terminal() {
           <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 12, background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.18)', color: lastError ? '#EF4444' : '#A1A1AA', fontSize: 12, lineHeight: 1.5 }}>
             {feedback}
           </div>
+
+          {simulationMode && capabilities.canViewAdminPanel && (
+            <div style={{ marginTop: 12, padding: '12px', borderRadius: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)' }}>
+              <div style={{ fontSize: 11, color: '#F59E0B', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                Super Admin Simulation Controls
+              </div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                <div>
+                  <div className="field-label">AdminSim next trade outcome</div>
+                  <select className="field-input" value={forcedOutcome} onChange={e => setForcedOutcome(e.target.value as 'none' | 'won' | 'lost')}>
+                    <option value="none">No override</option>
+                    <option value="won">Force win</option>
+                    <option value="lost">Force loss</option>
+                  </select>
+                </div>
+                <button className="btn-primary" style={{ width: '100%', padding: '8px 10px', borderRadius: 10, fontSize: 12 }} onClick={applyAdminPolicy}>
+                  Apply to AdminSim
+                </button>
+                <div style={{ fontSize: 11, color: '#A1A1AA', lineHeight: 1.5 }}>
+                  Pending override: {adminPolicy.forceNextOutcome ? adminPolicy.forceNextOutcome.toUpperCase() : 'NONE'}
+                  <br />
+                  Last applied: {adminPolicy.lastAppliedAt ? new Date(adminPolicy.lastAppliedAt).toLocaleTimeString() : 'Never'}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

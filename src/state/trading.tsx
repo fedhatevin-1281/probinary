@@ -4,6 +4,20 @@ export type MarketCategory = 'volatility' | 'boom' | 'crash' | 'step'
 export type ContractType = 'rise-fall' | 'even-odd' | 'match-differ'
 export type TradeDirection = 'rise' | 'fall' | 'even' | 'odd' | 'match' | 'differ'
 export type TradeStatus = 'open' | 'won' | 'lost'
+export type UserRole = 'user' | 'admin' | 'super_admin'
+
+export interface RoleCapabilities {
+  canAdjustBalance: boolean
+  canForceClose: boolean
+  canViewAdminPanel: boolean
+}
+
+export interface AdminSimPolicy {
+  forceNextOutcome: 'won' | 'lost' | null
+  updatedAt: number | null
+  updatedBy: string | null
+  lastAppliedAt: number | null
+}
 
 export interface MarketSeed {
   symbol: string
@@ -65,6 +79,10 @@ interface TradeInput {
 
 interface TradingContextValue {
   connectionMode: 'connecting' | 'server' | 'local'
+  simulationMode: boolean
+  role: UserRole
+  capabilities: RoleCapabilities
+  adminPolicy: AdminSimPolicy
   marketList: MarketSnapshot[]
   markets: Record<string, MarketSnapshot>
   selectedMarket: MarketSnapshot
@@ -82,16 +100,61 @@ interface TradingContextValue {
   placeTrade: (input: TradeInput) => { ok: boolean; tradeId?: string; error?: string }
   forceCloseTrade: (tradeId: string) => { ok: boolean; error?: string }
   adjustBalance: (amount: number, reason: string) => { ok: boolean; error?: string }
+  setAdminPolicy: (forceNextOutcome: 'won' | 'lost' | null) => { ok: boolean; error?: string }
 }
 
 const STARTING_BALANCE = 25000
 const HISTORY_LIMIT = 120
+const DEFAULT_CAPABILITIES: RoleCapabilities = {
+  canAdjustBalance: false,
+  canForceClose: false,
+  canViewAdminPanel: false,
+}
+
+const ROLE_CAPABILITIES: Record<UserRole, RoleCapabilities> = {
+  user: { canAdjustBalance: false, canForceClose: false, canViewAdminPanel: false },
+  admin: { canAdjustBalance: true, canForceClose: true, canViewAdminPanel: false },
+  super_admin: { canAdjustBalance: true, canForceClose: true, canViewAdminPanel: true },
+}
+
+function resolveLocalAuth(): { simulationMode: boolean; role: UserRole; capabilities: RoleCapabilities } {
+  const token = typeof window !== 'undefined' ? (window.localStorage.getItem('pb.auth.token') ?? '') : ''
+  if (token === 'sim-super-admin') {
+    return { simulationMode: true, role: 'super_admin', capabilities: ROLE_CAPABILITIES.super_admin }
+  }
+  if (token === 'sim-admin') {
+    return { simulationMode: true, role: 'admin', capabilities: ROLE_CAPABILITIES.admin }
+  }
+  return { simulationMode: false, role: 'user', capabilities: ROLE_CAPABILITIES.user }
+}
+const DEFAULT_ADMIN_POLICY: AdminSimPolicy = {
+  forceNextOutcome: null,
+  updatedAt: null,
+  updatedBy: null,
+  lastAppliedAt: null,
+}
 
 type TransportMode = 'connecting' | 'server' | 'local'
 type ServerMessage =
   | { type: 'STATE'; state: TradingState }
   | { type: 'ACK'; ok: boolean; action?: string; error?: string; tradeId?: string }
+  | { type: 'AUTH_STATE'; simulationMode: boolean; role: UserRole; capabilities: RoleCapabilities }
+  | { type: 'SIM_POLICY_STATE'; policy: AdminSimPolicy }
   | { type: 'ERROR'; error: string }
+
+function resolveWebSocketUrl() {
+  const configured = import.meta.env.VITE_WS_URL
+  if (configured) {
+    return configured
+  }
+
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    return `${protocol}//${window.location.host}`
+  }
+
+  return 'ws://localhost:8080'
+}
 
 export const MARKET_SEEDS: MarketSeed[] = [
   { symbol: 'VOL-10', name: 'Volatility 10 Index', category: 'volatility', basePrice: 3891.77, volatility: 0.0019, drift: 0.0001, volatilityLabel: 'Low' },
@@ -129,6 +192,10 @@ const TradingContext = createContext<TradingContextValue | null>(null)
 export function TradingProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<TradingState>(() => createInitialState())
   const [connectionMode, setConnectionMode] = useState<TransportMode>('connecting')
+  const [simulationMode, setSimulationMode] = useState(false)
+  const [role, setRole] = useState<UserRole>('user')
+  const [capabilities, setCapabilities] = useState<RoleCapabilities>(DEFAULT_CAPABILITIES)
+  const [adminPolicy, setAdminPolicyState] = useState<AdminSimPolicy>(DEFAULT_ADMIN_POLICY)
   const stateRef = useRef(state)
   const socketRef = useRef<WebSocket | null>(null)
   const localTimerRef = useRef<number | null>(null)
@@ -147,6 +214,10 @@ export function TradingProvider({ children }: { children: ReactNode }) {
 
       if (connectionMode !== 'server') {
         setConnectionMode('local')
+        const auth = resolveLocalAuth()
+        setSimulationMode(auth.simulationMode)
+        setRole(auth.role)
+        setCapabilities(auth.capabilities)
       }
 
       localTimerRef.current = window.setInterval(() => {
@@ -170,17 +241,23 @@ export function TradingProvider({ children }: { children: ReactNode }) {
 
     const connect = () => {
       if (typeof window === 'undefined') {
+        const auth = resolveLocalAuth()
+        setSimulationMode(auth.simulationMode)
+        setRole(auth.role)
+        setCapabilities(auth.capabilities)
         startLocalFallback()
         return
       }
 
-      const socket = new WebSocket(import.meta.env.VITE_WS_URL || 'ws://localhost:8080')
+      const socket = new WebSocket(resolveWebSocketUrl())
       socketRef.current = socket
       setConnectionMode('connecting')
 
       socket.onopen = () => {
         stopLocalFallback()
         setConnectionMode('server')
+        const token = window.localStorage.getItem('pb.auth.token') || 'demo-auth-token'
+        socket.send(JSON.stringify({ type: 'AUTH_INIT', token }))
         setState(prev => ({ ...prev, lastAction: 'Connected to backend', lastError: null }))
       }
 
@@ -198,6 +275,19 @@ export function TradingProvider({ children }: { children: ReactNode }) {
               lastAction: message.action ?? prev.lastAction,
               lastError: message.ok ? null : message.error ?? prev.lastError,
             }))
+            return
+          }
+
+          if (message.type === 'AUTH_STATE') {
+            setSimulationMode(message.simulationMode)
+            setRole(message.role)
+            setCapabilities(message.capabilities)
+            setState(prev => ({ ...prev, lastAction: `Authenticated as ${message.role}` }))
+            return
+          }
+
+          if (message.type === 'SIM_POLICY_STATE') {
+            setAdminPolicyState(message.policy)
             return
           }
 
@@ -383,6 +473,29 @@ export function TradingProvider({ children }: { children: ReactNode }) {
     return { ok: true }
   }
 
+  const setAdminPolicy = (forceNextOutcome: 'won' | 'lost' | null) => {
+    if (!simulationMode) {
+      return { ok: false, error: 'Simulation mode is disabled' }
+    }
+
+    if (!capabilities.canViewAdminPanel) {
+      return { ok: false, error: 'Not permitted to set admin policy' }
+    }
+
+    const socket = socketRef.current
+    if (connectionMode === 'server' && socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'SIM_SET_ADMIN_POLICY', forceNextOutcome }))
+      setState(prev => ({
+        ...prev,
+        lastAction: 'Submitted admin simulation policy update',
+        lastError: null,
+      }))
+      return { ok: true }
+    }
+
+    return { ok: false, error: 'Backend connection required' }
+  }
+
   const marketList = MARKET_SEEDS.map(seed => state.markets[seed.symbol]).filter(Boolean)
   const selectedMarket = state.markets[state.selectedSymbol] ?? marketList[0]
   const closedTrades = state.closedTrades
@@ -395,6 +508,10 @@ export function TradingProvider({ children }: { children: ReactNode }) {
     <TradingContext.Provider
       value={{
         connectionMode,
+        simulationMode,
+        role,
+        capabilities,
+        adminPolicy,
         marketList,
         markets: state.markets,
         selectedMarket,
@@ -412,6 +529,7 @@ export function TradingProvider({ children }: { children: ReactNode }) {
         placeTrade,
         forceCloseTrade,
         adjustBalance,
+        setAdminPolicy,
       }}
     >
       {children}
