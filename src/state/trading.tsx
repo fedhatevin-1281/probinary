@@ -287,9 +287,12 @@ function resolveWebSocketUrl() {
   }
 
   if (typeof window !== "undefined") {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
-
-    return `${protocol}//${window.location.host}`
+    const hostname = window.location.hostname
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
+      return `${protocol}//${window.location.host}`
+    }
+    return "ws://localhost:8080"
   }
 
   return "ws://localhost:8080"

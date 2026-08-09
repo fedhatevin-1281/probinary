@@ -13,11 +13,18 @@ export interface AuthResponse {
 }
 
 function resolveAuthBaseUrl() {
+  const configured = import.meta.env.VITE_API_URL
+  if (configured) {
+    return configured
+  }
+
   if (typeof window !== "undefined") {
     const protocol = window.location.protocol
     const hostname = window.location.hostname
-    // If running on a specific host, connect to port 8090 of that host
-    return `${protocol}//${hostname}:8090`
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return `${protocol}//${hostname}:8090`
+    }
+    return "http://localhost:8090"
   }
   return "http://localhost:8090"
 }
