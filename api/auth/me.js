@@ -1,7 +1,7 @@
-const jwt = require("jsonwebtoken")
-const { JWT_SECRET, supabaseRequest } = require("../_utils")
+import jwt from "jsonwebtoken"
+import { JWT_SECRET, supabaseRequest } from "../_utils.js"
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   const authHeader = req.headers.authorization
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Unauthorized" })
@@ -19,7 +19,6 @@ module.exports = async function handler(req, res) {
 
     const user = users[0]
 
-    // Resolve role again
     const userRoles = await supabaseRequest(`/user_roles?user_id=eq.${user.id}`)
     let role = "user"
     if (userRoles && userRoles.length > 0) {

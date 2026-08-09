@@ -1,7 +1,7 @@
-const bcrypt = require("bcryptjs")
-const { supabaseRequest } = require("../_utils")
+import bcrypt from "bcryptjs"
+import { supabaseRequest } from "../_utils.js"
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(455).json({ error: "Method not allowed" })
   }
@@ -21,13 +21,11 @@ module.exports = async function handler(req, res) {
 
     const user = users[0]
 
-    // Generate 6-digit numeric OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
     const tokenHash = await bcrypt.hash(otpCode, 10)
-    const expiresAt = new Date(Date.now() + 30 * 60000).toISOString() // 30 mins
+    const expiresAt = new Date(Date.now() + 30 * 60000).toISOString()
     const timeString = new Date().toISOString()
 
-    // Store in password_reset_tokens
     await supabaseRequest("/password_reset_tokens", {
       method: "POST",
       body: JSON.stringify({
@@ -46,7 +44,7 @@ module.exports = async function handler(req, res) {
       ok: true,
       message:
         "If the email matches a registered account, a password reset OTP code has been generated.",
-      otpCode, // Included for developer test convenience on-screen
+      otpCode,
     })
   } catch (error) {
     console.error("Forgot password serverless error:", error)

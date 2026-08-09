@@ -1,8 +1,8 @@
-const bcrypt = require("bcryptjs")
-const jwt = require("jsonwebtoken")
-const { JWT_SECRET, supabaseRequest } = require("../_utils")
+import bcrypt from "bcryptjs"
+import jwt from "jsonwebtoken"
+import { JWT_SECRET, supabaseRequest } from "../_utils.js"
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(455).json({ error: "Method not allowed" })
   }
@@ -16,7 +16,6 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    // 1. Check if email already exists
     const emailCheck = await supabaseRequest(
       `/users?email=eq.${encodeURIComponent(email)}`,
     )
@@ -24,7 +23,6 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: "Email already registered" })
     }
 
-    // 2. Check if username already exists
     const usernameCheck = await supabaseRequest(
       `/users?username=eq.${encodeURIComponent(username)}`,
     )
@@ -32,11 +30,9 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: "Username already taken" })
     }
 
-    // 3. Hash the password
     const passwordHash = await bcrypt.hash(password, 10)
     const timeString = new Date().toISOString()
 
-    // 4. Create the user record in public.users
     const insertHeaders = {
       Prefer: "return=representation",
     }
@@ -58,7 +54,6 @@ module.exports = async function handler(req, res) {
     }
     const newUser = createdUsers[0]
 
-    // 5. Assign 'client' role (ID 1 in database)
     await supabaseRequest("/user_roles", {
       method: "POST",
       headers: insertHeaders,
@@ -69,7 +64,6 @@ module.exports = async function handler(req, res) {
       }),
     })
 
-    // 6. Create initial wallet with 10,000 USD balance
     await supabaseRequest("/wallets", {
       method: "POST",
       headers: insertHeaders,
@@ -82,7 +76,6 @@ module.exports = async function handler(req, res) {
       }),
     })
 
-    // 7. Generate JWT token
     const token = jwt.sign(
       { id: newUser.id, email: newUser.email, role: "user" },
       JWT_SECRET,

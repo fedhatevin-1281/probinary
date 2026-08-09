@@ -1,7 +1,7 @@
-const jwt = require("jsonwebtoken")
-const { JWT_SECRET, supabaseRequest } = require("../_utils")
+import jwt from "jsonwebtoken"
+import { JWT_SECRET, supabaseRequest } from "../_utils.js"
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(455).json({ error: "Method not allowed" })
   }
@@ -22,11 +22,9 @@ module.exports = async function handler(req, res) {
     const decoded = jwt.verify(token, JWT_SECRET)
     const timeString = new Date().toISOString()
 
-    // Check if wallet exists for the user
     const wallets = await supabaseRequest(`/wallets?user_id=eq.${decoded.id}`)
 
     if (!wallets || wallets.length === 0) {
-      // Create wallet if missing
       await supabaseRequest("/wallets", {
         method: "POST",
         body: JSON.stringify({
@@ -38,7 +36,6 @@ module.exports = async function handler(req, res) {
         }),
       })
     } else {
-      // Update wallet balance
       await supabaseRequest(`/wallets?user_id=eq.${decoded.id}`, {
         method: "PATCH",
         body: JSON.stringify({

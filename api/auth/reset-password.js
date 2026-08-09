@@ -1,7 +1,7 @@
-const bcrypt = require("bcryptjs")
-const { supabaseRequest } = require("../_utils")
+import bcrypt from "bcryptjs"
+import { supabaseRequest } from "../_utils.js"
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(455).json({ error: "Method not allowed" })
   }
@@ -49,7 +49,6 @@ module.exports = async function handler(req, res) {
     const hashedNewPassword = await bcrypt.hash(newPassword, 10)
     const timeString = new Date().toISOString()
 
-    // Patch password
     await supabaseRequest(`/users?id=eq.${user.id}`, {
       method: "PATCH",
       body: JSON.stringify({
@@ -58,7 +57,6 @@ module.exports = async function handler(req, res) {
       }),
     })
 
-    // Mark token as used
     await supabaseRequest(`/password_reset_tokens?id=eq.${validToken.id}`, {
       method: "PATCH",
       body: JSON.stringify({

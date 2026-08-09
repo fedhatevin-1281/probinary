@@ -1,7 +1,7 @@
-const jwt = require("jsonwebtoken")
-const { JWT_SECRET, supabaseRequest } = require("../_utils")
+import jwt from "jsonwebtoken"
+import { JWT_SECRET, supabaseRequest } from "../_utils.js"
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(455).json({ error: "Method not allowed" })
   }
@@ -21,7 +21,6 @@ module.exports = async function handler(req, res) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET)
 
-    // Check unique constraints
     const existing = await supabaseRequest(
       `/users?username=eq.${encodeURIComponent(username.trim())}&id=ne.${decoded.id}`,
     )

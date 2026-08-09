@@ -1,8 +1,8 @@
-const bcrypt = require("bcryptjs")
-const jwt = require("jsonwebtoken")
-const { JWT_SECRET, supabaseRequest } = require("../_utils")
+import bcrypt from "bcryptjs"
+import jwt from "jsonwebtoken"
+import { JWT_SECRET, supabaseRequest } from "../_utils.js"
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(455).json({ error: "Method not allowed" })
   }
