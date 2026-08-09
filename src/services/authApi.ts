@@ -24,7 +24,7 @@ function resolveAuthBaseUrl() {
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return `${protocol}//${hostname}:8090`
     }
-    return "http://localhost:8090"
+    return "/api"
   }
   return "http://localhost:8090"
 }

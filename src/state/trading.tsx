@@ -560,6 +560,25 @@ export function TradingProvider({ children }: { children: ReactNode }) {
     stateRef.current = state
   }, [state])
 
+  // Sync wallet balance to DB when it changes (for serverless Vercel deploy)
+  useEffect(() => {
+    const token =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("pb.auth.token")
+        : null
+    if (!token || token.startsWith("sim-") || token === "demo-auth-token") {
+      return
+    }
+    fetch("/api/trading/sync-wallet", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ balance: state.balance }),
+    }).catch((err) => console.error("Balance sync error:", err))
+  }, [state.balance])
+
   useEffect(() => {
     const startLocalFallback = () => {
       if (localTimerRef.current !== null) {
