@@ -206,20 +206,7 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
       />
 
       {/* Navbar */}
-      <nav
-        className="glass-nav px-6 md:px-12"
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50,
-          height: 64,
-          display: "flex",
-          alignItems: "center",
-          gap: 32,
-        }}
-      >
+      <nav className="glass-nav px-6 md:px-12 fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between gap-4 md:gap-8">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img
             src="/logo.png"
@@ -271,7 +258,7 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
           ))}
         </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div className="flex items-center gap-2 md:gap-3">
           <button
             className="btn-ghost"
             style={{ padding: "8px 18px", borderRadius: 10, fontSize: 14 }}
