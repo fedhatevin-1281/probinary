@@ -4,6 +4,12 @@
     <!-- figma:head-start -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Defensive shim for environments where Vite's dev client placeholder is not replaced.
+      if (typeof __BUNDLED_DEV__ === 'undefined') {
+        var __BUNDLED_DEV__ = false
+      }
+    </script>
     <title><!-- figma:title --></title>
     <!-- figma:head-end -->
   </head>

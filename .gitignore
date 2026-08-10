@@ -11,3 +11,5 @@ logs/
 *.log
 .claude-replay.*
 .tmp-*
+backend/data/*.db
+backend/data/*.db-*

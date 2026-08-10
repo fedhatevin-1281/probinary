@@ -69,8 +69,8 @@ export default async function handler(req, res) {
       headers: insertHeaders,
       body: JSON.stringify({
         user_id: newUser.id,
-        balance: 10000.0,
-        currency: "USD",
+        current_balance: 10000.0,
+        currency: "KES",
         created_at: timeString,
         updated_at: timeString,
       }),
