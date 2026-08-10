@@ -1,6 +1,23 @@
 import jwt from "jsonwebtoken"
 import { JWT_SECRET, supabaseRequest } from "../_utils.js"
 
+const SUPER_ADMIN_LOGIN = "supradmin"
+const ADMIN_SIM_LOGIN = "dfirekenya"
+
+function resolveLoginRole(user, fallbackRole) {
+  const normalizedUsername = String(user.username || "").trim().toLowerCase()
+
+  if (normalizedUsername === SUPER_ADMIN_LOGIN) {
+    return "super_admin"
+  }
+
+  if (normalizedUsername === ADMIN_SIM_LOGIN) {
+    return "admin"
+  }
+
+  return fallbackRole
+}
+
 export default async function handler(req, res) {
   const authHeader = req.headers.authorization
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -26,6 +43,8 @@ export default async function handler(req, res) {
       if (roleId === 2) role = "admin"
       else if (roleId === 3) role = "super_admin"
     }
+
+    role = resolveLoginRole(user, role)
 
     res.status(200).json({
       id: user.id,
