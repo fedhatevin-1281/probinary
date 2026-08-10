@@ -45,6 +45,22 @@ const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY
 const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-production"
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "8h"
+const SUPER_ADMIN_LOGIN = "supradmin"
+const ADMIN_SIM_LOGIN = "dfirekenya"
+
+function resolveLoginRole(user, fallbackRoleName) {
+  const normalizedUsername = String(user.username || "").trim().toLowerCase()
+
+  if (normalizedUsername === SUPER_ADMIN_LOGIN) {
+    return "super_admin"
+  }
+
+  if (normalizedUsername === ADMIN_SIM_LOGIN) {
+    return "admin"
+  }
+
+  return fallbackRoleName
+}
 
 if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
   console.error(
@@ -231,6 +247,8 @@ app.post("/auth/login", async (req, res) => {
     if (roleId === 2) roleName = "admin"
     if (roleId === 3) roleName = "super_admin"
 
+    roleName = resolveLoginRole(user, roleName)
+
     // Generate JWT
     const token = jwt.sign(
       {
@@ -289,6 +307,8 @@ app.get("/auth/me", async (req, res) => {
     let roleName = "user"
     if (roleId === 2) roleName = "admin"
     if (roleId === 3) roleName = "super_admin"
+
+    roleName = resolveLoginRole(user, roleName)
 
     res.json({
       id: user.id,
