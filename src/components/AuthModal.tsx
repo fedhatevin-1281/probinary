@@ -1,4 +1,5 @@
-import { useState, type FormEvent, type CSSProperties } from "react"
+import { useState, useEffect, type FormEvent, type CSSProperties } from "react"
+import { createPortal } from "react-dom"
 import {
   loginUser,
   registerUser,
@@ -161,6 +162,17 @@ export default function AuthModal({
   onSuccess,
 }: AuthModalProps) {
   const [tab, setTab] = useState<AuthTab>("login")
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [isOpen])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{
     text: string
@@ -319,7 +331,7 @@ export default function AuthModal({
     handleClose()
   }
 
-  return (
+  return createPortal(
     <div style={backdropStyle} onClick={handleClose}>
       <div style={cardStyle} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
@@ -620,6 +632,7 @@ export default function AuthModal({
           </form>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

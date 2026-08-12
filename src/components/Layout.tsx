@@ -52,6 +52,8 @@ export default function Layout({
 
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false)
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === "undefined" ? 1280 : window.innerWidth,
   )
@@ -143,10 +145,35 @@ export default function Layout({
         position: "relative",
       }}
     >
+      {/* Mobile navigation backdrop */}
+      {hideSidebar && mobileMenuOpen && (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(5, 3, 10, 0.75)",
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+            zIndex: 40,
+            transition: "opacity 0.25s ease",
+          }}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
         style={{
-          width: hideSidebar ? 0 : collapsed ? 64 : 220,
+          width: hideSidebar
+            ? mobileMenuOpen
+              ? 240
+              : 0
+            : collapsed
+              ? 64
+              : 220,
 
           flexShrink: 0,
 
@@ -158,11 +185,22 @@ export default function Layout({
 
           flexDirection: "column",
 
-          transition: "width 0.25s ease",
+          transition:
+            "width 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease",
 
-          overflow: hideSidebar ? "hidden" : "hidden",
+          overflow: "hidden",
 
-          zIndex: 20,
+          zIndex: 45,
+          ...(hideSidebar && {
+            position: "fixed",
+            top: 0,
+            bottom: 0,
+            left: 0,
+            height: "100vh",
+            transform: mobileMenuOpen ? "translateX(0)" : "translateX(-100%)",
+            width: 240,
+            boxShadow: mobileMenuOpen ? "0 0 40px rgba(0,0,0,0.65)" : "none",
+          }),
         }}
       >
         {/* Logo */}
@@ -171,46 +209,67 @@ export default function Layout({
             padding: "20px 14px 16px",
             display: "flex",
             alignItems: "center",
+            justifyContent: "space-between",
             gap: 10,
             borderBottom: "1px solid rgba(255,255,255,0.04)",
           }}
         >
-          <img
-            src="/logo.png"
-            alt="Pro Binary logo"
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 9,
-              objectFit: "cover",
-              flexShrink: 0,
-              boxShadow: "0 0 16px rgba(124,58,237,0.35)",
-            }}
-          />
-          {!collapsed && (
-            <div>
-              <div
-                style={{
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  fontWeight: 700,
-                  fontSize: 15,
-                  color: "#FFFFFF",
-                  letterSpacing: "-0.3px",
-                }}
-              >
-                pro<span style={{ color: "#A855F7" }}>binary</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <img
+              src="/logo.png"
+              alt="Pro Binary logo"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 9,
+                objectFit: "cover",
+                flexShrink: 0,
+                boxShadow: "0 0 16px rgba(124,58,237,0.35)",
+              }}
+            />
+            {(!collapsed || hideSidebar) && (
+              <div>
+                <div
+                  style={{
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontWeight: 700,
+                    fontSize: 15,
+                    color: "#FFFFFF",
+                    letterSpacing: "-0.3px",
+                  }}
+                >
+                  pro<span style={{ color: "#A855F7" }}>binary</span>
+                </div>
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: "#52525B",
+                    fontWeight: 500,
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  TRADING
+                </div>
               </div>
-              <div
-                style={{
-                  fontSize: 10,
-                  color: "#52525B",
-                  fontWeight: 500,
-                  letterSpacing: "0.05em",
-                }}
-              >
-                TRADING
-              </div>
-            </div>
+            )}
+          </div>
+          {hideSidebar && (
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#71717A",
+                cursor: "pointer",
+                fontSize: 18,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 4,
+              }}
+            >
+              &times;
+            </button>
           )}
         </div>
 
@@ -228,7 +287,10 @@ export default function Layout({
           {NAV_ITEMS.map((item) => (
             <button
               key={item.id}
-              onClick={() => onNavigate(item.id)}
+              onClick={() => {
+                onNavigate(item.id)
+                setMobileMenuOpen(false)
+              }}
               className={`sidebar-item ${
                 currentPage === item.id ? "active" : ""
               }`}
@@ -258,7 +320,10 @@ export default function Layout({
           {BOTTOM_ITEMS.map((item) => (
             <button
               key={item.id}
-              onClick={() => onNavigate(item.id)}
+              onClick={() => {
+                onNavigate(item.id)
+                setMobileMenuOpen(false)
+              }}
               className={`sidebar-item ${
                 currentPage === item.id ? "active" : ""
               }`}
@@ -343,7 +408,7 @@ export default function Layout({
                 className="nav-icon-btn"
                 aria-label="Toggle menu"
                 title="Menu"
-                onClick={() => setMobileActionsOpen((value) => !value)}
+                onClick={() => setMobileMenuOpen(true)}
               >
                 <MenuIcon />
               </button>

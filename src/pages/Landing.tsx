@@ -206,7 +206,7 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
       />
 
       {/* Navbar */}
-      <nav className="glass-nav px-6 md:px-12 fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between gap-4 md:gap-8">
+      <nav className="glass-nav px-4 sm:px-6 md:px-12 fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between gap-2 sm:gap-4 md:gap-8">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img
             src="/logo.png"
@@ -258,17 +258,17 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
           ))}
         </div>
 
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
           <button
-            className="btn-ghost"
-            style={{ padding: "8px 18px", borderRadius: 10, fontSize: 14 }}
+            className="btn-ghost px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm flex-shrink-0 whitespace-nowrap"
+            style={{ borderRadius: 10 }}
             onClick={() => setAuthModalOpen(true)}
           >
             Log In
           </button>
           <button
-            className="btn-primary"
-            style={{ padding: "8px 20px", borderRadius: 10, fontSize: 14 }}
+            className="btn-primary px-4 py-1.5 sm:px-5 sm:py-2 text-xs sm:text-sm flex-shrink-0 whitespace-nowrap"
+            style={{ borderRadius: 10 }}
             onClick={() => setAuthModalOpen(true)}
           >
             Get Started
