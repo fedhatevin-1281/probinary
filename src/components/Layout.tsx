@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
+import logoUrl from "../assets/logo.png"
 
 import type { Page } from "../App"
 
@@ -239,7 +240,7 @@ export default function Layout({
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <img
-              src={`${import.meta.env.BASE_URL}logo.png`}
+              src={logoUrl}
               alt="Pro Binary logo"
               style={{
                 width: 32,
