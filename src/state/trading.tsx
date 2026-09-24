@@ -99,6 +99,8 @@ export interface BinaryTrade {
   profit?: number
 
   result?: "won" | "lost"
+
+  isDemo?: boolean
 }
 
 interface TradingState {
@@ -129,6 +131,8 @@ interface TradeInput {
   stake: number
 
   expirySeconds: number
+
+  isDemo?: boolean
 }
 
 interface TradingContextValue {
@@ -809,7 +813,7 @@ export function TradingProvider({ children }: { children: ReactNode }) {
       return { ok: false, error }
     }
 
-    if (stake > current.balance) {
+    if (!input.isDemo && stake > current.balance) {
       const error = "Insufficient balance"
 
       setState((prev) => ({ ...prev, lastError: error }))
@@ -845,12 +849,14 @@ export function TradingProvider({ children }: { children: ReactNode }) {
       status: "open",
 
       createdAt: Date.now(),
+
+      isDemo: input.isDemo,
     }
 
     setState((prev) => ({
       ...prev,
 
-      balance: round2(prev.balance - stake),
+      balance: input.isDemo ? prev.balance : round2(prev.balance - stake),
 
       openTrades: [trade, ...prev.openTrades],
 
@@ -1232,9 +1238,9 @@ function advanceState(prev: TradingState, now: number): TradingState {
 
     const settled = resolveTrade(trade, market?.price ?? trade.entryPrice, now)
 
-    balance = round2(balance + (settled.payout ?? 0))
+    balance = trade.isDemo ? balance : round2(balance + (settled.payout ?? 0))
 
-    realizedPnl = round2(realizedPnl + (settled.profit ?? 0))
+    realizedPnl = trade.isDemo ? realizedPnl : round2(realizedPnl + (settled.profit ?? 0))
 
     closedTrades.unshift(settled)
   }
@@ -1271,9 +1277,9 @@ function settleTrade(
   return {
     ...prev,
 
-    balance: round2(prev.balance + (settled.payout ?? 0)),
+    balance: trade.isDemo ? prev.balance : round2(prev.balance + (settled.payout ?? 0)),
 
-    realizedPnl: round2(prev.realizedPnl + (settled.profit ?? 0)),
+    realizedPnl: trade.isDemo ? prev.realizedPnl : round2(prev.realizedPnl + (settled.profit ?? 0)),
 
     openTrades: prev.openTrades.filter((item) => item.id !== tradeId),
 

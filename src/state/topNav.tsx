@@ -218,6 +218,8 @@ interface AppHeaderContextValue {
 
   setActiveAccount: (account: AccountType) => void
 
+  setDemoBalance: React.Dispatch<React.SetStateAction<number>>
+
   balancePulse: boolean
 
   backendOnline: boolean
@@ -1122,8 +1124,14 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
 
       window.setTimeout(() => setBalancePulse(false), 280)
 
+      let demoGains = 0
+
       for (const trade of newTrades) {
-        appendTransaction(makeTradeTransaction(trade, trading.balance))
+        if (trade.isDemo && trade.payout) {
+          demoGains += trade.payout
+        }
+
+        appendTransaction(makeTradeTransaction(trade, trade.isDemo ? demoBalance + demoGains : trading.balance))
 
         addNotification({
           category: "trades",
@@ -1134,6 +1142,10 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
 
           description: `Trade ${trade.id} settled ${formatUsd(trade.profit ?? 0)}.`,
         })
+      }
+
+      if (demoGains > 0) {
+        setDemoBalance((prev) => prev + demoGains)
       }
     }
 
@@ -1299,6 +1311,8 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
 
       setActiveAccount,
 
+      setDemoBalance,
+
       balancePulse,
 
       backendOnline,
@@ -1375,6 +1389,8 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
       balances,
 
       activeAccount,
+
+      setDemoBalance,
 
       balancePulse,
 

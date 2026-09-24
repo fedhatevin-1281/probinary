@@ -2,6 +2,8 @@ import { useEffect, useState } from "react"
 
 import { marketLabel, useTrading } from "../state/trading"
 
+import { useTopNav } from "../state/topNav"
+
 import LastDigitStatistics from "../components/LastDigitStatistics"
 
 type Candle = {
@@ -445,6 +447,8 @@ export default function Terminal() {
     setAdminPolicy,
   } = useTrading()
 
+  const { activeAccount, balances, setDemoBalance } = useTopNav()
+
   const [timeframe, setTimeframe] = useState<TimeFrame>("5m")
 
   const [chartMode, setChartMode] = useState<ChartMode>("candles")
@@ -681,6 +685,13 @@ export default function Terminal() {
   }
 
   const placeBinaryTrade = () => {
+    const tradeStake = parseFloat(stake || "0")
+
+    if (activeAccount === "demo" && tradeStake > balances.demo) {
+      alert("Insufficient demo balance")
+      return
+    }
+
     const result = placeTrade({
       symbol: selectedMarket.symbol,
 
@@ -688,12 +699,17 @@ export default function Terminal() {
 
       direction: prediction,
 
-      stake: parseFloat(stake || "0"),
+      stake: tradeStake,
 
       expirySeconds: parseInt(expirySeconds || "30", 10),
+
+      isDemo: activeAccount === "demo",
     })
 
     if (result.ok) {
+      if (activeAccount === "demo") {
+        setDemoBalance((prev) => prev - tradeStake)
+      }
       setBottomTab("positions")
     }
   }
