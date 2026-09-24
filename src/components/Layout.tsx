@@ -239,7 +239,7 @@ export default function Layout({
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <img
-              src="/logo.png"
+              src={`${import.meta.env.BASE_URL}logo.png`}
               alt="Pro Binary logo"
               style={{
                 width: 32,

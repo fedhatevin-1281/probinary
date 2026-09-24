@@ -125,12 +125,15 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
   }
 
   const title = config.title ?? "Pro Binary"
-
   const description = config.description ?? ""
-
-  const favicon = config.icons?.icon ?? ""
-
-  const socialImage = config.openGraph?.image ?? ""
+  
+  const publicUrl = process.env.FIGMA_PUBLIC_URL || ""
+  
+  let favicon = config.icons?.icon ?? ""
+  if (favicon.startsWith("/") && publicUrl) favicon = `${publicUrl}${favicon}`
+  
+  let socialImage = config.openGraph?.image ?? ""
+  if (socialImage.startsWith("/") && publicUrl) socialImage = `${publicUrl}${socialImage}`
 
   const language = sanitizeHtmlValue(config.language) || "en"
 

@@ -224,7 +224,7 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
       <nav className="glass-nav px-4 sm:px-6 md:px-12 fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between gap-2 sm:gap-4 md:gap-8">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img
-            src="/logo.png"
+            src={`${import.meta.env.BASE_URL}logo.png`}
             alt="Pro Binary logo"
             style={{
               width: 34,
@@ -1164,7 +1164,7 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img
-            src="/logo.png"
+            src={`${import.meta.env.BASE_URL}logo.png`}
             alt="Pro Binary logo"
             style={{
               width: 28,
