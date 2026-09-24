@@ -1105,7 +1105,7 @@ export default function Terminal() {
         </div>
 
         <div
-          className="flex-1 flex flex-col overflow-hidden min-h-[50vh] lg:min-h-0"
+          className="flex-1 flex flex-col overflow-hidden min-h-[60vh] lg:min-h-0"
         >
           <div className="flex lg:hidden p-2 bg-[#12121A] border-b border-white/5 overflow-x-auto items-center justify-center">
             <div className="flex gap-4">
