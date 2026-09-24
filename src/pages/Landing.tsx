@@ -1,5 +1,4 @@
 import { useState } from "react"
-import logoUrl from "../assets/logo.png"
 
 import { useTrading, buildSeriesShape } from "../state/trading"
 
@@ -224,21 +223,6 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
       {/* Navbar */}
       <nav className="glass-nav px-4 sm:px-6 md:px-12 fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between gap-2 sm:gap-4 md:gap-8">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img
-            src={logoUrl}
-            alt="Pro Binary logo"
-            style={{
-              width: 34,
-
-              height: 34,
-
-              borderRadius: 10,
-
-              objectFit: "cover",
-
-              boxShadow: "0 0 18px rgba(124,58,237,0.45)",
-            }}
-          />
           <span
             style={{
               fontFamily: "'Space Grotesk', sans-serif",
@@ -1164,19 +1148,6 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img
-            src={logoUrl}
-            alt="Pro Binary logo"
-            style={{
-              width: 28,
-
-              height: 28,
-
-              borderRadius: 8,
-
-              objectFit: "cover",
-            }}
-          />
           <span
             style={{
               fontFamily: "'Space Grotesk',sans-serif",

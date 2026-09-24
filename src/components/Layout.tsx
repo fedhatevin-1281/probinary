@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
-import logoUrl from "../assets/logo.png"
 
 import type { Page } from "../App"
 
@@ -239,23 +238,6 @@ export default function Layout({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img
-              src={logoUrl}
-              alt="Pro Binary logo"
-              style={{
-                width: 32,
-
-                height: 32,
-
-                borderRadius: 9,
-
-                objectFit: "cover",
-
-                flexShrink: 0,
-
-                boxShadow: "0 0 16px rgba(124,58,237,0.35)",
-              }}
-            />
             {(!collapsed || hideSidebar) && (
               <div>
                 <div
