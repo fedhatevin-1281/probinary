@@ -142,3 +142,12 @@ export async function changePassword(
     body: JSON.stringify({ currentPassword, newPassword }),
   })
 }
+
+export async function getAdminStats(token: string): Promise<{ ok: boolean stats: { totalUsers: number, totalDeposited: number, totalWithdrawn: number, pendingWithdrawals: any[] } }> {
+  return requestJson("/auth/admin/stats", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+}

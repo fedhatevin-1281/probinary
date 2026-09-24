@@ -17,11 +17,14 @@ import { TopNavProvider } from "./state/topNav"
 import Wallet from "./pages/Wallet"
 
 import SuperAdminConsole from "./pages/SuperAdminConsole"
+
 import Settings from "./pages/Settings"
+
+import AdminConsole from "./pages/AdminConsole"
 
 import { type User, getMe, clearAuthSession } from "./services/authApi"
 
-export type Page = "dashboard" | "terminal" | "markets" | "portfolio" | "analytics" | "wallet" | "leaderboard" | "settings"
+export type Page = "dashboard" | "terminal" | "markets" | "portfolio" | "analytics" | "wallet" | "settings" | "admin"
 
 function getLoginAccessKey(user: User) {
   const normalizedUsername = user.username.trim().toLowerCase()
@@ -57,9 +60,13 @@ function getLinkAccessKey() {
   }
 
   const pathKey = window.location.pathname
+
     .replace(/\/+$/g, "")
+
     .split("/")
+
     .filter(Boolean)
+
     .pop()
 
   if (pathKey) {
@@ -175,9 +182,11 @@ export default function App() {
       const nextUrl = new URL(window.location.href)
 
       nextUrl.searchParams.set("access", accessKey)
+
       nextUrl.hash = ""
 
       window.location.replace(nextUrl.toString())
+
       return
     }
 
@@ -224,6 +233,7 @@ export default function App() {
             currentPage={page}
             onNavigate={setPage}
             onLogout={handleLogout}
+            user={user}
           >
             {page === "dashboard" && (
               <Dashboard
@@ -240,28 +250,39 @@ export default function App() {
               <Settings user={user} onUpdateUser={setUser} />
             )}
             {page === "wallet" && <Wallet />}
-            {(page === "portfolio" ||
-              page === "analytics" ||
-              page === "leaderboard") && (
+            {page === "admin" && <AdminConsole />}
+            {(page === "portfolio" || page === "analytics") && (
               <div
                 style={{
                   display: "flex",
+
                   alignItems: "center",
+
                   justifyContent: "center",
+
                   height: "100%",
+
                   flexDirection: "column",
+
                   gap: 16,
                 }}
               >
                 <div
                   style={{
                     width: 64,
+
                     height: 64,
+
                     borderRadius: 18,
+
                     background: "rgba(124,58,237,0.15)",
+
                     border: "1px solid rgba(124,58,237,0.25)",
+
                     display: "flex",
+
                     alignItems: "center",
+
                     justifyContent: "center",
                   }}
                 >
@@ -283,8 +304,11 @@ export default function App() {
                   className="font-display"
                   style={{
                     color: "#A855F7",
+
                     fontSize: 20,
+
                     fontWeight: 600,
+
                     margin: 0,
                   }}
                 >

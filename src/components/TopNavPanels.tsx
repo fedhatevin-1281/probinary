@@ -409,9 +409,11 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
 
   const [amountUsd, setAmountUsd] = useState("10")
 
-  const [paymentMethod, setPaymentMethod] = useState("Credit Card")
+  const [paymentMethod, setPaymentMethod] = useState("M-Pesa")
 
   const [referenceNumber, setReferenceNumber] = useState("")
+
+  const [email, setEmail] = useState("")
 
   const [receipt, setReceipt] = useState<string | null>(null)
 
@@ -419,31 +421,56 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
 
   const amount = Number(amountUsd || "0")
 
-  const belowMinimum = !Number.isFinite(amount) || amount < depositMinimumUsd
+  const effectiveMinimum = 3
 
-  const mobileMoneyPreviewKes =
-    paymentMethod === "Mobile Money" ? amount * walletSettings.usdKesRate : 0
+  const belowMinimum = !Number.isFinite(amount) || amount < effectiveMinimum
+
+  const isKesMethod = true
+  const kesPreviewValue = amount * walletSettings.usdKesRate
 
   const submit = async () => {
     setError(null)
 
-    const result = await submitDeposit({
-      amountUsd: Number(amountUsd),
-      paymentMethod,
-      referenceNumber,
-    })
-
-    if (!result.ok) {
-      setError(result.error || "Deposit failed")
-
+    // @ts-ignore
+    if (!window.PaystackPop) {
+      setError("Payment gateway is not loaded.")
       return
     }
 
-    setReceipt(result.receiptNumber || null)
+    if (!email) {
+      setError("Email is required for payment.")
+      return
+    }
 
-    setAmountUsd("10")
+    // @ts-ignore
+    const handler = window.PaystackPop.setup({
+      key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_placeholder",
+      email: email,
+      amount: Math.round(isKesMethod ? kesPreviewValue * 100 : amount * 100),
+      currency: isKesMethod ? "KES" : "USD",
+      ref: 'DP_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+      callback: async function (response: any) {
+        const result = await submitDeposit({
+          amountUsd: Number(amountUsd),
+          paymentMethod,
+          referenceNumber: response.reference,
+        })
 
-    setReferenceNumber("")
+        if (!result.ok) {
+          setError(result.error || "Deposit failed")
+          return
+        }
+
+        setReceipt(result.receiptNumber || null)
+        setAmountUsd("10")
+        setReferenceNumber("")
+      },
+      onClose: function () {
+        setError("Payment was cancelled")
+      },
+    })
+
+    handler.openIframe()
   }
 
   return (
@@ -480,11 +507,9 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
           <label className="field-label">Available methods</label>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
             {[
+              "M-Pesa",
               "Credit Card",
-              "Crypto",
-              "Bank Transfer",
-              "Mobile Money",
-              "Local Payments",
+              "Apple Pay",
             ].map((method) => (
               <button
                 key={method}
@@ -508,20 +533,29 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
           />
 
           <div style={{ ...sectionCardStyle, fontSize: 12, color: "#DDD6FE" }}>
-            Minimum deposit: {formatUsdValue(depositMinimumUsd)}
+            Minimum deposit: {formatUsdValue(effectiveMinimum)}
           </div>
 
-          {paymentMethod === "Mobile Money" && (
+          {isKesMethod && (
             <div
               style={{ ...sectionCardStyle, fontSize: 12, color: "#DDD6FE" }}
             >
               API payload preview: {formatUsdValue(amount || 0)} will be sent as{" "}
-              {formatKesValue(mobileMoneyPreviewKes)} using rate{" "}
+              {formatKesValue(kesPreviewValue)} using rate{" "}
               {walletSettings.usdKesRate}
             </div>
           )}
 
-          <label className="field-label">Reference Number</label>
+          <label className="field-label">Email Address</label>
+          <input
+            className="field-input"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="For payment receipt"
+          />
+
+          <label className="field-label">Reference Number (Optional)</label>
           <input
             className="field-input"
             value={referenceNumber}
@@ -531,7 +565,7 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
 
           {belowMinimum && (
             <div style={{ color: "#F59E0B", fontSize: 12 }}>
-              Deposit must be at least {formatUsdValue(depositMinimumUsd)}.
+              Deposit must be at least {formatUsdValue(effectiveMinimum)}.
             </div>
           )}
           {error && (

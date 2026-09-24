@@ -20,8 +20,6 @@ const NAV_ITEMS: { id: Page label: string icon: ReactNode }[] = [
   { id: "analytics", label: "Analytics", icon: <LineChartIcon /> },
 
   { id: "wallet", label: "Wallet", icon: <WalletIcon /> },
-
-  { id: "leaderboard", label: "Leaderboard", icon: <TrophyIcon /> },
 ]
 
 const BOTTOM_ITEMS: { id: Page label: string icon: ReactNode }[] = [
@@ -30,12 +28,10 @@ const BOTTOM_ITEMS: { id: Page label: string icon: ReactNode }[] = [
 
 interface Props {
   currentPage: Page
-
   onNavigate: (p: Page) => void
-
   children: ReactNode
-
   onLogout?: () => void
+  user?: any
 }
 
 export default function Layout({
@@ -43,6 +39,7 @@ export default function Layout({
   onNavigate,
   children,
   onLogout,
+  user,
 }: Props) {
   const [collapsed, setCollapsed] = useState(false)
 
@@ -139,9 +136,13 @@ export default function Layout({
     <div
       style={{
         display: "flex",
+
         height: "100vh",
+
         background: "#09090F",
+
         overflow: "hidden",
+
         position: "relative",
       }}
     >
@@ -151,14 +152,23 @@ export default function Layout({
           onClick={() => setMobileMenuOpen(false)}
           style={{
             position: "fixed",
+
             top: 0,
+
             left: 0,
+
             right: 0,
+
             bottom: 0,
+
             background: "rgba(5, 3, 10, 0.75)",
+
             backdropFilter: "blur(4px)",
+
             WebkitBackdropFilter: "blur(4px)",
+
             zIndex: 40,
+
             transition: "opacity 0.25s ease",
           }}
         />
@@ -191,14 +201,22 @@ export default function Layout({
           overflow: "hidden",
 
           zIndex: 45,
+
           ...(hideSidebar && {
             position: "fixed",
+
             top: 0,
+
             bottom: 0,
+
             left: 0,
+
             height: "100vh",
+
             transform: mobileMenuOpen ? "translateX(0)" : "translateX(-100%)",
+
             width: 240,
+
             boxShadow: mobileMenuOpen ? "0 0 40px rgba(0,0,0,0.65)" : "none",
           }),
         }}
@@ -207,10 +225,15 @@ export default function Layout({
         <div
           style={{
             padding: "20px 14px 16px",
+
             display: "flex",
+
             alignItems: "center",
+
             justifyContent: "space-between",
+
             gap: 10,
+
             borderBottom: "1px solid rgba(255,255,255,0.04)",
           }}
         >
@@ -220,10 +243,15 @@ export default function Layout({
               alt="Pro Binary logo"
               style={{
                 width: 32,
+
                 height: 32,
+
                 borderRadius: 9,
+
                 objectFit: "cover",
+
                 flexShrink: 0,
+
                 boxShadow: "0 0 16px rgba(124,58,237,0.35)",
               }}
             />
@@ -232,9 +260,13 @@ export default function Layout({
                 <div
                   style={{
                     fontFamily: "'Space Grotesk', sans-serif",
+
                     fontWeight: 700,
+
                     fontSize: 15,
+
                     color: "#FFFFFF",
+
                     letterSpacing: "-0.3px",
                   }}
                 >
@@ -243,8 +275,11 @@ export default function Layout({
                 <div
                   style={{
                     fontSize: 10,
+
                     color: "#52525B",
+
                     fontWeight: 500,
+
                     letterSpacing: "0.05em",
                   }}
                 >
@@ -258,13 +293,21 @@ export default function Layout({
               onClick={() => setMobileMenuOpen(false)}
               style={{
                 background: "none",
+
                 border: "none",
+
                 color: "#71717A",
+
                 cursor: "pointer",
+
                 fontSize: 18,
+
                 display: "flex",
+
                 alignItems: "center",
+
                 justifyContent: "center",
+
                 padding: 4,
               }}
             >
@@ -277,18 +320,28 @@ export default function Layout({
         <nav
           style={{
             flex: 1,
+
             padding: "12px 10px",
+
             display: "flex",
+
             flexDirection: "column",
+
             gap: 3,
+
             overflowY: "auto",
           }}
         >
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS.concat(
+            user?.role === "admin" || user?.role === "super_admin" 
+              ? [{ id: "admin" as Page, label: "Admin", icon: <GridIcon /> }] 
+              : []
+          ).map((item) => (
             <button
               key={item.id}
               onClick={() => {
                 onNavigate(item.id)
+
                 setMobileMenuOpen(false)
               }}
               className={`sidebar-item ${
@@ -296,8 +349,11 @@ export default function Layout({
               }`}
               style={{
                 justifyContent: collapsed ? "center" : "flex-start",
+
                 width: "100%",
+
                 background: "none",
+
                 border: "none",
               }}
               title={collapsed ? item.label : undefined}
@@ -314,6 +370,7 @@ export default function Layout({
         <div
           style={{
             padding: "10px 10px 16px",
+
             borderTop: "1px solid rgba(255,255,255,0.04)",
           }}
         >
@@ -322,6 +379,7 @@ export default function Layout({
               key={item.id}
               onClick={() => {
                 onNavigate(item.id)
+
                 setMobileMenuOpen(false)
               }}
               className={`sidebar-item ${
@@ -329,8 +387,11 @@ export default function Layout({
               }`}
               style={{
                 justifyContent: collapsed ? "center" : "flex-start",
+
                 width: "100%",
+
                 background: "none",
+
                 border: "none",
               }}
             >
@@ -347,17 +408,24 @@ export default function Layout({
             className="sidebar-item"
             style={{
               justifyContent: collapsed ? "center" : "flex-start",
+
               width: "100%",
+
               background: "none",
+
               border: "none",
+
               marginTop: 4,
             }}
           >
             <span
               style={{
                 flexShrink: 0,
+
                 display: "flex",
+
                 transform: collapsed ? "rotate(180deg)" : "none",
+
                 transition: "transform 0.25s",
               }}
             >
@@ -372,8 +440,11 @@ export default function Layout({
       <div
         style={{
           flex: 1,
+
           display: "flex",
+
           flexDirection: "column",
+
           overflow: "hidden",
         }}
       >
@@ -382,24 +453,38 @@ export default function Layout({
           className="glass-nav"
           style={{
             height: 56,
+
             flexShrink: 0,
+
             display: "flex",
+
             alignItems: "center",
+
             justifyContent: "space-between",
+
             padding: "0 20px",
+
             gap: 12,
+
             zIndex: 10,
+
             background: "rgba(16, 12, 30, 0.65)",
+
             backdropFilter: "blur(14px)",
+
             WebkitBackdropFilter: "blur(14px)",
+
             borderBottom: "1px solid rgba(167, 139, 250, 0.16)",
           }}
         >
           <div
             style={{
               display: "flex",
+
               alignItems: "center",
+
               gap: 6,
+
               minWidth: 0,
             }}
           >
@@ -468,8 +553,11 @@ export default function Layout({
           <div
             style={{
               display: "flex",
+
               alignItems: "center",
+
               gap: 7,
+
               flexShrink: 0,
             }}
           >
@@ -479,15 +567,25 @@ export default function Layout({
                 aria-expanded={balanceMenuOpen}
                 style={{
                   display: "inline-flex",
+
                   alignItems: "center",
+
                   gap: 8,
+
                   background: "rgba(255, 255, 255, 0.03)",
+
                   border: "1px solid rgba(167, 139, 250, 0.2)",
+
                   borderRadius: 11,
+
                   color: "#F8FAFC",
+
                   padding: "6px 12px",
+
                   cursor: "pointer",
+
                   minWidth: 100,
+
                   transition: "background 0.2s, border-color 0.2s",
                 }}
                 onClick={() => setBalanceMenuOpen((value) => !value)}
@@ -495,15 +593,25 @@ export default function Layout({
                 <span
                   style={{
                     width: 22,
+
                     height: 22,
+
                     borderRadius: "50%",
+
                     background: "#C084FC",
+
                     color: "#2E1065",
+
                     display: "inline-flex",
+
                     alignItems: "center",
+
                     justifyContent: "center",
+
                     fontSize: 10,
+
                     fontWeight: 800,
+
                     fontFamily: "'Inter', sans-serif",
                   }}
                 >
@@ -512,16 +620,22 @@ export default function Layout({
                 <span
                   style={{
                     display: "flex",
+
                     flexDirection: "column",
+
                     alignItems: "flex-start",
+
                     lineHeight: 1.08,
                   }}
                 >
                   <span
                     style={{
                       fontSize: 9,
+
                       color: "#C4B5FD",
+
                       fontWeight: 700,
+
                       letterSpacing: "0.04em",
                     }}
                   >
@@ -543,15 +657,25 @@ export default function Layout({
                 <div
                   style={{
                     position: "absolute",
+
                     top: 33,
+
                     right: 0,
+
                     width: 182,
+
                     borderRadius: 11,
+
                     border: "1px solid rgba(167,139,250,0.3)",
+
                     background: "#170F2B",
+
                     padding: 8,
+
                     display: "grid",
+
                     gap: 7,
+
                     zIndex: 30,
                   }}
                 >
@@ -588,16 +712,27 @@ export default function Layout({
               aria-label="Open deposit panel"
               style={{
                 padding: "8px 18px",
+
                 borderRadius: 10,
+
                 border: "none",
+
                 cursor: "pointer",
+
                 background: "linear-gradient(135deg, #7C3AED, #A855F7)",
+
                 color: "#F5F3FF",
+
                 fontFamily: "'Inter', sans-serif",
+
                 fontSize: 14,
+
                 fontWeight: 700,
+
                 lineHeight: 1,
+
                 boxShadow: "0 0 14px rgba(168, 85, 247, 0.45)",
+
                 transition: "transform 0.2s, box-shadow 0.2s",
               }}
               onClick={() => openPanel("deposit")}
@@ -612,14 +747,23 @@ export default function Layout({
               onClick={() => openPanel("notifications")}
               style={{
                 position: "relative",
+
                 color: "#C4B5FD",
+
                 width: 32,
+
                 height: 32,
+
                 borderRadius: 10,
+
                 background: "rgba(255, 255, 255, 0.03)",
+
                 border: "1px solid rgba(167, 139, 250, 0.15)",
+
                 display: "flex",
+
                 alignItems: "center",
+
                 justifyContent: "center",
               }}
             >
@@ -628,17 +772,29 @@ export default function Layout({
                 <span
                   style={{
                     position: "absolute",
+
                     top: -4,
+
                     right: -4,
+
                     minWidth: 13,
+
                     height: 13,
+
                     borderRadius: 99,
+
                     background: "#EF4444",
+
                     color: "#FFF",
+
                     fontSize: 8,
+
                     display: "inline-flex",
+
                     alignItems: "center",
+
                     justifyContent: "center",
+
                     padding: "0 3px",
                   }}
                 >
@@ -655,13 +811,21 @@ export default function Layout({
                 aria-expanded={profileOpen}
                 style={{
                   color: "#C4B5FD",
+
                   width: 32,
+
                   height: 32,
+
                   borderRadius: 10,
+
                   background: "rgba(255, 255, 255, 0.03)",
+
                   border: "1px solid rgba(167, 139, 250, 0.15)",
+
                   display: "flex",
+
                   alignItems: "center",
+
                   justifyContent: "center",
                 }}
                 onClick={() => setProfileOpen((value) => !value)}
@@ -673,15 +837,25 @@ export default function Layout({
                 <div
                   style={{
                     position: "absolute",
+
                     right: 0,
+
                     top: 33,
+
                     width: 154,
+
                     borderRadius: 11,
+
                     border: "1px solid rgba(167,139,250,0.32)",
+
                     background: "#170F2B",
+
                     padding: 7,
+
                     display: "grid",
+
                     gap: 5,
+
                     zIndex: 35,
                   }}
                   role="menu"
@@ -691,6 +865,7 @@ export default function Layout({
                     label="Dashboard"
                     onClick={() => {
                       onNavigate("dashboard")
+
                       setProfileOpen(false)
                     }}
                   />
@@ -698,6 +873,7 @@ export default function Layout({
                     label="My Profile"
                     onClick={() => {
                       setPanel("history")
+
                       setProfileOpen(false)
                     }}
                   />
@@ -705,6 +881,7 @@ export default function Layout({
                     label="Security"
                     onClick={() => {
                       setPanel("notifications")
+
                       setProfileOpen(false)
                     }}
                   />
@@ -712,6 +889,7 @@ export default function Layout({
                     label="Wallet"
                     onClick={() => {
                       onNavigate("wallet")
+
                       setProfileOpen(false)
                     }}
                   />
@@ -719,6 +897,7 @@ export default function Layout({
                     label="Settings"
                     onClick={() => {
                       onNavigate("settings")
+
                       setProfileOpen(false)
                     }}
                   />
@@ -727,8 +906,11 @@ export default function Layout({
                     onClick={() => {
                       addNotification({
                         category: "system",
+
                         icon: "logout",
+
                         title: "Session ended",
+
                         description: "You have logged out of this session.",
                       })
 
@@ -751,10 +933,15 @@ export default function Layout({
           <div
             style={{
               borderBottom: "1px solid rgba(167,139,250,0.2)",
+
               background: "#150F29",
+
               padding: 8,
+
               display: "flex",
+
               flexWrap: "wrap",
+
               gap: 7,
             }}
           >
@@ -801,13 +988,19 @@ export default function Layout({
 
 function HeaderActionButton({
   label,
+
   icon,
+
   onClick,
+
   active,
 }: {
   label: string
+
   icon: ReactNode
+
   onClick: () => void
+
   active?: boolean
 }) {
   return (
@@ -818,15 +1011,25 @@ function HeaderActionButton({
       className={active ? "nav-header-action active" : "nav-header-action"}
       style={{
         display: "inline-flex",
+
         alignItems: "center",
+
         gap: 6,
+
         background: "transparent",
+
         border: "none",
+
         color: "#DDD6FE",
+
         fontSize: 15,
+
         padding: "6px 5px",
+
         cursor: "pointer",
+
         fontFamily: "'Inter', sans-serif",
+
         fontWeight: 500,
       }}
     >
@@ -838,9 +1041,11 @@ function HeaderActionButton({
 
 function ProfileMenuButton({
   label,
+
   onClick,
 }: {
   label: string
+
   onClick: () => void
 }) {
   return (
@@ -857,17 +1062,27 @@ function ProfileMenuButton({
 
 function HeaderChip({
   label,
+
   icon,
+
   accent = false,
+
   onClick,
+
   active,
+
   ariaLabel,
 }: {
   label: string
+
   icon: ReactNode
+
   accent?: boolean
+
   onClick?: () => void
+
   active?: boolean
+
   ariaLabel?: string
 }) {
   return (
@@ -1040,26 +1255,6 @@ function WalletIcon() {
       <rect x="2" y="5" width="20" height="14" rx="3" />
       <path d="M16 13a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" fill="currentColor" />
       <path d="M2 9h20" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function TrophyIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    >
-      <path d="M8 21h8M12 17v4" strokeLinecap="round" />
-      <path d="M5 3h14v9a7 7 0 0 1-14 0V3z" />
-      <path
-        d="M5 6H2a1 1 0 0 0-1 1v2a4 4 0 0 0 4 4M19 6h3a1 1 0 0 1 1 1v2a4 4 0 0 1-4 4"
-        strokeLinecap="round"
-      />
     </svg>
   )
 }

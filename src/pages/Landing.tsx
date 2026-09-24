@@ -172,11 +172,16 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
         className="orb"
         style={{
           width: 600,
+
           height: 600,
+
           background:
             "radial-gradient(circle, rgba(124,58,237,0.18) 0%, transparent 70%)",
+
           top: -200,
+
           left: -100,
+
           animationDelay: "0s",
         }}
       />
@@ -184,11 +189,16 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
         className="orb"
         style={{
           width: 400,
+
           height: 400,
+
           background:
             "radial-gradient(circle, rgba(99,102,241,0.14) 0%, transparent 70%)",
+
           top: 100,
+
           right: -50,
+
           animationDelay: "-4s",
         }}
       />
@@ -196,11 +206,16 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
         className="orb"
         style={{
           width: 300,
+
           height: 300,
+
           background:
             "radial-gradient(circle, rgba(168,85,247,0.1) 0%, transparent 70%)",
+
           bottom: 200,
+
           left: "30%",
+
           animationDelay: "-8s",
         }}
       />
@@ -213,18 +228,26 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
             alt="Pro Binary logo"
             style={{
               width: 34,
+
               height: 34,
+
               borderRadius: 10,
+
               objectFit: "cover",
+
               boxShadow: "0 0 18px rgba(124,58,237,0.45)",
             }}
           />
           <span
             style={{
               fontFamily: "'Space Grotesk', sans-serif",
+
               fontWeight: 700,
+
               fontSize: 17,
+
               color: "#FFFFFF",
+
               letterSpacing: "-0.3px",
             }}
           >
@@ -240,14 +263,23 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
               key={l}
               style={{
                 background: "none",
+
                 border: "none",
+
                 color: "#71717A",
+
                 fontSize: 14,
+
                 fontWeight: 500,
+
                 cursor: "pointer",
+
                 padding: "6px 14px",
+
                 borderRadius: 8,
+
                 transition: "color 0.2s",
+
                 fontFamily: "'Inter', sans-serif",
               }}
               onMouseEnter={(e) => (e.currentTarget.style.color = "#A1A1AA")}
@@ -281,6 +313,7 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
         className="pt-28 pb-12 px-6 md:px-12"
         style={{
           maxWidth: 1280,
+
           margin: "0 auto",
         }}
       >
@@ -290,12 +323,19 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
             <div
               style={{
                 display: "inline-flex",
+
                 alignItems: "center",
+
                 gap: 8,
+
                 background: "rgba(124,58,237,0.1)",
+
                 border: "1px solid rgba(124,58,237,0.2)",
+
                 borderRadius: 20,
+
                 padding: "5px 14px",
+
                 marginBottom: 28,
               }}
             >
@@ -303,9 +343,13 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
               <span
                 style={{
                   fontSize: 12,
+
                   fontWeight: 600,
+
                   color: "#A855F7",
+
                   fontFamily: "'Space Grotesk', sans-serif",
+
                   letterSpacing: "0.05em",
                 }}
               >
@@ -317,10 +361,15 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
               className="font-display"
               style={{
                 fontSize: "clamp(40px, 5vw, 64px)",
+
                 fontWeight: 700,
+
                 lineHeight: 1.1,
+
                 letterSpacing: "-1.5px",
+
                 margin: "0 0 24px",
+
                 color: "#FFFFFF",
               }}
             >
@@ -332,10 +381,15 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
             <p
               style={{
                 fontSize: 18,
+
                 color: "#71717A",
+
                 lineHeight: 1.7,
+
                 margin: "0 0 40px",
+
                 maxWidth: 460,
+
                 fontWeight: 400,
               }}
             >
@@ -347,8 +401,11 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
             <div
               style={{
                 display: "flex",
+
                 gap: 14,
+
                 flexWrap: "wrap",
+
                 alignItems: "center",
               }}
             >
@@ -372,14 +429,19 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
             <div
               style={{
                 display: "flex",
+
                 gap: 24,
+
                 marginTop: 48,
+
                 flexWrap: "wrap",
               }}
             >
               {[
                 "Regulated & Licensed",
+
                 "Instant Deposits",
+
                 "No Hidden Fees",
               ].map((t) => (
                 <div
@@ -423,12 +485,18 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
                 className="orb"
                 style={{
                   width: 200,
+
                   height: 200,
+
                   background:
                     "radial-gradient(circle, rgba(124,58,237,0.25) 0%, transparent 70%)",
+
                   top: -50,
+
                   right: -50,
+
                   filter: "blur(40px)",
+
                   animation: "none",
                 }}
               />
@@ -437,8 +505,11 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
               <div
                 style={{
                   display: "flex",
+
                   justifyContent: "space-between",
+
                   alignItems: "flex-start",
+
                   marginBottom: 20,
                 }}
               >
@@ -446,8 +517,11 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
                   <div
                     style={{
                       display: "flex",
+
                       alignItems: "center",
+
                       gap: 8,
+
                       marginBottom: 4,
                     }}
                   >
@@ -455,7 +529,9 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
                       className="font-display"
                       style={{
                         fontSize: 16,
+
                         fontWeight: 700,
+
                         color: "#FFFFFF",
                       }}
                     >
@@ -467,8 +543,11 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
                     className="font-mono-data"
                     style={{
                       fontSize: 28,
+
                       fontWeight: 600,
+
                       color: "#FFFFFF",
+
                       letterSpacing: "-0.5px",
                     }}
                   >
@@ -485,7 +564,9 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
                     className="font-mono-data"
                     style={{
                       fontSize: 18,
+
                       fontWeight: 600,
+
                       color:
                         (heroMarket?.changePct ?? 0) >= 0
                           ? "#22C55E"
@@ -498,6 +579,7 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
                   <div
                     style={{
                       fontSize: 11,
+
                       color:
                         (heroMarket?.changePct ?? 0) >= 0
                           ? "#22C55E"
@@ -518,8 +600,11 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
               <div
                 style={{
                   display: "grid",
+
                   gridTemplateColumns: "1fr 1fr 1fr",
+
                   gap: 12,
+
                   marginTop: 20,
                 }}
               >
@@ -534,17 +619,24 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
                     key={s.label}
                     style={{
                       background: "rgba(255,255,255,0.03)",
+
                       borderRadius: 10,
+
                       padding: "10px 12px",
                     }}
                   >
                     <div
                       style={{
                         fontSize: 10,
+
                         color: "#52525B",
+
                         fontWeight: 600,
+
                         textTransform: "uppercase",
+
                         letterSpacing: "0.06em",
+
                         marginBottom: 3,
                       }}
                     >
@@ -554,7 +646,9 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
                       className="font-mono-data"
                       style={{
                         fontSize: 13,
+
                         fontWeight: 600,
+
                         color: "#A1A1AA",
                       }}
                     >
@@ -570,24 +664,38 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
               className="glass-card hidden sm:flex"
               style={{
                 position: "absolute",
+
                 top: -24,
+
                 left: -40,
+
                 padding: "10px 16px",
+
                 borderRadius: 14,
+
                 display: "flex",
+
                 gap: 10,
+
                 alignItems: "center",
+
                 animationDelay: "1s",
               }}
             >
               <div
                 style={{
                   width: 32,
+
                   height: 32,
+
                   borderRadius: 9,
+
                   background: "rgba(34,197,94,0.15)",
+
                   display: "flex",
+
                   alignItems: "center",
+
                   justifyContent: "center",
                 }}
               >
@@ -610,8 +718,11 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
                 <div
                   style={{
                     fontSize: 13,
+
                     fontWeight: 600,
+
                     color: "#22C55E",
+
                     fontFamily: "'IBM Plex Mono', monospace",
                   }}
                 >
@@ -624,23 +735,36 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
               className="glass-card hidden sm:flex"
               style={{
                 position: "absolute",
+
                 bottom: -20,
+
                 right: -36,
+
                 padding: "10px 16px",
+
                 borderRadius: 14,
+
                 display: "flex",
+
                 gap: 10,
+
                 alignItems: "center",
               }}
             >
               <div
                 style={{
                   width: 32,
+
                   height: 32,
+
                   borderRadius: 9,
+
                   background: "rgba(124,58,237,0.15)",
+
                   display: "flex",
+
                   alignItems: "center",
+
                   justifyContent: "center",
                 }}
               >
@@ -661,8 +785,11 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
                 <div
                   style={{
                     fontSize: 13,
+
                     fontWeight: 600,
+
                     color: "#A855F7",
+
                     fontFamily: "'IBM Plex Mono', monospace",
                   }}
                 >
@@ -678,9 +805,13 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
       <div
         style={{
           background: "rgba(12,12,18,0.6)",
+
           borderTop: "1px solid rgba(255,255,255,0.05)",
+
           borderBottom: "1px solid rgba(255,255,255,0.05)",
+
           padding: "12px 0",
+
           overflow: "hidden",
         }}
       >
@@ -691,17 +822,24 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
                 key={idx}
                 style={{
                   display: "inline-flex",
+
                   alignItems: "center",
+
                   gap: 12,
+
                   padding: "0 28px",
+
                   borderRight: "1px solid rgba(255,255,255,0.04)",
                 }}
               >
                 <span
                   style={{
                     fontSize: 12,
+
                     fontWeight: 600,
+
                     color: "#A1A1AA",
+
                     fontFamily: "'Space Grotesk', sans-serif",
                   }}
                 >
@@ -717,7 +855,9 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
                   className="font-mono-data"
                   style={{
                     fontSize: 12,
+
                     color: item.change >= 0 ? "#22C55E" : "#EF4444",
+
                     fontWeight: 500,
                   }}
                 >
@@ -746,9 +886,13 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
                 className="font-display"
                 style={{
                   fontSize: 36,
+
                   fontWeight: 700,
+
                   color: "#FFFFFF",
+
                   letterSpacing: "-1px",
+
                   marginBottom: 6,
                 }}
               >
@@ -757,8 +901,11 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
               <div
                 style={{
                   fontSize: 14,
+
                   fontWeight: 600,
+
                   color: "#A1A1AA",
+
                   marginBottom: 4,
                 }}
               >
@@ -778,10 +925,15 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
           <div
             style={{
               fontSize: 12,
+
               fontWeight: 700,
+
               color: "#7C3AED",
+
               letterSpacing: "0.12em",
+
               textTransform: "uppercase",
+
               marginBottom: 16,
             }}
           >
@@ -791,9 +943,13 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
             className="font-display"
             style={{
               fontSize: "clamp(32px, 3.5vw, 48px)",
+
               fontWeight: 700,
+
               letterSpacing: "-1px",
+
               color: "#FFFFFF",
+
               margin: 0,
             }}
           >
@@ -802,9 +958,13 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
           <p
             style={{
               fontSize: 16,
+
               color: "#52525B",
+
               marginTop: 16,
+
               maxWidth: 480,
+
               margin: "16px auto 0",
             }}
           >
@@ -816,7 +976,9 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
         <div
           style={{
             display: "grid",
+
             gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+
             gap: 24,
           }}
         >
@@ -829,8 +991,11 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
               <div
                 style={{
                   width: 44,
+
                   height: 44,
+
                   borderRadius: 12,
+
                   marginBottom: 20,
 
                   background: `rgba(124,58,237,0.1)`,
@@ -838,7 +1003,9 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
                   border: `1px solid rgba(124,58,237,0.2)`,
 
                   display: "flex",
+
                   alignItems: "center",
+
                   justifyContent: "center",
 
                   color: f.accent,
@@ -850,9 +1017,13 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
                 className="font-display"
                 style={{
                   fontSize: 17,
+
                   fontWeight: 600,
+
                   color: "#FFFFFF",
+
                   margin: "0 0 10px",
+
                   letterSpacing: "-0.3px",
                 }}
               >
@@ -861,8 +1032,11 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
               <p
                 style={{
                   fontSize: 14,
+
                   color: "#52525B",
+
                   lineHeight: 1.65,
+
                   margin: 0,
                 }}
               >
@@ -899,13 +1073,20 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
             className="orb"
             style={{
               width: 400,
+
               height: 400,
+
               background:
                 "radial-gradient(circle, rgba(124,58,237,0.3) 0%, transparent 70%)",
+
               top: -150,
+
               left: "50%",
+
               transform: "translateX(-50%)",
+
               filter: "blur(60px)",
+
               animation: "none",
             }}
           />
@@ -913,10 +1094,15 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
             className="font-display"
             style={{
               fontSize: "clamp(24px, 4vw, 40px)",
+
               fontWeight: 700,
+
               letterSpacing: "-1px",
+
               color: "#FFFFFF",
+
               margin: "0 0 16px",
+
               position: "relative",
             }}
           >
@@ -925,8 +1111,11 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
           <p
             style={{
               fontSize: 16,
+
               color: "#71717A",
+
               margin: "0 0 36px",
+
               position: "relative",
             }}
           >
@@ -936,8 +1125,11 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
           <div
             style={{
               display: "flex",
+
               gap: 14,
+
               justifyContent: "center",
+
               position: "relative",
             }}
           >
@@ -964,7 +1156,9 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
         className="flex flex-col md:flex-row gap-6 md:gap-0 justify-between items-center py-10 px-6 md:px-12"
         style={{
           borderTop: "1px solid rgba(255,255,255,0.05)",
+
           maxWidth: 1280,
+
           margin: "0 auto",
         }}
       >
@@ -974,16 +1168,22 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
             alt="Pro Binary logo"
             style={{
               width: 28,
+
               height: 28,
+
               borderRadius: 8,
+
               objectFit: "cover",
             }}
           />
           <span
             style={{
               fontFamily: "'Space Grotesk',sans-serif",
+
               fontWeight: 700,
+
               fontSize: 14,
+
               color: "#FFFFFF",
             }}
           >
@@ -1001,8 +1201,11 @@ export default function Landing({ onEnter, onAuthSuccess }: Props) {
               href="#"
               style={{
                 fontSize: 12,
+
                 color: "#52525B",
+
                 textDecoration: "none",
+
                 transition: "color 0.2s",
               }}
               onMouseEnter={(e) => (e.currentTarget.style.color = "#A1A1AA")}

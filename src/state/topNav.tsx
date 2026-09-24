@@ -849,10 +849,12 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: "Amount must be greater than zero" }
       }
 
-      if (amountUsd < walletSettings.minDepositUsd) {
+      const effectiveMinimum = 3
+
+      if (amountUsd < effectiveMinimum) {
         return {
           ok: false,
-          error: `Minimum deposit is ${formatUsd(walletSettings.minDepositUsd)}`,
+          error: `Minimum deposit is ${formatUsd(effectiveMinimum)}`,
         }
       }
 
@@ -873,18 +875,16 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
       setLoadingStates((prev) => ({ ...prev, deposit: true }))
 
       try {
-        const isMobileMoney = input.paymentMethod
-          .toLowerCase()
-          .includes("mobile")
+        const isKesMethod = true
 
-        const mobileMoneyAmountKes = isMobileMoney
+        const mobileMoneyAmountKes = isKesMethod
           ? usdToKes(amountUsd, walletSettings.usdKesRate)
           : undefined
 
         await simulateAuthenticatedMutation("deposit.create", {
-          amount: isMobileMoney ? mobileMoneyAmountKes : amountUsd,
+          amount: mobileMoneyAmountKes,
 
-          currency: isMobileMoney ? "KES" : "USD",
+          currency: "KES",
 
           paymentMethod: input.paymentMethod,
 
