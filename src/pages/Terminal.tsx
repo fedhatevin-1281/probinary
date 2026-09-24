@@ -449,6 +449,8 @@ export default function Terminal() {
 
   const { activeAccount, balances, setDemoBalance } = useTopNav()
 
+  const [showWatchlist, setShowWatchlist] = useState(true)
+
   const [timeframe, setTimeframe] = useState<TimeFrame>("5m")
 
   const [chartMode, setChartMode] = useState<ChartMode>("candles")
@@ -1018,9 +1020,14 @@ export default function Terminal() {
           }}
         >
           <div
+            onClick={() => setShowWatchlist((prev) => !prev)}
             style={{
               padding: "10px 12px",
               borderBottom: "1px solid rgba(255,255,255,0.04)",
+              cursor: "pointer",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center"
             }}
           >
             <span
@@ -1034,8 +1041,22 @@ export default function Terminal() {
             >
               Watchlist
             </span>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#52525B"
+              strokeWidth="2"
+              style={{
+                transform: showWatchlist ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform 0.2s"
+              }}
+            >
+              <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </div>
-          {marketList.slice(0, 8).map((market) => {
+          {showWatchlist && marketList.slice(0, 8).map((market) => {
             const live = markets[market.symbol] ?? market
 
             const isActive = selectedMarket.symbol === market.symbol
