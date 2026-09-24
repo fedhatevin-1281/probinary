@@ -449,21 +449,25 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
       amount: Math.round(isKesMethod ? kesPreviewValue * 100 : amount * 100),
       currency: isKesMethod ? "KES" : "USD",
       ref: 'DP_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-      callback: async function (response: any) {
-        const result = await submitDeposit({
+      callback: function (response: any) {
+        submitDeposit({
           amountUsd: Number(amountUsd),
           paymentMethod,
           referenceNumber: response.reference,
         })
+          .then((result) => {
+            if (!result.ok) {
+              setError(result.error || "Deposit failed")
+              return
+            }
 
-        if (!result.ok) {
-          setError(result.error || "Deposit failed")
-          return
-        }
-
-        setReceipt(result.receiptNumber || null)
-        setAmountUsd("10")
-        setReferenceNumber("")
+            setReceipt(result.receiptNumber || null)
+            setAmountUsd("10")
+            setReferenceNumber("")
+          })
+          .catch(() => {
+            setError("Deposit failed due to an error.")
+          })
       },
       onClose: function () {
         setError("Payment was cancelled")
