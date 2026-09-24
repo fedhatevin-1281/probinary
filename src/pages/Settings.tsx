@@ -292,11 +292,7 @@ export default function Settings({ user, onUpdateUser }: SettingsProps) {
                 style={{ display: "flex", flexDirection: "column", gap: 16 }}
               >
                 <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 16,
-                  }}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4"
                 >
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     <span style={labelStyle}>User ID</span>
@@ -333,11 +329,7 @@ export default function Settings({ user, onUpdateUser }: SettingsProps) {
                 </div>
 
                 <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 16,
-                  }}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4"
                 >
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     <span style={labelStyle}>Username</span>
@@ -413,11 +405,7 @@ export default function Settings({ user, onUpdateUser }: SettingsProps) {
                 </div>
 
                 <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 16,
-                  }}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4"
                 >
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     <label style={labelStyle}>New Password</label>
@@ -471,11 +459,7 @@ export default function Settings({ user, onUpdateUser }: SettingsProps) {
                 style={{ display: "flex", flexDirection: "column", gap: 16 }}
               >
                 <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 16,
-                  }}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4"
                 >
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     <label style={labelStyle}>USD/KES Exchange Rate Seed</label>

@@ -464,11 +464,7 @@ export default function Dashboard({ onTrade, onMarkets, user }: Props) {
     >
       {/* Page header */}
       <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
+        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
       >
         <div>
           <h1
@@ -516,11 +512,7 @@ export default function Dashboard({ onTrade, onMarkets, user }: Props) {
 
       {/* Summary cards */}
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 14,
-        }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
         {summaryCards.map((card) => (
           <div key={card.label} className="stat-card">
@@ -592,7 +584,7 @@ export default function Dashboard({ onTrade, onMarkets, user }: Props) {
 
       {/* Main grid: chart + watchlist + quick trade */}
       <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 20 }}
+        className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5"
       >
         {/* Left: performance chart + recent trades */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>

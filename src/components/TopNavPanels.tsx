@@ -284,11 +284,11 @@ function WithdrawPanel({ onClose }: { onClose: () => void }) {
       </div>
 
       <div
+        className="grid grid-cols-1 md:grid-cols-2 gap-4"
         style={{
           padding: "0 18px 18px",
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 14,
+          overflowY: "auto",
+          maxHeight: "calc(86vh - 180px)",
         }}
       >
         <div className="nav-feature-form-grid">
@@ -500,11 +500,11 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
       </div>
 
       <div
+        className="grid grid-cols-1 md:grid-cols-2 gap-4"
         style={{
           padding: "16px 18px",
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 14,
+          overflowY: "auto",
+          maxHeight: "calc(86vh - 70px)",
         }}
       >
         <div className="nav-feature-form-grid">
@@ -540,15 +540,7 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
             Minimum deposit: {formatUsdValue(effectiveMinimum)}
           </div>
 
-          {isKesMethod && (
-            <div
-              style={{ ...sectionCardStyle, fontSize: 12, color: "#DDD6FE" }}
-            >
-              API payload preview: {formatUsdValue(amount || 0)} will be sent as{" "}
-              {formatKesValue(kesPreviewValue)} using rate{" "}
-              {walletSettings.usdKesRate}
-            </div>
-          )}
+
 
           <label className="field-label">Email Address</label>
           <input

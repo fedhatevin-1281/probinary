@@ -992,11 +992,10 @@ export default function Terminal() {
         </div>
       </div>
 
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div className="flex flex-col lg:flex-row flex-1 overflow-auto lg:overflow-hidden">
         <div
+          className="w-full lg:w-[180px] flex-shrink-0"
           style={{
-            width: 180,
-            flexShrink: 0,
             background: "#12121A",
             borderRight: "1px solid rgba(255,255,255,0.05)",
             overflow: "auto",
@@ -1081,12 +1080,7 @@ export default function Terminal() {
         </div>
 
         <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-          }}
+          className="flex-1 flex flex-col overflow-hidden min-h-[50vh] lg:min-h-0"
         >
           <div
             style={{
@@ -1452,9 +1446,8 @@ export default function Terminal() {
         </div>
 
         <div
+          className="w-full lg:w-[260px] flex-shrink-0"
           style={{
-            width: 260,
-            flexShrink: 0,
             background: "#12121A",
             borderLeft: "1px solid rgba(255,255,255,0.05)",
             overflow: "auto",
