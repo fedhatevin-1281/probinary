@@ -766,6 +766,87 @@ app.get("/auth/admin/stats", async (req, res) => {
   }
 })
 
+// 9. ADMIN USERS
+app.get("/auth/admin/users", async (req, res) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" })
+  }
+  const token = authHeader.split(" ")[1]
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET)
+    if (decoded.role !== "admin" && decoded.role !== "super_admin") {
+      return res.status(403).json({ error: "Forbidden: Admin access required" })
+    }
+
+    const users = await supabaseRequest("/users?select=id,username,email,account_status,created_at")
+    if (!users) {
+      return res.json({ ok: true, users: [] })
+    }
+    
+    // We need roles. Let's fetch all user roles
+    const userRoles = await supabaseRequest("/user_roles")
+    const roleMap = {}
+    if (userRoles) {
+      for (const ur of userRoles) {
+        roleMap[ur.user_id] = ur.role
+      }
+    }
+
+    const usersWithRoles = users.map(u => ({
+      ...u,
+      role: roleMap[u.id] || "user"
+    }))
+
+    res.json({ ok: true, users: usersWithRoles })
+  } catch (error) {
+    console.error("Admin users error:", error)
+    res.status(500).json({ error: error.message || "Internal server error" })
+  }
+})
+
+app.post("/auth/admin/users/:id/role", async (req, res) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" })
+  }
+  const token = authHeader.split(" ")[1]
+  const targetUserId = req.params.id
+  const { role } = req.body
+
+  if (!role || !["admin", "super_admin", "user"].includes(role)) {
+    return res.status(400).json({ error: "Invalid role" })
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET)
+    if (decoded.role !== "admin" && decoded.role !== "super_admin") {
+      return res.status(403).json({ error: "Forbidden: Admin access required" })
+    }
+
+    // Upsert the role
+    // Check if role exists
+    const existingRoles = await supabaseRequest(`/user_roles?user_id=eq.${targetUserId}`)
+    if (existingRoles && existingRoles.length > 0) {
+      await supabaseRequest(`/user_roles?user_id=eq.${targetUserId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ role })
+      })
+    } else {
+      await supabaseRequest("/user_roles", {
+        method: "POST",
+        body: JSON.stringify({ user_id: targetUserId, role })
+      })
+    }
+
+    res.json({ ok: true })
+  } catch (error) {
+    console.error("Admin promote error:", error)
+    res.status(500).json({ error: error.message || "Internal server error" })
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`Auth API server listening on http://localhost:${PORT}`)
 })
