@@ -151,3 +151,18 @@ export async function getAdminStats(token: string): Promise<{ ok: boolean stats:
     }
   })
 }
+
+export async function getAdminUsers(token: string): Promise<{ ok: boolean users: User[] }> {
+  return requestJson<{ ok: boolean users: User[] }>("/auth/admin/users", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+export async function promoteUser(token: string, userId: number, role: "admin" | "super_admin"): Promise<{ ok: boolean }> {
+  return requestJson<{ ok: boolean }>(`/auth/admin/users/${userId}/role`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ role }),
+  })
+}
