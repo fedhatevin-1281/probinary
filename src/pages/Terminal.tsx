@@ -716,6 +716,134 @@ export default function Terminal() {
     }
   }
 
+  const chartControls = (
+    <>
+      <div style={{ display: "flex", gap: 3 }}>
+        {(["1m", "5m", "15m", "1h"] as TimeFrame[]).map((tf) => (
+          <button
+            key={tf}
+            onClick={() => setTimeframe(tf)}
+            style={{
+              padding: "5px 10px",
+              borderRadius: 7,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              border: "none",
+              fontFamily: "'IBM Plex Mono', monospace",
+              transition: "all 0.18s",
+              background:
+                timeframe === tf ? "rgba(124,58,237,0.25)" : "transparent",
+              color: timeframe === tf ? "#A855F7" : "#52525B",
+            }}
+          >
+            {tf}
+          </button>
+        ))}
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          gap: 4,
+          padding: "4px",
+          background: "#181822",
+          borderRadius: 10,
+          border: "1px solid rgba(255,255,255,0.05)",
+        }}
+      >
+        <button
+          onClick={() => setChartMode("candles")}
+          style={{
+            height: 28,
+            padding: "0 10px",
+            borderRadius: 8,
+            border: "none",
+            cursor: "pointer",
+            fontSize: 11,
+            fontWeight: 700,
+            fontFamily: "'IBM Plex Mono', monospace",
+            background:
+              chartMode === "candles"
+                ? "rgba(124,58,237,0.3)"
+                : "transparent",
+            color: chartMode === "candles" ? "#A855F7" : "#52525B",
+          }}
+        >
+          Candles
+        </button>
+        <button
+          onClick={() => setChartMode("line")}
+          style={{
+            height: 28,
+            padding: "0 10px",
+            borderRadius: 8,
+            border: "none",
+            cursor: "pointer",
+            fontSize: 11,
+            fontWeight: 700,
+            fontFamily: "'IBM Plex Mono', monospace",
+            background:
+              chartMode === "line" ? "rgba(124,58,237,0.3)" : "transparent",
+            color: chartMode === "line" ? "#A855F7" : "#52525B",
+          }}
+        >
+          Line
+        </button>
+        {[
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M3 3v18h18" strokeLinecap="round" />
+            <path
+              d="M7 16l4-5 4 3 4-7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>,
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path
+              d="M3 12h18M12 3l9 9-9 9"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>,
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4l3 3" strokeLinecap="round" />
+          </svg>,
+        ].map((icon, i) => (
+          <button
+            key={i}
+            className="nav-icon-btn"
+            style={{ width: 28, height: 28 }}
+          >
+            {icon}
+          </button>
+        ))}
+      </div>
+    </>
+  )
+
   return (
     <div
       style={{
@@ -865,148 +993,8 @@ export default function Terminal() {
           </span>
         </div>
 
-        <div style={{ display: "flex", gap: 3 }}>
-          {(["1m", "5m", "15m", "1h"] as TimeFrame[]).map((tf) => (
-            <button
-              key={tf}
-              onClick={() => setTimeframe(tf)}
-              style={{
-                padding: "5px 10px",
-                borderRadius: 7,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: "pointer",
-                border: "none",
-                fontFamily: "'IBM Plex Mono', monospace",
-                transition: "all 0.18s",
-                background:
-                  timeframe === tf ? "rgba(124,58,237,0.25)" : "transparent",
-                color: timeframe === tf ? "#A855F7" : "#52525B",
-              }}
-            >
-              {tf}
-            </button>
-          ))}
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 4,
-            padding: "4px",
-            background: "#181822",
-            borderRadius: 10,
-            border: "1px solid rgba(255,255,255,0.05)",
-          }}
-        >
-          <button
-            onClick={() => setChartMode("candles")}
-            style={{
-              height: 28,
-
-              padding: "0 10px",
-
-              borderRadius: 8,
-
-              border: "none",
-
-              cursor: "pointer",
-
-              fontSize: 11,
-
-              fontWeight: 700,
-
-              fontFamily: "'IBM Plex Mono', monospace",
-
-              background:
-                chartMode === "candles"
-                  ? "rgba(124,58,237,0.3)"
-                  : "transparent",
-
-              color: chartMode === "candles" ? "#A855F7" : "#52525B",
-            }}
-          >
-            Candles
-          </button>
-          <button
-            onClick={() => setChartMode("line")}
-            style={{
-              height: 28,
-
-              padding: "0 10px",
-
-              borderRadius: 8,
-
-              border: "none",
-
-              cursor: "pointer",
-
-              fontSize: 11,
-
-              fontWeight: 700,
-
-              fontFamily: "'IBM Plex Mono', monospace",
-
-              background:
-                chartMode === "line" ? "rgba(124,58,237,0.3)" : "transparent",
-
-              color: chartMode === "line" ? "#A855F7" : "#52525B",
-            }}
-          >
-            Line
-          </button>
-          {[
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M3 3v18h18" strokeLinecap="round" />
-              <path
-                d="M7 16l4-5 4 3 4-7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>,
-
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                d="M3 12h18M12 3l9 9-9 9"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>,
-
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 8v4l3 3" strokeLinecap="round" />
-            </svg>,
-          ].map((icon, i) => (
-            <button
-              key={i}
-              className="nav-icon-btn"
-              style={{ width: 28, height: 28 }}
-            >
-              {icon}
-            </button>
-          ))}
+        <div className="hidden lg:flex items-center gap-4">
+          {chartControls}
         </div>
       </div>
 
@@ -1127,6 +1115,11 @@ export default function Terminal() {
               overflow: "hidden",
             }}
           >
+            <div className="flex lg:hidden absolute top-4 left-4 right-4 z-10 pointer-events-none justify-center">
+              <div className="pointer-events-auto bg-[#12121A]/80 backdrop-blur-sm rounded-xl p-2 shadow-xl border border-white/10 flex gap-4 overflow-x-auto max-w-full">
+                {chartControls}
+              </div>
+            </div>
             {chartMode === "candles" ? (
               <CandleChart candles={candles} livePrice={livePrice} />
             ) : (
