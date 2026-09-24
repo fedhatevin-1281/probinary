@@ -1107,6 +1107,11 @@ export default function Terminal() {
         <div
           className="flex-1 flex flex-col overflow-hidden min-h-[50vh] lg:min-h-0"
         >
+          <div className="flex lg:hidden p-2 bg-[#12121A] border-b border-white/5 overflow-x-auto items-center justify-center">
+            <div className="flex gap-4">
+              {chartControls}
+            </div>
+          </div>
           <div
             style={{
               flex: 1,
@@ -1115,11 +1120,6 @@ export default function Terminal() {
               overflow: "hidden",
             }}
           >
-            <div className="flex lg:hidden absolute top-4 left-4 right-4 z-10 pointer-events-none justify-center">
-              <div className="pointer-events-auto bg-[#12121A]/80 backdrop-blur-sm rounded-xl p-2 shadow-xl border border-white/10 flex gap-4 overflow-x-auto max-w-full">
-                {chartControls}
-              </div>
-            </div>
             {chartMode === "candles" ? (
               <CandleChart candles={candles} livePrice={livePrice} />
             ) : (
