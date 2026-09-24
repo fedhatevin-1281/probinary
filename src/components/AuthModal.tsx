@@ -69,7 +69,9 @@ const cardStyle: CSSProperties = {
 
   boxShadow: "0 20px 60px rgba(12, 5, 25, 0.9)",
 
-  overflow: "hidden",
+  overflowY: "auto",
+
+  maxHeight: "95vh",
 
   display: "flex",
 

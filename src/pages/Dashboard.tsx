@@ -454,13 +454,8 @@ export default function Dashboard({ onTrade, onMarkets, user }: Props) {
 
   return (
     <div
-      style={{
-        padding: "24px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 20,
-        minHeight: "100%",
-      }}
+      className="p-4 sm:p-6 flex flex-col gap-5 min-h-full"
+      style={{}}
     >
       {/* Page header */}
       <div
@@ -594,7 +589,9 @@ export default function Dashboard({ onTrade, onMarkets, user }: Props) {
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                alignItems: "center",
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+                gap: 16,
                 marginBottom: 16,
               }}
             >
