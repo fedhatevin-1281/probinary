@@ -186,7 +186,7 @@ interface TradingContextValue {
   ) => { ok: boolean error?: string }
 }
 
-const STARTING_BALANCE = 25000
+const STARTING_BALANCE = 0
 
 const HISTORY_LIMIT = 120
 

@@ -225,11 +225,11 @@ app.post("/auth/register", async (req, res) => {
       body: JSON.stringify({
         user_id: newUser.id,
 
-        current_balance: 25000,
+        current_balance: 0,
 
         currency: "USD",
 
-        total_deposits: 25000,
+        total_deposits: 0,
 
         total_withdrawals: 0,
 

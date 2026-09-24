@@ -213,7 +213,7 @@ const PAYOUTS = {
   "match-differ": 2.15,
 }
 
-const STARTING_BALANCE = 25000
+const STARTING_BALANCE = 0
 
 const HISTORY_LIMIT = 120
 

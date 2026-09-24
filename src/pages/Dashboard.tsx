@@ -406,7 +406,7 @@ export default function Dashboard({ onTrade, onMarkets, user }: Props) {
       }$${Math.abs(realizedPnl).toFixed(2)}`,
       delta: `${
         realizedPnl >= 0 ? "+" : "-"
-      }${Math.abs((realizedPnl / 25000) * 100).toFixed(2)}%`,
+      }${Math.abs((realizedPnl / Math.max(balance, 1)) * 100).toFixed(2)}%`,
       color: realizedPnl >= 0 ? "#22C55E" : "#EF4444",
       icon: <ProfitIcon />,
     },
@@ -429,7 +429,7 @@ export default function Dashboard({ onTrade, onMarkets, user }: Props) {
 
     {
       label: "ROI (MTD)",
-      value: `${((realizedPnl / 25000) * 100).toFixed(1)}%`,
+      value: `${((realizedPnl / Math.max(balance, 1)) * 100).toFixed(1)}%`,
       delta: "This month",
       color: "#F59E0B",
       icon: <RoiIcon />,

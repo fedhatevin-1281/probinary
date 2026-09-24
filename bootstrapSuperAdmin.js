@@ -165,16 +165,16 @@ async function main() {
         method: "POST",
         body: JSON.stringify({
           user_id: userId,
-          current_balance: 25000,
+          current_balance: 0,
           currency: "USD",
-          total_deposits: 25000,
+          total_deposits: 0,
           total_withdrawals: 0,
           last_updated: now,
           created_at: now,
           updated_at: now,
         }),
       })
-      console.log(`Created wallet with initial balance of 25000 USD.`)
+      console.log(`Created wallet with initial balance of 0 USD.`)
     }
 
     console.log("Super Admin bootstrap process completed successfully.")
