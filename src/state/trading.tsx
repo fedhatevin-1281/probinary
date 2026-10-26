@@ -185,6 +185,8 @@ interface TradingContextValue {
     reason: string,
   ) => { ok: boolean error?: string }
 
+  syncBalanceFromServer: (balance: number) => void
+
   setAdminPolicy: (
     forceNextOutcome: "won" | "lost" | null,
   ) => { ok: boolean error?: string }
@@ -563,25 +565,6 @@ export function TradingProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     stateRef.current = state
   }, [state])
-
-  // Sync wallet balance to DB when it changes (for serverless Vercel deploy)
-  useEffect(() => {
-    const token =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem("pb.auth.token")
-        : null
-    if (!token || token.startsWith("sim-") || token === "demo-auth-token") {
-      return
-    }
-    fetch("/api/trading/sync-wallet", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ balance: state.balance }),
-    }).catch((err) => console.error("Balance sync error:", err))
-  }, [state.balance])
 
   useEffect(() => {
     const startLocalFallback = () => {
@@ -966,6 +949,25 @@ export function TradingProvider({ children }: { children: ReactNode }) {
     return { ok: true }
   }
 
+  const syncBalanceFromServer = useCallback(
+    (balance: number) => {
+      if (!Number.isFinite(balance) || balance < 0) return
+
+      const socket = socketRef.current
+
+      if (
+        connectionMode === "server" &&
+        socket?.readyState === WebSocket.OPEN
+      ) {
+        socket.send(JSON.stringify({ type: "REFRESH_BALANCE" }))
+        return
+      }
+
+      setState((prev) => ({ ...prev, balance: round2(balance) }))
+    },
+    [connectionMode],
+  )
+
   const setAdminPolicy = (forceNextOutcome: "won" | "lost" | null) => {
     if (!simulationMode) {
       return { ok: false, error: "Simulation mode is disabled" }
@@ -1064,6 +1066,8 @@ export function TradingProvider({ children }: { children: ReactNode }) {
         forceCloseTrade,
 
         adjustBalance,
+
+        syncBalanceFromServer,
 
         setAdminPolicy,
       }}

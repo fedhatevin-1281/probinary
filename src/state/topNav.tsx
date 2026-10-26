@@ -15,6 +15,12 @@ import {
 } from "../services/appApi"
 
 import {
+  createNowPaymentsInvoice,
+  getNowPaymentsOrder,
+  type NowPaymentsOrder,
+} from "../services/nowPaymentsApi"
+
+import {
   formatKes,
   formatUsd,
   getWalletSettings,
@@ -201,10 +207,6 @@ interface WithdrawInput {
 
 interface DepositInput {
   amountUsd: number
-
-  paymentMethod: string
-
-  referenceNumber: string
 }
 
 interface AppHeaderContextValue {
@@ -270,7 +272,20 @@ interface AppHeaderContextValue {
 
   submitDeposit: (
     input: DepositInput,
-  ) => Promise<{ ok: boolean receiptNumber?: string error?: string }>
+  ) => Promise<{
+    ok: boolean
+    orderId?: string
+    invoiceUrl?: string
+    error?: string
+  }>
+
+  completeDeposit: (order: NowPaymentsOrder) => void
+
+  pendingCryptoOrderId: string | null
+
+  cryptoOrderStatus: NowPaymentsOrder | null
+
+  cryptoOrderError: string | null
 
   sendAiPrompt: (prompt: string) => Promise<void>
 
@@ -519,7 +534,46 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
     persisted?.walletSettings ?? getWalletSettings(),
   )
 
-  const [panel, setPanel] = useState<HeaderPanel>("none")
+  const [panel, setPanel] = useState<HeaderPanel>(() => {
+    if (typeof window === "undefined") return "none"
+
+    const params = new URLSearchParams(window.location.search)
+    return params.has("nowpayments_order") || params.has("nowpayments_cancelled")
+      ? "deposit"
+      : "none"
+  })
+
+  const [pendingCryptoOrderId, setPendingCryptoOrderId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null
+
+    const params = new URLSearchParams(window.location.search)
+    return (
+      params.get("nowpayments_order") ||
+      window.localStorage.getItem("pb.nowpayments.pending-order")
+    )
+  })
+
+  const [cryptoOrderStatus, setCryptoOrderStatus] =
+    useState<NowPaymentsOrder | null>(null)
+
+  const [cryptoOrderError, setCryptoOrderError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const cancelledOrderId = params.get("nowpayments_cancelled")
+
+    if (cancelledOrderId) {
+      setCryptoOrderError("Payment was cancelled. You can retry from the deposit panel.")
+    }
+
+    if (params.has("nowpayments_order") || cancelledOrderId) {
+      params.delete("nowpayments_order")
+      params.delete("nowpayments_cancelled")
+      const nextUrl = new URL(window.location.href)
+      nextUrl.search = params.toString()
+      window.history.replaceState({}, "", nextUrl.toString())
+    }
+  }, [])
 
   const [backendOnline, setBackendOnline] = useState(false)
 
@@ -867,122 +921,196 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (!input.paymentMethod.trim() || !input.referenceNumber.trim()) {
-        return {
-          ok: false,
-          error: "Payment method and reference number are required",
-        }
-      }
-
       setLoadingStates((prev) => ({ ...prev, deposit: true }))
 
       try {
-        const isKesMethod = true
+        const order = await createNowPaymentsInvoice(amountUsd)
 
-        const mobileMoneyAmountKes = isKesMethod
-          ? usdToKes(amountUsd, walletSettings.usdKesRate)
-          : undefined
-
-        await simulateAuthenticatedMutation("deposit.create", {
-          amount: mobileMoneyAmountKes,
-
-          currency: "KES",
-
-          paymentMethod: input.paymentMethod,
-
-          referenceNumber: input.referenceNumber,
-
-          exchangeRate: walletSettings.usdKesRate,
-        })
-
-        const receiptNumber = `RCP-${Date.now().toString().slice(-8)}`
+        setPendingCryptoOrderId(order.orderId)
+        setCryptoOrderStatus(null)
+        setCryptoOrderError(null)
 
         const item: DepositRequest = {
-          id: makeId("dp"),
+          id: order.orderId,
 
           amountUsd,
 
-          method: input.paymentMethod,
+          method: "Crypto (NOWPayments)",
 
-          referenceNumber: input.referenceNumber,
+          referenceNumber: order.orderId,
 
-          receiptNumber,
+          receiptNumber: order.orderId,
 
           createdAt: Date.now(),
 
-          status: "completed",
-
-          mobileMoneyAmountKes,
-        }
-
-        if (activeAccount === "real") {
-          const adjustResult = trading.adjustBalance(
-            amountUsd,
-            `Deposit completed ${receiptNumber}`,
-          )
-
-          if (!adjustResult.ok) {
-            return {
-              ok: false,
-              error: adjustResult.error || "Unable to update real balance",
-            }
-          }
-        } else {
-          setDemoBalance((prev) => Math.round((prev + amountUsd) * 100) / 100)
+          status: "processing",
         }
 
         setDepositHistory((prev) => [item, ...prev])
-
-        appendTransaction({
-          id: makeId("txn-dp"),
-          timestamp: Date.now(),
-          type: "deposit",
-          amountUsd,
-          status: "completed",
-          referenceNumber: receiptNumber,
-          balanceAfterUsd:
-            activeAccount === "real"
-              ? trading.balance + amountUsd
-              : balances.demo + amountUsd,
-          source: activeAccount,
-          note: input.paymentMethod,
-        })
-
-        setBalancePulse(true)
-
-        window.setTimeout(() => setBalancePulse(false), 280)
 
         addNotification({
           category: "deposits",
 
           icon: "deposit",
 
-          title: "Deposit completed",
+          title: "Crypto deposit started",
 
-          description: isMobileMoney
-            ? `${formatUsd(amountUsd)} credited. Mobile Money API payload used ${formatKes(mobileMoneyAmountKes || 0)} at rate ${walletSettings.usdKesRate}.`
-            : `${formatUsd(amountUsd)} was credited to your ${activeAccount.toUpperCase()} wallet.`,
+          description: `A ${formatUsd(amountUsd)} NOWPayments invoice is ready. Your balance updates after payment confirmation.`,
         })
 
-        pushToast("success", `Deposit successful. Receipt ${receiptNumber}`)
+        pushToast("info", "NOWPayments invoice created")
 
-        return { ok: true, receiptNumber }
-      } catch {
-        return { ok: false, error: "Deposit failed. Please retry." }
+        return { ok: true, orderId: order.orderId, invoiceUrl: order.invoiceUrl }
+      } catch (error) {
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : "Deposit failed. Please retry.",
+        }
       } finally {
         setLoadingStates((prev) => ({ ...prev, deposit: false }))
       }
     },
     [
-      walletSettings,
-      activeAccount,
-      trading,
-      appendTransaction,
-      balances.demo,
+      setDepositHistory,
       addNotification,
       pushToast,
     ],
   )
+
+  const completeDeposit = useCallback(
+    (order: NowPaymentsOrder) => {
+      if (order.status !== "completed") return
+
+      const existing = depositHistory.find((item) => item.id === order.orderId)
+      if (existing?.status === "completed") {
+        if (order.currentBalance !== null) {
+          trading.syncBalanceFromServer(order.currentBalance)
+        }
+        window.localStorage.removeItem("pb.nowpayments.pending-order")
+        setPendingCryptoOrderId(null)
+        return
+      }
+
+      const receiptNumber = order.paymentId
+        ? `NP-${order.paymentId}`
+        : `NP-${order.orderId}`
+
+      setDepositHistory((previous) => {
+        const exists = previous.some((item) => item.id === order.orderId)
+        const completed: DepositRequest = {
+          id: order.orderId,
+          amountUsd: order.amountUsd,
+          method: "Crypto (NOWPayments)",
+          referenceNumber: order.paymentId || order.orderId,
+          receiptNumber,
+          createdAt: new Date(order.createdAt).getTime(),
+          status: "completed",
+        }
+
+        return exists
+          ? previous.map((item) =>
+              item.id === order.orderId ? completed : item,
+            )
+          : [completed, ...previous]
+      })
+
+      if (!walletTransactions.some((item) => item.id === `txn-${order.orderId}`)) {
+        appendTransaction({
+          id: `txn-${order.orderId}`,
+          timestamp: order.creditedAt ? new Date(order.creditedAt).getTime() : Date.now(),
+          type: "deposit",
+          amountUsd: order.amountUsd,
+          status: "completed",
+          referenceNumber: receiptNumber,
+          balanceAfterUsd: order.currentBalance ?? trading.balance,
+          source: "real",
+          note: "Crypto (NOWPayments)",
+        })
+      }
+
+      if (order.currentBalance !== null) {
+        trading.syncBalanceFromServer(order.currentBalance)
+      }
+
+      setBalancePulse(true)
+      window.setTimeout(() => setBalancePulse(false), 280)
+      addNotification({
+        category: "deposits",
+        icon: "deposit",
+        title: "Crypto deposit completed",
+        description: `${formatUsd(order.amountUsd)} has been credited to your real wallet.`,
+      })
+      pushToast("success", `Deposit confirmed. Receipt ${receiptNumber}`)
+      window.localStorage.removeItem("pb.nowpayments.pending-order")
+      setPendingCryptoOrderId(null)
+    },
+    [
+      depositHistory,
+      walletTransactions,
+      trading.balance,
+      trading.syncBalanceFromServer,
+      appendTransaction,
+      addNotification,
+      pushToast,
+    ],
+  )
+
+  useEffect(() => {
+    if (!pendingCryptoOrderId) return
+
+    window.localStorage.setItem(
+      "pb.nowpayments.pending-order",
+      pendingCryptoOrderId,
+    )
+
+    const params = new URLSearchParams(window.location.search)
+    params.delete("nowpayments_order")
+    params.delete("nowpayments_cancelled")
+    const nextUrl = new URL(window.location.href)
+    nextUrl.search = params.toString()
+    window.history.replaceState({}, "", nextUrl.toString())
+
+    let active = true
+    let timer: number | undefined
+
+    const poll = async () => {
+      try {
+        const order = await getNowPaymentsOrder(pendingCryptoOrderId)
+        if (!active) return
+
+        setCryptoOrderStatus(order)
+        setCryptoOrderError(null)
+
+        if (order.status === "completed") {
+          completeDeposit(order)
+          return
+        }
+
+        if (["failed", "expired", "refunded"].includes(order.status)) {
+          window.localStorage.removeItem("pb.nowpayments.pending-order")
+          setPendingCryptoOrderId(null)
+          return
+        }
+      } catch (error) {
+        if (active) {
+          setCryptoOrderError(
+            error instanceof Error
+              ? error.message
+              : "Could not check payment status.",
+          )
+        }
+      }
+
+      if (active) timer = window.setTimeout(poll, 5000)
+    }
+
+    void poll()
+
+    return () => {
+      active = false
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
+  }, [pendingCryptoOrderId, completeDeposit])
 
   const sendAiPrompt = useCallback(
     async (prompt: string) => {
@@ -1361,6 +1489,14 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
 
       submitDeposit,
 
+      completeDeposit,
+
+      pendingCryptoOrderId,
+
+      cryptoOrderStatus,
+
+      cryptoOrderError,
+
       sendAiPrompt,
 
       sendSupportMessage,
@@ -1431,6 +1567,14 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
       submitWithdrawal,
 
       submitDeposit,
+
+      completeDeposit,
+
+      pendingCryptoOrderId,
+
+      cryptoOrderStatus,
+
+      cryptoOrderError,
 
       sendAiPrompt,
 

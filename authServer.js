@@ -12,6 +12,12 @@ import bcrypt from "bcryptjs"
 
 import jwt from "jsonwebtoken"
 
+import createNowPaymentsInvoice from "./api/payments/nowpayments/create-invoice.js"
+
+import getNowPaymentsStatus from "./api/payments/nowpayments/status.js"
+
+import handleNowPaymentsWebhook from "./api/payments/nowpayments/webhook.js"
+
 // Force DNS lookup of localhost to prefer IPv4 first
 
 dns.setDefaultResultOrder("ipv4first")
@@ -100,6 +106,12 @@ const app = express()
 app.use(cors())
 
 app.use(express.json())
+
+app.post("/payments/nowpayments/create-invoice", createNowPaymentsInvoice)
+
+app.get("/payments/nowpayments/status", getNowPaymentsStatus)
+
+app.post("/payments/nowpayments/webhook", handleNowPaymentsWebhook)
 
 // Helper for Supabase REST API requests
 

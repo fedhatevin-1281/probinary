@@ -399,23 +399,17 @@ function WithdrawPanel({ onClose }: { onClose: () => void }) {
 function DepositPanel({ onClose }: { onClose: () => void }) {
   const {
     submitDeposit,
+    completeDeposit,
+    pendingCryptoOrderId,
+    cryptoOrderStatus,
+    cryptoOrderError,
     depositHistory,
     depositMinimumUsd,
     loadingStates,
-    walletSettings,
     formatUsdValue,
-    formatKesValue,
   } = useTopNav()
 
   const [amountUsd, setAmountUsd] = useState("10")
-
-  const [paymentMethod, setPaymentMethod] = useState("M-Pesa")
-
-  const [referenceNumber, setReferenceNumber] = useState("")
-
-  const [email, setEmail] = useState("")
-
-  const [receipt, setReceipt] = useState<string | null>(null)
 
   const [error, setError] = useState<string | null>(null)
 
@@ -425,56 +419,16 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
 
   const belowMinimum = !Number.isFinite(amount) || amount < effectiveMinimum
 
-  const isKesMethod = true
-  const kesPreviewValue = amount * walletSettings.usdKesRate
-
   const submit = async () => {
     setError(null)
+    const result = await submitDeposit({ amountUsd: amount })
 
-    // @ts-ignore
-    if (!window.PaystackPop) {
-      setError("Payment gateway is not loaded.")
+    if (!result.ok || !result.invoiceUrl || !result.orderId) {
+      setError(result.error || "Could not create a crypto invoice.")
       return
     }
 
-    if (!email) {
-      setError("Email is required for payment.")
-      return
-    }
-
-    // @ts-ignore
-    const handler = window.PaystackPop.setup({
-      key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_placeholder",
-      email: email,
-      amount: Math.round(isKesMethod ? kesPreviewValue * 100 : amount * 100),
-      currency: isKesMethod ? "KES" : "USD",
-      ref: 'DP_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-      callback: function (response: any) {
-        submitDeposit({
-          amountUsd: Number(amountUsd),
-          paymentMethod,
-          referenceNumber: response.reference,
-        })
-          .then((result) => {
-            if (!result.ok) {
-              setError(result.error || "Deposit failed")
-              return
-            }
-
-            setReceipt(result.receiptNumber || null)
-            setAmountUsd("10")
-            setReferenceNumber("")
-          })
-          .catch(() => {
-            setError("Deposit failed due to an error.")
-          })
-      },
-      onClose: function () {
-        setError("Payment was cancelled")
-      },
-    })
-
-    handler.openIframe()
+    window.location.assign(result.invoiceUrl)
   }
 
   return (
@@ -508,23 +462,9 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
         }}
       >
         <div className="nav-feature-form-grid">
-          <label className="field-label">Available methods</label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {[
-              "M-Pesa",
-              "Credit Card",
-              "Apple Pay",
-            ].map((method) => (
-              <button
-                key={method}
-                className={`nav-chip-btn ${
-                  paymentMethod === method ? "active" : ""
-                }`}
-                onClick={() => setPaymentMethod(method)}
-              >
-                {method}
-              </button>
-            ))}
+          <label className="field-label">Payment method</label>
+          <div style={{ ...sectionCardStyle, fontSize: 13, color: "#DDD6FE" }}>
+            Cryptocurrency via NOWPayments. Choose a supported coin and network at checkout. Confirmed payments credit your real wallet.
           </div>
 
           <label className="field-label">Amount (USD)</label>
@@ -542,23 +482,6 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
 
 
 
-          <label className="field-label">Email Address</label>
-          <input
-            className="field-input"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="For payment receipt"
-          />
-
-          <label className="field-label">Reference Number (Optional)</label>
-          <input
-            className="field-input"
-            value={referenceNumber}
-            onChange={(event) => setReferenceNumber(event.target.value)}
-            placeholder="Gateway / bank reference"
-          />
-
           {belowMinimum && (
             <div style={{ color: "#F59E0B", fontSize: 12 }}>
               Deposit must be at least {formatUsdValue(effectiveMinimum)}.
@@ -567,10 +490,18 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
           {error && (
             <div style={{ color: "#F87171", fontSize: 12 }}>{error}</div>
           )}
-          {receipt && (
-            <div style={{ color: "#22C55E", fontSize: 12 }}>
-              Success. Receipt: {receipt}
+          {(cryptoOrderError || error) && (
+            <div style={{ color: "#F87171", fontSize: 12 }}>{cryptoOrderError || error}</div>
+          )}
+          {cryptoOrderStatus && (
+            <div style={{ color: cryptoOrderStatus.status === "completed" ? "#22C55E" : "#F59E0B", fontSize: 12 }}>
+              Deposit {cryptoOrderStatus.status.replaceAll("_", " ")}
+              {cryptoOrderStatus.status === "completed" ? ` · Receipt ${cryptoOrderStatus.paymentId || pendingCryptoOrderId}` : " · Waiting for network confirmation"}
             </div>
+          )}
+
+          {pendingCryptoOrderId && !cryptoOrderStatus && !cryptoOrderError && (
+            <div style={{ color: "#F59E0B", fontSize: 12 }}>Checking payment status…</div>
           )}
 
           <button
@@ -578,7 +509,7 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
             onClick={() => void submit()}
             disabled={loadingStates.deposit || belowMinimum}
           >
-            {loadingStates.deposit ? "Processing..." : "Complete Deposit"}
+            {loadingStates.deposit ? "Creating invoice..." : "Continue to crypto checkout"}
           </button>
         </div>
 

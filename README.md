@@ -16,6 +16,20 @@ This project is a Vite + React + Tailwind app and is ready to deploy to Vercel a
 - `VITE_API_URL`: HTTP base URL for backend calls (example: `https://api.example.com`).
 - `VITE_WS_URL`: WebSocket URL for live trading (example: `wss://ws.example.com`).
 - `VITE_USD_KES_RATE`: optional default conversion rate.
+- `NOWPAYMENTS_API_KEY`: server-side NOWPayments API key.
+- `NOWPAYMENTS_IPN_SECRET`: server-side NOWPayments IPN secret used to authenticate callbacks.
+- `APP_BASE_URL`: public HTTPS origin for checkout return URLs and the IPN callback (for example, `https://app.example.com`).
+- `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, and `JWT_SECRET`: required by the API and wallet backend.
+
+### NOWPayments Setup
+
+1. Run `nowpayments.sql` in the Supabase SQL Editor. It creates the private order table and atomic wallet functions used to prevent duplicate credits and balance overwrites.
+2. Add `NOWPAYMENTS_API_KEY`, `NOWPAYMENTS_IPN_SECRET`, and `APP_BASE_URL` to the auth API environment. Keep these values server-side; do not use `VITE_` prefixes.
+3. The app sends `${APP_BASE_URL}/api/payments/nowpayments/webhook` as the IPN callback URL when it creates each invoice. Keep that route publicly reachable over HTTPS.
+4. Enable the supported coins and networks you want to offer in your NOWPayments account. Customers choose from those options at hosted checkout.
+5. For local development, expose the app and auth API through one public HTTPS origin (with `/api` routed to the auth API) and set `APP_BASE_URL` to that origin. NOWPayments cannot send IPNs to localhost.
+
+Wallet credit is granted only for a signed `finished` IPN whose order, USD amount, and invoice match the stored order. The success redirect alone never credits funds.
 
 If `VITE_API_URL` and `VITE_WS_URL` are not set, the app auto-derives from the current browser origin.
 

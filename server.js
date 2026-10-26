@@ -247,7 +247,15 @@ const adminSimPolicy = {
   lastAppliedAt: null,
 }
 
-const state = createInitialState()
+const marketState = createInitialState()
+
+const accountStates = new Map()
+
+accountStates.set("demo", { ...marketState, markets: marketState.markets })
+
+const persistedBalances = new Map()
+
+const balanceSyncs = new Map()
 
 const clients = new Set()
 
@@ -278,11 +286,15 @@ wss.on("connection", (socket) => {
 
   sendPolicyState(socket)
 
-  socket.send(JSON.stringify({ type: "STATE", state }))
+  sendClientState(socket)
 
   socket.on("message", (raw) => {
     try {
       const message = JSON.parse(raw.toString())
+
+      const session = sessions.get(socket) || createSession("demo-auth-token")
+
+      const state = getAccountState(session)
 
       if (
         message.type === "SELECT_MARKET" &&
@@ -309,9 +321,18 @@ wss.on("connection", (socket) => {
         return
       }
 
-      if (message.type === "PLACE_TRADE" && message.input) {
-        const session = sessions.get(socket) || createSession("demo-auth-token")
+      if (message.type === "REFRESH_BALANCE" && session.userId) {
+        refreshUserBalance(socket, session).catch((error) => {
+          console.error("[WS AUTH] Failed to refresh account balance:", error)
+          socket.send(
+            JSON.stringify({ type: "ACK", ok: false, error: "Could not refresh wallet balance" }),
+          )
+        })
 
+        return
+      }
+
+      if (message.type === "PLACE_TRADE" && message.input) {
         const result = placeTrade(state, message.input, session)
 
         if (result.error) {
@@ -346,8 +367,6 @@ wss.on("connection", (socket) => {
         message.type === "FORCE_CLOSE_TRADE" &&
         typeof message.tradeId === "string"
       ) {
-        const session = sessions.get(socket) || createSession("demo-auth-token")
-
         if (!session.capabilities.canForceClose) {
           socket.send(
             JSON.stringify({
@@ -390,8 +409,6 @@ wss.on("connection", (socket) => {
         typeof message.amount === "number" &&
         typeof message.reason === "string"
       ) {
-        const session = sessions.get(socket) || createSession("demo-auth-token")
-
         if (!session.capabilities.canAdjustBalance) {
           socket.send(
             JSON.stringify({
@@ -508,9 +525,12 @@ wss.on("connection", (socket) => {
 })
 
 setInterval(() => {
-  state.markets = advanceMarkets(state.markets)
+  marketState.markets = advanceMarkets(marketState.markets)
 
-  settleExpiredTrades()
+  for (const state of accountStates.values()) {
+    state.markets = marketState.markets
+    settleExpiredTrades(state)
+  }
 
   broadcastState("Live market tick")
 }, 1000)
@@ -534,6 +554,8 @@ function createSession(token) {
 
   return {
     role,
+
+    userId: null,
 
     capabilities: ROLE_CAPABILITIES[role],
   }
@@ -587,6 +609,8 @@ async function syncUserSession(socket, token) {
 
   sessions.set(socket, session)
 
+  const accountState = getAccountState(session)
+
   sendAuthState(socket)
 
   sendPolicyState(socket)
@@ -607,10 +631,15 @@ async function syncUserSession(socket, token) {
         const wallets = await walletRes.json()
 
         if (wallets && wallets.length > 0) {
-          state.balance = wallets[0].current_balance
+          const balance = Number(wallets[0].current_balance)
+
+          if (Number.isFinite(balance)) {
+            accountState.balance = balance
+            persistedBalances.set(getAccountKey(session), balance)
+          }
 
           console.log(
-            `[WS AUTH] Synchronized balance for user ${session.username} to ${state.balance} USD`,
+            `[WS AUTH] Synchronized balance for user ${session.username} to ${accountState.balance} USD`,
           )
         }
       }
@@ -627,51 +656,143 @@ async function syncUserSession(socket, token) {
     }),
   )
 
-  broadcastState()
+  sendClientState(socket)
 }
 
 async function syncBalanceToDb() {
-  let activeUserId = null
+  const updates = new Map()
 
   for (const client of clients) {
     const session = sessions.get(client)
 
-    if (session && session.userId) {
-      activeUserId = session.userId
-
-      break
+    if (session?.userId) {
+      updates.set(getAccountKey(session), session)
     }
   }
 
-  if (activeUserId && process.env.SUPABASE_URL) {
-    try {
-      const walletUrl = `${process.env.SUPABASE_URL}/rest/v1/wallets?user_id=eq.${activeUserId}`
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return
 
-      const headers = {
-        apikey: process.env.SUPABASE_SECRET_KEY,
+  await Promise.all(
+    [...updates.values()].map((session) => syncAccountBalance(session)),
+  )
+}
 
-        Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+async function syncAccountBalance(session) {
+  const key = getAccountKey(session)
+  const activeSync = balanceSyncs.get(key)
 
-        "Content-Type": "application/json",
+  if (activeSync) return activeSync
+
+  const accountState = getAccountState(session)
+  const sync = (async () => {
+    while (true) {
+      const previousBalance = persistedBalances.get(key)
+
+      if (previousBalance === undefined) {
+        persistedBalances.set(key, accountState.balance)
+        return
       }
 
-      await fetch(walletUrl, {
-        method: "PATCH",
+      const balanceAtStart = accountState.balance
+      const delta = round2(balanceAtStart - previousBalance)
 
-        headers,
+      if (delta === 0) return
 
-        body: JSON.stringify({
-          current_balance: state.balance,
+      const response = await fetch(
+        `${process.env.SUPABASE_URL}/rest/v1/rpc/apply_wallet_delta`,
+        {
+          method: "POST",
+          headers: {
+            apikey: process.env.SUPABASE_SECRET_KEY,
+            Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            p_user_id: String(session.userId),
+            p_delta: delta,
+          }),
+        },
+      )
 
-          last_updated: new Date().toISOString(),
+      if (!response.ok) {
+        throw new Error(`Balance sync failed: ${response.status}`)
+      }
 
-          updated_at: new Date().toISOString(),
-        }),
-      })
-    } catch (e) {
-      console.error("[WS AUTH] Failed to sync balance to database:", e)
+      const persistedBalance = Number(await response.json())
+
+      if (!Number.isFinite(persistedBalance)) {
+        throw new Error("Balance sync returned an invalid balance")
+      }
+
+      const externalDelta = round2(
+        persistedBalance - (previousBalance + delta),
+      )
+
+      if (externalDelta !== 0) {
+        accountState.balance = round2(accountState.balance + externalDelta)
+      }
+
+      persistedBalances.set(key, persistedBalance)
     }
+  })()
+
+  balanceSyncs.set(key, sync)
+
+  try {
+    await sync
+  } finally {
+    balanceSyncs.delete(key)
   }
+}
+
+function getAccountState(session) {
+  const key = getAccountKey(session)
+  let accountState = accountStates.get(key)
+
+  if (!accountState) {
+    accountState = { ...createInitialState(), markets: marketState.markets }
+    accountStates.set(key, accountState)
+    if (session.userId) persistedBalances.set(key, accountState.balance)
+  }
+
+  accountState.markets = marketState.markets
+  return accountState
+}
+
+function getAccountKey(session) {
+  return session.userId ? `user:${session.userId}` : "demo"
+}
+
+async function refreshUserBalance(socket, session) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
+    throw new Error("Wallet storage is not configured")
+  }
+
+  const walletUrl = `${process.env.SUPABASE_URL}/rest/v1/wallets?user_id=eq.${encodeURIComponent(session.userId)}`
+  const headers = {
+    apikey: process.env.SUPABASE_SECRET_KEY,
+    Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+  }
+  const response = await fetch(walletUrl, { headers })
+
+  if (!response.ok) throw new Error(`Wallet refresh failed: ${response.status}`)
+
+  const wallets = await response.json()
+  const balance = Number(wallets?.[0]?.current_balance)
+
+  if (!Number.isFinite(balance)) throw new Error("Wallet balance is unavailable")
+
+  const accountState = getAccountState(session)
+  accountState.balance = balance
+  persistedBalances.set(getAccountKey(session), balance)
+  sendClientState(socket)
+  socket.send(JSON.stringify({ type: "ACK", ok: true, action: "Wallet refreshed" }))
+}
+
+function sendClientState(socket) {
+  const session = sessions.get(socket) || createSession("demo-auth-token")
+  const state = getAccountState(session)
+  socket.send(JSON.stringify({ type: "STATE", state }))
 }
 
 function sendAuthState(socket) {
@@ -839,7 +960,7 @@ function advanceMarkets(markets) {
   return nextMarkets
 }
 
-function settleExpiredTrades() {
+function settleExpiredTrades(state) {
   const now = Date.now()
 
   const remaining = []
@@ -1034,15 +1155,14 @@ function isWinningTrade(trade, exitPrice, exitDigit) {
 }
 
 function broadcastState(note) {
-  if (note) {
-    state.lastAction = note
-  }
-
-  const payload = JSON.stringify({ type: "STATE", state })
-
   for (const client of clients) {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(payload)
+      const session = sessions.get(client) || createSession("demo-auth-token")
+      const state = getAccountState(session)
+
+      if (note) state.lastAction = note
+
+      client.send(JSON.stringify({ type: "STATE", state }))
     }
   }
 
