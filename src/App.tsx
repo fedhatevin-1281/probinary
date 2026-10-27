@@ -116,6 +116,8 @@ export default function App() {
 
   const [user, setUser] = useState<User | null>(null)
 
+  const [isCheckingSession, setIsCheckingSession] = useState(true)
+
   useEffect(() => {
     if (accessMode) {
       setUser({
@@ -129,6 +131,8 @@ export default function App() {
       })
 
       setPage("terminal")
+
+        setIsCheckingSession(false)
 
       return
     }
@@ -152,6 +156,8 @@ export default function App() {
 
         setPage("terminal")
 
+          setIsCheckingSession(false)
+
         return
       }
 
@@ -170,6 +176,9 @@ export default function App() {
 
           setPage(null)
         })
+        .finally(() => setIsCheckingSession(false))
+    } else {
+      setIsCheckingSession(false)
     }
   }, [accessMode])
 
@@ -200,6 +209,8 @@ export default function App() {
   const handleLogout = () => {
     clearAuthSession()
 
+    setIsCheckingSession(true)
+
     setUser(null)
 
     setPage(null)
@@ -207,6 +218,21 @@ export default function App() {
     window.setTimeout(() => {
       window.location.reload()
     }, 100)
+  }
+
+  if (isCheckingSession) {
+    return (
+      <main
+        className="flex min-h-screen items-center justify-center bg-[#09090F] text-white"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="flex items-center gap-3 text-sm text-white/70">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-violet-400" />
+          <span>Restoring your account...</span>
+        </div>
+      </main>
+    )
   }
 
   if (
