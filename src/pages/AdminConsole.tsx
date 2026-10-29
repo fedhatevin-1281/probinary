@@ -2,6 +2,10 @@ import { useMemo, useState, useEffect } from "react"
 import { useTopNav } from "../state/topNav"
 import { getAdminStats, getAdminUsers, promoteUser } from "../services/authApi"
 
+function isSimulationToken(token: string) {
+  return token === "sim-admin" || token === "sim-super-admin"
+}
+
 export default function AdminConsole() {
   const { depositHistory, withdrawalHistory, formatUsdValue } = useTopNav()
   
@@ -10,6 +14,8 @@ export default function AdminConsole() {
 
   // DB Stats
   const [dbStats, setDbStats] = useState<{ totalUsers: number, totalDeposited: number, totalWithdrawn: number } | null>(null)
+
+  const [dbStatsUnavailable, setDbStatsUnavailable] = useState(false)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -21,6 +27,11 @@ export default function AdminConsole() {
   useEffect(() => {
     const token = typeof window !== "undefined" ? window.localStorage.getItem("pb.auth.token") : null
     if (token) {
+      if (isSimulationToken(token)) {
+        setDbStatsUnavailable(true)
+        return
+      }
+
       getAdminStats(token).then(res => {
         if (res.ok && res.stats) {
           setDbStats({
@@ -29,7 +40,10 @@ export default function AdminConsole() {
             totalWithdrawn: res.stats.totalWithdrawn
           })
         }
-      }).catch(err => console.error("Failed to fetch admin stats:", err))
+      }).catch(err => {
+        setDbStatsUnavailable(true)
+        console.error("Failed to fetch admin stats:", err)
+      })
     }
   }, [])
 
@@ -57,9 +71,9 @@ export default function AdminConsole() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
         <StatCard title="People in the site (Online)" value={String(onlineUsers)} accent="#3B82F6" />
-        <StatCard title="Total Users (DB)" value={dbStats ? String(dbStats.totalUsers) : "..."} accent="#EC4899" />
-        <StatCard title="Total Deposited (DB)" value={dbStats ? formatUsdValue(dbStats.totalDeposited) : formatUsdValue(totalDeposited)} accent="#10B981" />
-        <StatCard title="Total Withdrawn (DB)" value={dbStats ? formatUsdValue(dbStats.totalWithdrawn) : formatUsdValue(totalWithdrawn)} accent="#8B5CF6" />
+        <StatCard title={dbStatsUnavailable ? "Database Users (Unavailable)" : "Total Users (DB)"} value={dbStats ? String(dbStats.totalUsers) : dbStatsUnavailable ? "N/A" : "..."} accent="#EC4899" />
+        <StatCard title={dbStatsUnavailable ? "Database Deposits (Unavailable)" : "Total Deposited (DB)"} value={dbStats ? formatUsdValue(dbStats.totalDeposited) : dbStatsUnavailable ? "N/A" : formatUsdValue(totalDeposited)} accent="#10B981" />
+        <StatCard title={dbStatsUnavailable ? "Database Withdrawals (Unavailable)" : "Total Withdrawn (DB)"} value={dbStats ? formatUsdValue(dbStats.totalWithdrawn) : dbStatsUnavailable ? "N/A" : formatUsdValue(totalWithdrawn)} accent="#8B5CF6" />
         <StatCard title="Pending Withdrawals (Local)" value={String(pendingWithdrawals.length)} accent="#F59E0B" />
       </div>
 
@@ -126,7 +140,17 @@ function UserManagement() {
 
   const fetchUsers = async () => {
     const token = typeof window !== "undefined" ? window.localStorage.getItem("pb.auth.token") : null
-    if (!token) return
+    if (!token) {
+      setLoading(false)
+      setError("Sign in with an admin account to load database users.")
+      return
+    }
+
+    if (isSimulationToken(token)) {
+      setLoading(false)
+      setError("Database user management is unavailable in simulation mode.")
+      return
+    }
     try {
       setLoading(true)
       const res = await getAdminUsers(token)

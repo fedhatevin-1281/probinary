@@ -24,7 +24,7 @@ import AdminConsole from "./pages/AdminConsole"
 
 import { type User, getMe, clearAuthSession } from "./services/authApi"
 
-export type Page = "dashboard" | "terminal" | "markets" | "portfolio" | "analytics" | "wallet" | "settings" | "admin"
+export type Page = "dashboard" | "terminal" | "markets" | "portfolio" | "analytics" | "wallet" | "settings" | "admin" | "superadmin"
 
 function getLoginAccessKey(user: User) {
   const normalizedUsername = user.username.trim().toLowerCase()
@@ -277,6 +277,7 @@ export default function App() {
             )}
             {page === "wallet" && <Wallet />}
             {page === "admin" && <AdminConsole />}
+            {page === "superadmin" && <SuperAdminConsole />}
             {(page === "portfolio" || page === "analytics") && (
               <div
                 style={{

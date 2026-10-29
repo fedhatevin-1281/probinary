@@ -14,6 +14,12 @@ export default function SuperAdminConsole() {
 
     setAdminPolicy,
 
+    testBinaryAvailable,
+
+    testBinaryAccounts,
+
+    setTestBinaryAccount,
+
     marketList,
 
     markets,
@@ -31,6 +37,12 @@ export default function SuperAdminConsole() {
     adminPolicy.forceNextOutcome,
   )
 
+  const [targetUserId, setTargetUserId] = useState("")
+
+  const [testStartingBalance, setTestStartingBalance] = useState("1000")
+
+  const [testAccountFeedback, setTestAccountFeedback] = useState("")
+
   useEffect(() => {
     setDraftOutcome(adminPolicy.forceNextOutcome)
   }, [adminPolicy.forceNextOutcome])
@@ -47,6 +59,20 @@ export default function SuperAdminConsole() {
 
   const applyPolicy = () => {
     setAdminPolicy(draftOutcome)
+  }
+
+  const updateTestAccount = (userId: string, enabled: boolean) => {
+    const result = setTestBinaryAccount(
+      userId,
+      enabled,
+      Number(testStartingBalance),
+    )
+
+    setTestAccountFeedback(
+      result.ok
+        ? `Submitted ${enabled ? "assignment" : "removal"} for user ${userId}.`
+        : result.error || "Could not update test account.",
+    )
   }
 
   if (!simulationMode) {
@@ -341,6 +367,88 @@ export default function SuperAdminConsole() {
 
       <section style={{ marginTop: 16 }}>
         <article style={panelStyle}>
+          <div style={panelTitleStyle}>Isolated Test Binary System</div>
+          <p style={{ margin: "8px 0 16px", color: "#9CA3AF", fontSize: 13, lineHeight: 1.6 }}>
+            Assign a user ID to a separate virtual account. Settled test trades
+            use an 80% simulated win probability and never sync to the real
+            wallet. Assignments are kept in memory and clear when the simulation
+            server restarts.
+          </p>
+          {!testBinaryAvailable && (
+            <div role="status" style={{ marginBottom: 14, color: "#FCD34D", fontSize: 12 }}>
+              Test assignments are disabled. They require a non-production
+              server with SIMULATION_MODE=true and ENABLE_TEST_BINARY_SYSTEM=true.
+            </div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, alignItems: "end" }}>
+            <label style={{ display: "grid", gap: 6, color: "#9CA3AF", fontSize: 12 }}>
+              User ID
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={targetUserId}
+                onChange={(event) => setTargetUserId(event.target.value)}
+                placeholder="Enter user ID"
+                style={testInputStyle}
+              />
+            </label>
+            <label style={{ display: "grid", gap: 6, color: "#9CA3AF", fontSize: 12 }}>
+              Virtual starting balance (USD)
+              <input
+                type="number"
+                min="0"
+                max="100000000"
+                step="0.01"
+                value={testStartingBalance}
+                onChange={(event) => setTestStartingBalance(event.target.value)}
+                style={testInputStyle}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => updateTestAccount(targetUserId, true)}
+              disabled={!targetUserId || !testBinaryAvailable}
+              style={{ ...testActionStyle, opacity: !testBinaryAvailable ? 0.5 : 1 }}
+            >
+              Assign 80% Test System
+            </button>
+          </div>
+          {testAccountFeedback && (
+            <div role="status" style={{ marginTop: 10, color: "#9CA3AF", fontSize: 12 }}>
+              {testAccountFeedback}
+            </div>
+          )}
+          <div style={{ display: "grid", gap: 8, marginTop: 16 }}>
+            {testBinaryAccounts.length === 0 ? (
+              <div style={{ color: "#6B7280", fontSize: 12 }}>
+                No test accounts assigned.
+              </div>
+            ) : (
+              testBinaryAccounts.map((account) => (
+                <div
+                  key={account.userId}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, border: "1px solid rgba(255,255,255,0.08)", padding: "10px 12px" }}
+                >
+                  <span style={{ color: "#D1D5DB", fontSize: 12 }}>
+                    User {account.userId} · ${account.initialBalance.toFixed(2)} virtual · {Math.round(account.winRate * 100)}% simulated wins
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => updateTestAccount(account.userId, false)}
+                    style={{ ...testActionStyle, background: "rgba(255,255,255,0.06)", color: "#D1D5DB" }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </article>
+      </section>
+
+      <section style={{ marginTop: 16 }}>
+        <article style={panelStyle}>
           <div style={panelTitleStyle}>Market Volatility Radar</div>
           <div
             style={{
@@ -546,6 +654,27 @@ function DataRow({ label, value }: { label: string; value: string }) {
       </span>
     </div>
   )
+}
+
+const testInputStyle: React.CSSProperties = {
+  width: "100%",
+  minWidth: 0,
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.04)",
+  color: "#F9FAFB",
+  padding: "9px 10px",
+  fontSize: 13,
+}
+
+const testActionStyle: React.CSSProperties = {
+  minHeight: 36,
+  border: "1px solid rgba(45,212,191,0.4)",
+  background: "rgba(20,184,166,0.16)",
+  color: "#CCFBF1",
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
 }
 
 const panelStyle: React.CSSProperties = {

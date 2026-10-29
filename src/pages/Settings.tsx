@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from "react"
 import { type User, updateProfile, changePassword } from "../services/authApi"
 import { useTopNav } from "../state/topNav"
+import { useTrading } from "../state/trading"
 
 interface SettingsProps {
   user: User | null
@@ -67,6 +68,7 @@ const alertStyle = (isError: boolean): CSSProperties => ({
 export default function Settings({ user, onUpdateUser }: SettingsProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile")
   const { walletSettings, setUsdKesRate, balances } = useTopNav()
+  const { testBinarySystem, testBinaryWinRate } = useTrading()
 
   // Profile Form States
   const [username, setUsername] = useState(user?.username || "")
@@ -486,7 +488,9 @@ export default function Settings({ user, onUpdateUser }: SettingsProps) {
                         fontSize: 14,
                       }}
                     >
-                      USD (Real Account: ${balances.real.toFixed(2)})
+                      {testBinarySystem
+                        ? `Isolated test system (${Math.round((testBinaryWinRate ?? 0) * 100)}% simulated wins; real wallet hidden)`
+                        : `USD (Real Account: $${balances.real.toFixed(2)})`}
                     </div>
                   </div>
                 </div>

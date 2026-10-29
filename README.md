@@ -55,6 +55,22 @@ Optional local backend:
 npm run server
 ```
 
+For isolated 80% test-system assignments, run the WebSocket server only in a
+development or test environment with `SIMULATION_MODE=true` and
+`ENABLE_TEST_BINARY_SYSTEM=true`. In PowerShell:
+
+```powershell
+$env:NODE_ENV = "development"
+$env:SIMULATION_MODE = "true"
+$env:ENABLE_TEST_BINARY_SYSTEM = "true"
+npm run server
+```
+
+Only a simulation super admin can assign a user ID and virtual starting
+balance. Test balances and outcomes are held separately from real wallets;
+assignments clear when the server restarts. Do not enable this on production
+servers.
+
 ## Authentication + RBAC Backend
 
 This repository now includes a secure authentication API with role-based access control and Supabase/PostgreSQL persistence.

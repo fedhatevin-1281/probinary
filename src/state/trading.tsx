@@ -36,6 +36,12 @@ export interface AdminSimPolicy {
   lastAppliedAt: number | null
 }
 
+export interface TestBinaryAccount {
+  userId: string
+  initialBalance: number
+  winRate: number
+}
+
 export interface MarketSeed {
   symbol: string
 
@@ -147,6 +153,14 @@ interface TradingContextValue {
 
   adminPolicy: AdminSimPolicy
 
+  testBinaryAvailable: boolean
+
+  testBinarySystem: boolean
+
+  testBinaryWinRate: number | null
+
+  testBinaryAccounts: TestBinaryAccount[]
+
   marketList: MarketSnapshot[]
 
   markets: Record<string, MarketSnapshot>
@@ -190,6 +204,12 @@ interface TradingContextValue {
 
   setAdminPolicy: (
     forceNextOutcome: "won" | "lost" | null,
+  ) => { ok: boolean; error?: string }
+
+  setTestBinaryAccount: (
+    userId: string,
+    enabled: boolean,
+    initialBalance: number,
   ) => { ok: boolean; error?: string }
 }
 
@@ -281,6 +301,10 @@ type ServerMessage = { type: "STATE"; state: TradingState } | {
   simulationMode: boolean
   role: UserRole
   capabilities: RoleCapabilities
+  testBinaryAvailable: boolean
+  testBinarySystem: boolean
+  testBinaryWinRate: number | null
+  testBinaryAccounts: TestBinaryAccount[]
 } | { type: "SIM_POLICY_STATE"; policy: AdminSimPolicy } | {
   type: "ERROR"
   error: string
@@ -553,6 +577,14 @@ export function TradingProvider({ children }: { children: ReactNode }) {
   const [adminPolicy, setAdminPolicyState] =
     useState<AdminSimPolicy>(DEFAULT_ADMIN_POLICY)
 
+  const [testBinarySystem, setTestBinarySystem] = useState(false)
+
+  const [testBinaryAvailable, setTestBinaryAvailable] = useState(false)
+
+  const [testBinaryWinRate, setTestBinaryWinRate] = useState<number | null>(null)
+
+  const [testBinaryAccounts, setTestBinaryAccounts] = useState<TestBinaryAccount[]>([])
+
   const stateRef = useRef(state)
 
   const socketRef = useRef<WebSocket | null>(null)
@@ -679,6 +711,14 @@ export function TradingProvider({ children }: { children: ReactNode }) {
             setRole(message.role)
 
             setCapabilities(message.capabilities)
+
+            setTestBinaryAvailable(message.testBinaryAvailable)
+
+            setTestBinarySystem(message.testBinarySystem)
+
+            setTestBinaryWinRate(message.testBinaryWinRate)
+
+            setTestBinaryAccounts(message.testBinaryAccounts)
 
             setState((prev) => ({
               ...prev,
@@ -1006,6 +1046,39 @@ export function TradingProvider({ children }: { children: ReactNode }) {
     return { ok: false, error: "Backend connection required" }
   }
 
+  const setTestBinaryAccount = (
+    userId: string,
+    enabled: boolean,
+    initialBalance: number,
+  ) => {
+    if (!simulationMode || !testBinaryAvailable || role !== "super_admin") {
+      return { ok: false, error: "Simulation super-admin access required" }
+    }
+
+    const socket = socketRef.current
+
+    if (connectionMode !== "server" || socket?.readyState !== WebSocket.OPEN) {
+      return { ok: false, error: "Backend connection required" }
+    }
+
+    socket.send(
+      JSON.stringify({
+        type: "SIM_SET_TEST_ACCOUNT",
+        userId,
+        enabled,
+        initialBalance,
+      }),
+    )
+
+    setState((prev) => ({
+      ...prev,
+      lastAction: `Submitted test system assignment for user ${userId}`,
+      lastError: null,
+    }))
+
+    return { ok: true }
+  }
+
   const marketList = MARKET_SEEDS.map(
     (seed) => state.markets[seed.symbol],
   ).filter(Boolean)
@@ -1040,6 +1113,14 @@ export function TradingProvider({ children }: { children: ReactNode }) {
         capabilities,
 
         adminPolicy,
+
+        testBinaryAvailable,
+
+        testBinarySystem,
+
+        testBinaryWinRate,
+
+        testBinaryAccounts,
 
         marketList,
 
@@ -1078,6 +1159,8 @@ export function TradingProvider({ children }: { children: ReactNode }) {
         syncBalanceFromServer,
 
         setAdminPolicy,
+
+        setTestBinaryAccount,
       }}
     >
       {children}

@@ -445,6 +445,7 @@ export default function Terminal() {
     capabilities,
     adminPolicy,
     setAdminPolicy,
+    testBinarySystem,
   } = useTrading()
 
   const { activeAccount, balances, setDemoBalance } = useTopNav()
@@ -689,7 +690,11 @@ export default function Terminal() {
   const placeBinaryTrade = () => {
     const tradeStake = parseFloat(stake || "0")
 
-    if (activeAccount === "demo" && tradeStake > balances.demo) {
+    if (
+      !testBinarySystem &&
+      activeAccount === "demo" &&
+      tradeStake > balances.demo
+    ) {
       alert("Insufficient demo balance")
       return
     }
@@ -705,11 +710,11 @@ export default function Terminal() {
 
       expirySeconds: parseInt(expirySeconds || "30", 10),
 
-      isDemo: activeAccount === "demo",
+      isDemo: !testBinarySystem && activeAccount === "demo",
     })
 
     if (result.ok) {
-      if (activeAccount === "demo") {
+      if (!testBinarySystem && activeAccount === "demo") {
         setDemoBalance((prev) => prev - tradeStake)
       }
       setBottomTab("positions")

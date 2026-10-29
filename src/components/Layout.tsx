@@ -8,6 +8,8 @@ import { useTopNav, type HeaderPanel } from "../state/topNav"
 
 import { useAnimatedNumber } from "../hooks/useAnimatedNumber"
 
+import { useTrading } from "../state/trading"
+
 const NAV_ITEMS: { id: Page; label: string; icon: ReactNode }[] = [
   { id: "dashboard", label: "Dashboard", icon: <GridIcon /> },
 
@@ -58,6 +60,8 @@ export default function Layout({
   const profileRef = useRef<HTMLDivElement | null>(null)
 
   const balanceRef = useRef<HTMLDivElement | null>(null)
+
+  const { testBinarySystem, testBinaryWinRate } = useTrading()
 
   const {
     panel,
@@ -118,6 +122,21 @@ export default function Layout({
 
     setPanel(panel === nextPanel ? "none" : nextPanel)
   }
+
+  useEffect(() => {
+    if (
+      testBinarySystem &&
+      (panel === "deposit" || panel === "withdraw" || panel === "history")
+    ) {
+      setPanel("none")
+    }
+  }, [panel, setPanel, testBinarySystem])
+
+  useEffect(() => {
+    if (testBinarySystem && currentPage === "wallet") {
+      onNavigate("terminal")
+    }
+  }, [currentPage, onNavigate, testBinarySystem])
 
   const isMobile = viewportWidth <= 900
 
@@ -315,9 +334,13 @@ export default function Layout({
             overflowY: "auto",
           }}
         >
-          {NAV_ITEMS.concat(
+          {NAV_ITEMS.filter((item) => !(testBinarySystem && item.id === "wallet")).concat(
             user?.role === "admin" || user?.role === "super_admin" 
               ? [{ id: "admin" as Page, label: "Admin", icon: <GridIcon /> }] 
+              : []
+          ).concat(
+            user?.role === "super_admin"
+              ? [{ id: "superadmin" as Page, label: "Super Admin", icon: <ShieldIcon /> }]
               : []
           ).map((item) => (
             <button
@@ -484,18 +507,22 @@ export default function Layout({
 
             {!isMobile && (
               <>
-                <HeaderActionButton
-                  label="Withdraw"
-                  icon={<WithdrawIcon />}
-                  onClick={() => openPanel("withdraw")}
-                  active={panel === "withdraw"}
-                />
-                <HeaderActionButton
-                  label="History"
-                  icon={<HistorySmallIcon />}
-                  onClick={() => openPanel("history")}
-                  active={panel === "history"}
-                />
+                {!testBinarySystem && (
+                  <HeaderActionButton
+                    label="Withdraw"
+                    icon={<WithdrawIcon />}
+                    onClick={() => openPanel("withdraw")}
+                    active={panel === "withdraw"}
+                  />
+                )}
+                {!testBinarySystem && (
+                  <HeaderActionButton
+                    label="History"
+                    icon={<HistorySmallIcon />}
+                    onClick={() => openPanel("history")}
+                    active={panel === "history"}
+                  />
+                )}
                 <HeaderChip
                   accent
                   label="AI"
@@ -544,7 +571,25 @@ export default function Layout({
               flexShrink: 0,
             }}
           >
-            <div ref={balanceRef} style={{ position: "relative" }}>
+            {testBinarySystem && (
+              <span
+                aria-label="Isolated test binary system, no real wallet activity"
+                style={{
+                  color: "#FCD34D",
+                  border: "1px solid rgba(245,158,11,0.35)",
+                  padding: "6px 9px",
+                  fontSize: 9,
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                TEST · {Math.round((testBinaryWinRate ?? 0) * 100)}% SIMULATED
+              </span>
+            )}
+            <div
+              ref={balanceRef}
+              style={{ position: "relative", display: testBinarySystem ? "none" : undefined }}
+            >
               <button
                 aria-label="Open balance account selector"
                 aria-expanded={balanceMenuOpen}
@@ -694,6 +739,8 @@ export default function Layout({
             <button
               aria-label="Open deposit panel"
               style={{
+                display: testBinarySystem ? "none" : undefined,
+
                 padding: "8px 18px",
 
                 borderRadius: 10,
@@ -928,18 +975,22 @@ export default function Layout({
               gap: 7,
             }}
           >
-            <button
-              className="nav-chip-btn"
-              onClick={() => openPanel("withdraw")}
-            >
-              Withdraw
-            </button>
-            <button
-              className="nav-chip-btn"
-              onClick={() => openPanel("history")}
-            >
-              History
-            </button>
+            {!testBinarySystem && (
+              <button
+                className="nav-chip-btn"
+                onClick={() => openPanel("withdraw")}
+              >
+                Withdraw
+              </button>
+            )}
+            {!testBinarySystem && (
+              <button
+                className="nav-chip-btn"
+                onClick={() => openPanel("history")}
+              >
+                History
+              </button>
+            )}
             <button className="nav-chip-btn" onClick={() => openPanel("ai")}>
               AI
             </button>
@@ -949,12 +1000,14 @@ export default function Layout({
             <button className="nav-chip-btn" onClick={() => openPanel("learn")}>
               How to Trade
             </button>
-            <button
-              className="nav-chip-btn"
-              onClick={() => openPanel("deposit")}
-            >
-              Deposit
-            </button>
+            {!testBinarySystem && (
+              <button
+                className="nav-chip-btn"
+                onClick={() => openPanel("deposit")}
+              >
+                Deposit
+              </button>
+            )}
           </div>
         )}
 
@@ -1147,6 +1200,22 @@ function GridIcon() {
       <rect x="14" y="3" width="7" height="7" rx="1.5" />
       <rect x="3" y="14" width="7" height="7" rx="1.5" />
       <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  )
+}
+
+function ShieldIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="m9 12 2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }

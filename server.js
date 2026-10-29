@@ -53,6 +53,11 @@ const PORT = Number(process.env.PORT || 8080)
 
 const SIMULATION_MODE = process.env.SIMULATION_MODE === "true"
 
+const TEST_BINARY_SYSTEM_ENABLED =
+  SIMULATION_MODE &&
+  process.env.ENABLE_TEST_BINARY_SYSTEM === "true" &&
+  (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test")
+
 const MARKET_SEEDS = [
   {
     symbol: "VOL-10",
@@ -247,6 +252,8 @@ const adminSimPolicy = {
   lastAppliedAt: null,
 }
 
+const testBinaryAccounts = new Map()
+
 const marketState = createInitialState()
 
 const accountStates = new Map()
@@ -288,7 +295,7 @@ wss.on("connection", (socket) => {
 
   sendClientState(socket)
 
-  socket.on("message", (raw) => {
+  socket.on("message", async (raw) => {
     try {
       const message = JSON.parse(raw.toString())
 
@@ -508,6 +515,156 @@ wss.on("connection", (socket) => {
             action: "Admin simulation policy updated",
           }),
         )
+
+        return
+      }
+
+      if (message.type === "SIM_SET_TEST_ACCOUNT") {
+        const session = sessions.get(socket) || createSession("demo-auth-token")
+
+        if (!TEST_BINARY_SYSTEM_ENABLED || session.role !== "super_admin") {
+          socket.send(
+            JSON.stringify({
+              type: "ACK",
+              ok: false,
+              error: "Test binary assignments require simulation super-admin access",
+            }),
+          )
+
+          return
+        }
+
+        const userId = String(message.userId ?? "").trim()
+        const enabled = message.enabled === true
+
+        if (!/^\d+$/.test(userId) || Number(userId) <= 0) {
+          socket.send(
+            JSON.stringify({
+              type: "ACK",
+              ok: false,
+              error: "Enter a valid user ID",
+            }),
+          )
+
+          return
+        }
+
+        const testAccountState = accountStates.get(`test:${userId}`)
+
+        if (testAccountState?.openTrades.length) {
+          socket.send(
+            JSON.stringify({
+              type: "ACK",
+              ok: false,
+              error: "Settle all test trades before changing this assignment",
+            }),
+          )
+
+          return
+        }
+
+        if (enabled) {
+          const realAccountState = accountStates.get(`user:${userId}`)
+          const persistedBalance = persistedBalances.get(`user:${userId}`)
+
+          if (
+            realAccountState?.openTrades.length ||
+            (realAccountState &&
+              persistedBalance !== undefined &&
+              realAccountState.balance !== persistedBalance)
+          ) {
+            socket.send(
+              JSON.stringify({
+                type: "ACK",
+                ok: false,
+                error: "Close real trades and sync the real wallet before assigning a test system",
+              }),
+            )
+
+            return
+          }
+
+          if (testBinaryAccounts.has(userId)) {
+            socket.send(
+              JSON.stringify({
+                type: "ACK",
+                ok: false,
+                error: "This user already has a test assignment; remove it before assigning again",
+              }),
+            )
+
+            return
+          }
+
+          const initialBalance = round2(Number(message.initialBalance))
+
+          if (!Number.isFinite(initialBalance) || initialBalance < 0 || initialBalance > 100000000) {
+            socket.send(
+              JSON.stringify({
+                type: "ACK",
+                ok: false,
+                error: "Test balance must be between 0 and 100,000,000",
+              }),
+            )
+
+            return
+          }
+
+          testBinaryAccounts.set(userId, { initialBalance, winRate: 0.8 })
+          accountStates.delete(`test:${userId}`)
+        } else {
+          if (!testBinaryAccounts.has(userId)) {
+            socket.send(
+              JSON.stringify({
+                type: "ACK",
+                ok: false,
+                error: "This user does not have a test assignment",
+              }),
+            )
+
+            return
+          }
+
+          try {
+            await restoreRealAccountBalance(userId)
+          } catch (error) {
+            socket.send(
+              JSON.stringify({
+                type: "ACK",
+                ok: false,
+                error: "Could not restore the real wallet; test assignment remains active",
+              }),
+            )
+
+            return
+          }
+
+          testBinaryAccounts.delete(userId)
+          accountStates.delete(`test:${userId}`)
+        }
+
+        for (const client of clients) {
+          const clientSession = sessions.get(client)
+
+          if (String(clientSession?.userId ?? "") === userId) {
+            if (client.readyState === WebSocket.OPEN) {
+              sendAuthState(client)
+              sendClientState(client)
+            }
+          }
+        }
+
+        sendAuthState(socket)
+
+        socket.send(
+          JSON.stringify({
+            type: "ACK",
+            ok: true,
+            action: enabled
+              ? `Enabled test binary system for user ${userId}`
+              : `Disabled test binary system for user ${userId}`,
+          }),
+        )
       }
     } catch (error) {
       socket.send(
@@ -615,7 +772,11 @@ async function syncUserSession(socket, token) {
 
   sendPolicyState(socket)
 
-  if (session.userId && process.env.SUPABASE_URL) {
+  if (
+    session.userId &&
+    !getTestBinaryPolicy(session) &&
+    process.env.SUPABASE_URL
+  ) {
     try {
       const walletUrl = `${process.env.SUPABASE_URL}/rest/v1/wallets?user_id=eq.${session.userId}`
 
@@ -665,7 +826,7 @@ async function syncBalanceToDb() {
   for (const client of clients) {
     const session = sessions.get(client)
 
-    if (session?.userId) {
+    if (session?.userId && !getTestBinaryPolicy(session)) {
       updates.set(getAccountKey(session), session)
     }
   }
@@ -678,6 +839,8 @@ async function syncBalanceToDb() {
 }
 
 async function syncAccountBalance(session) {
+  if (getTestBinaryPolicy(session)) return
+
   const key = getAccountKey(session)
   const activeSync = balanceSyncs.get(key)
 
@@ -752,7 +915,15 @@ function getAccountState(session) {
   if (!accountState) {
     accountState = { ...createInitialState(), markets: marketState.markets }
     accountStates.set(key, accountState)
-    if (session.userId) persistedBalances.set(key, accountState.balance)
+
+    const testPolicy = getTestBinaryPolicy(session)
+
+    if (testPolicy) {
+      accountState.balance = testPolicy.initialBalance
+      accountState.closedTrades = []
+      accountState.realizedPnl = 0
+      accountState.lastAction = "Isolated test binary system ready"
+    }
   }
 
   accountState.markets = marketState.markets
@@ -760,10 +931,22 @@ function getAccountState(session) {
 }
 
 function getAccountKey(session) {
+  if (getTestBinaryPolicy(session)) return `test:${session.userId}`
+
   return session.userId ? `user:${session.userId}` : "demo"
 }
 
+function getTestBinaryPolicy(session) {
+  if (!TEST_BINARY_SYSTEM_ENABLED || !session?.userId) return null
+
+  return testBinaryAccounts.get(String(session.userId)) ?? null
+}
+
 async function refreshUserBalance(socket, session) {
+  if (getTestBinaryPolicy(session)) {
+    throw new Error("Wallet refresh is unavailable in the test binary system")
+  }
+
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
     throw new Error("Wallet storage is not configured")
   }
@@ -789,6 +972,36 @@ async function refreshUserBalance(socket, session) {
   socket.send(JSON.stringify({ type: "ACK", ok: true, action: "Wallet refreshed" }))
 }
 
+async function restoreRealAccountBalance(userId) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return
+
+  const walletUrl = `${process.env.SUPABASE_URL}/rest/v1/wallets?user_id=eq.${encodeURIComponent(userId)}`
+  const headers = {
+    apikey: process.env.SUPABASE_SECRET_KEY,
+    Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+  }
+  const response = await fetch(walletUrl, { headers })
+
+  if (!response.ok) throw new Error(`Wallet restore failed: ${response.status}`)
+
+  const wallets = await response.json()
+  const balance = Number(wallets?.[0]?.current_balance)
+
+  if (!Number.isFinite(balance)) throw new Error("Wallet balance is unavailable")
+
+  const key = `user:${userId}`
+  const accountState =
+    accountStates.get(key) ?? {
+      ...createInitialState(),
+      markets: marketState.markets,
+    }
+
+  accountState.balance = balance
+  accountState.lastAction = "Real wallet restored after test assignment"
+  accountStates.set(key, accountState)
+  persistedBalances.set(key, balance)
+}
+
 function sendClientState(socket) {
   const session = sessions.get(socket) || createSession("demo-auth-token")
   const state = getAccountState(session)
@@ -797,6 +1010,15 @@ function sendClientState(socket) {
 
 function sendAuthState(socket) {
   const session = sessions.get(socket) || createSession("demo-auth-token")
+  const testPolicy = getTestBinaryPolicy(session)
+  const testAccounts =
+    TEST_BINARY_SYSTEM_ENABLED && session.role === "super_admin"
+      ? [...testBinaryAccounts.entries()].map(([userId, policy]) => ({
+          userId,
+          initialBalance: policy.initialBalance,
+          winRate: policy.winRate,
+        }))
+      : []
 
   socket.send(
     JSON.stringify({
@@ -807,6 +1029,14 @@ function sendAuthState(socket) {
       role: session.role,
 
       capabilities: session.capabilities,
+
+      testBinaryAvailable: TEST_BINARY_SYSTEM_ENABLED,
+
+      testBinarySystem: Boolean(testPolicy),
+
+      testBinaryWinRate: testPolicy?.winRate ?? null,
+
+      testBinaryAccounts: testAccounts,
     }),
   )
 }
@@ -1035,6 +1265,8 @@ function placeTrade(currentState, input, session) {
 
     traderRole: session?.role || "user",
 
+    testBinaryWinRate: getTestBinaryPolicy(session)?.winRate,
+
     status: "open",
 
     createdAt: Date.now(),
@@ -1102,12 +1334,17 @@ function adjustBalance(currentState, amount, reason) {
 function resolveTrade(trade, exitPrice, settledAt) {
   const exitDigit = lastDigit(exitPrice)
 
-  const forcedOutcome = consumeForcedOutcomeForTrade(trade)
+  const forcedOutcome =
+    trade.testBinaryWinRate === undefined
+      ? consumeForcedOutcomeForTrade(trade)
+      : null
 
   const won =
-    forcedOutcome === null
-      ? isWinningTrade(trade, exitPrice, exitDigit)
-      : forcedOutcome === "won"
+    trade.testBinaryWinRate !== undefined
+      ? Math.random() < trade.testBinaryWinRate
+      : forcedOutcome === null
+        ? isWinningTrade(trade, exitPrice, exitDigit)
+        : forcedOutcome === "won"
 
   const payout = won ? round2(trade.stake * trade.payoutMultiplier) : 0
 

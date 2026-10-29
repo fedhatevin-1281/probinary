@@ -500,6 +500,7 @@ function loadPersistedState(): PersistedState | null {
 function makeTradeTransaction(
   trade: BinaryTrade,
   balanceAfterUsd: number,
+  isTestSystem = false,
 ): WalletTransaction {
   return {
     id: makeId("txn-trade"),
@@ -516,9 +517,9 @@ function makeTradeTransaction(
 
     balanceAfterUsd,
 
-    source: "real",
+    source: isTestSystem || trade.isDemo ? "demo" : "real",
 
-    note: `${trade.symbol} ${formatTradeType(trade)}`,
+    note: `${isTestSystem ? "TEST · " : ""}${trade.symbol} ${formatTradeType(trade)}`,
   }
 }
 
@@ -1259,7 +1260,13 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
           demoGains += trade.payout
         }
 
-        appendTransaction(makeTradeTransaction(trade, trade.isDemo ? demoBalance + demoGains : trading.balance))
+        appendTransaction(
+          makeTradeTransaction(
+            trade,
+            trade.isDemo ? demoBalance + demoGains : trading.balance,
+            trading.testBinarySystem,
+          ),
+        )
 
         addNotification({
           category: "trades",
