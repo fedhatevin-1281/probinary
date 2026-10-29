@@ -24,6 +24,7 @@ export default async function handler(req, res) {
   }
 
   const amountUsd = Math.round(Number(req.body?.amountUsd) * 100) / 100
+  const payCurrency = String(req.body?.payCurrency || "").trim().toLowerCase()
 
   if (
     !Number.isFinite(amountUsd) ||
@@ -35,14 +36,18 @@ export default async function handler(req, res) {
     })
   }
 
+  if (!/^[a-z0-9]+$/.test(payCurrency)) {
+    return res.status(400).json({ error: "Choose a supported cryptocurrency." })
+  }
+
+  if (!process.env.NOWPAYMENTS_API_KEY || !process.env.NOWPAYMENTS_IPN_SECRET) {
+    return res.status(503).json({ error: "NOWPayments is not configured" })
+  }
+
   let appUrl
 
   try {
     appUrl = getPublicAppUrl()
-
-    if (!process.env.NOWPAYMENTS_API_KEY || !process.env.NOWPAYMENTS_IPN_SECRET) {
-      throw new Error("NOWPayments is not configured")
-    }
   } catch (error) {
     return res.status(503).json({ error: error.message })
   }
@@ -52,6 +57,15 @@ export default async function handler(req, res) {
   const timestamp = new Date().toISOString()
 
   try {
+    const currencyResult = await nowPaymentsRequest("/currencies")
+    const currencies = Array.isArray(currencyResult?.currencies)
+      ? currencyResult.currencies.map((currency) => String(currency).toLowerCase())
+      : []
+
+    if (!currencies.includes(payCurrency)) {
+      return res.status(400).json({ error: "That cryptocurrency is not currently supported." })
+    }
+
     await supabaseRequest("/nowpayments_orders", {
       method: "POST",
       headers: { Prefer: "return=minimal" },
@@ -65,29 +79,31 @@ export default async function handler(req, res) {
       }),
     })
 
-    const successUrl = new URL(appUrl)
-    successUrl.searchParams.set("nowpayments_order", orderId)
-
-    const cancelUrl = new URL(appUrl)
-    cancelUrl.searchParams.set("nowpayments_cancelled", orderId)
-
-    const invoice = await nowPaymentsRequest("/invoice", {
+    const payment = await nowPaymentsRequest("/payment", {
       method: "POST",
       body: JSON.stringify({
         price_amount: amountUsd,
         price_currency: "usd",
+        pay_currency: payCurrency,
         order_id: orderId,
         order_description: `Pro Binary wallet deposit ${orderId}`,
         ipn_callback_url: `${appUrl}/api/payments/nowpayments/webhook`,
-        success_url: successUrl.toString(),
-        cancel_url: cancelUrl.toString(),
       }),
     })
 
-    const invoiceUrl = new URL(invoice.invoice_url)
+    const paymentId = String(payment.payment_id || "")
+    const payAddress = String(payment.pay_address || "")
+    const payAmount = Number(payment.pay_amount)
+    const returnedCurrency = String(payment.pay_currency || payCurrency).toLowerCase()
+    const payinExtraId = payment.payin_extra_id
+      ? String(payment.payin_extra_id)
+      : null
+    const payinExtraIdName = payment.payin_extra_id_name
+      ? String(payment.payin_extra_id_name)
+      : null
 
-    if (invoiceUrl.protocol !== "https:") {
-      throw new Error("NOWPayments returned an invalid invoice URL")
+    if (!paymentId || !payAddress || !Number.isFinite(payAmount) || payAmount <= 0) {
+      throw new Error("NOWPayments returned incomplete payment instructions")
     }
 
     await supabaseRequest(
@@ -95,9 +111,13 @@ export default async function handler(req, res) {
       {
         method: "PATCH",
         body: JSON.stringify({
-          invoice_id: String(invoice.id),
-          invoice_url: invoiceUrl.toString(),
-          payment_status: "waiting",
+          payment_id: paymentId,
+          pay_address: payAddress,
+          pay_amount: payAmount,
+          pay_currency: returnedCurrency,
+          payin_extra_id: payinExtraId,
+          payin_extra_id_name: payinExtraIdName,
+          payment_status: payment.payment_status || "waiting",
           updated_at: new Date().toISOString(),
         }),
       },
@@ -105,10 +125,20 @@ export default async function handler(req, res) {
 
     return res.status(201).json({
       orderId,
-      invoiceUrl: invoiceUrl.toString(),
+      amountUsd,
+      status: payment.payment_status || "waiting",
+      paymentId,
+      payAddress,
+      payAmount,
+      payCurrency: returnedCurrency,
+      payinExtraId,
+      payinExtraIdName,
+      creditedAt: null,
+      createdAt: timestamp,
+      currentBalance: null,
     })
   } catch (error) {
-    console.error("NOWPayments invoice creation failed:", error)
+    console.error("NOWPayments payment creation failed:", error)
 
     await supabaseRequest(
       `/nowpayments_orders?order_id=eq.${encodeURIComponent(orderId)}`,
@@ -123,6 +153,6 @@ export default async function handler(req, res) {
       console.error("Could not update failed NOWPayments order:", updateError)
     })
 
-    return res.status(502).json({ error: "Could not create a crypto invoice." })
+    return res.status(502).json({ error: "Could not create a crypto payment." })
   }
 }

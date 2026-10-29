@@ -5,11 +5,23 @@ create table if not exists public.nowpayments_orders (
   invoice_id text unique,
   invoice_url text,
   payment_id text,
+  pay_address text,
+  pay_amount numeric(36, 18),
+  pay_currency text,
+  payin_extra_id text,
+  payin_extra_id_name text,
   payment_status text not null default 'creating',
   credited_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.nowpayments_orders
+  add column if not exists pay_address text,
+  add column if not exists pay_amount numeric(36, 18),
+  add column if not exists pay_currency text,
+  add column if not exists payin_extra_id text,
+  add column if not exists payin_extra_id_name text;
 
 create index if not exists nowpayments_orders_user_created_idx
   on public.nowpayments_orders (user_id, created_at desc);
@@ -72,6 +84,11 @@ begin
   if lower(p_price_currency) <> 'usd'
      or p_amount_usd <> payment_order.amount_usd then
     raise exception 'NOWPayments payment amount or currency mismatch';
+  end if;
+
+  if payment_order.payment_id is not null
+     and payment_order.payment_id <> p_payment_id then
+    raise exception 'NOWPayments payment ID mismatch';
   end if;
 
   if payment_order.credited_at is not null then

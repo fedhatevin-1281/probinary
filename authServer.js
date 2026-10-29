@@ -12,7 +12,9 @@ import bcrypt from "bcryptjs"
 
 import jwt from "jsonwebtoken"
 
-import createNowPaymentsInvoice from "./api/payments/nowpayments/create-invoice.js"
+import createNowPaymentsPayment from "./api/payments/nowpayments/create-payment.js"
+
+import getNowPaymentsCurrencies from "./api/payments/nowpayments/currencies.js"
 
 import getNowPaymentsStatus from "./api/payments/nowpayments/status.js"
 
@@ -107,7 +109,9 @@ app.use(cors())
 
 app.use(express.json())
 
-app.post("/payments/nowpayments/create-invoice", createNowPaymentsInvoice)
+app.get("/payments/nowpayments/currencies", getNowPaymentsCurrencies)
+
+app.post("/payments/nowpayments/create-payment", createNowPaymentsPayment)
 
 app.get("/payments/nowpayments/status", getNowPaymentsStatus)
 

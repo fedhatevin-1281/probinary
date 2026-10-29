@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
   try {
     const orders = await supabaseRequest(
-      `/nowpayments_orders?order_id=eq.${encodeURIComponent(orderId)}&user_id=eq.${encodeURIComponent(String(user.id))}&select=order_id,amount_usd,payment_status,payment_id,credited_at,created_at`,
+      `/nowpayments_orders?order_id=eq.${encodeURIComponent(orderId)}&user_id=eq.${encodeURIComponent(String(user.id))}&select=order_id,amount_usd,payment_status,payment_id,pay_address,pay_amount,pay_currency,payin_extra_id,payin_extra_id_name,credited_at,created_at`,
     )
 
     if (!orders?.length) return res.status(404).json({ error: "Deposit not found" })
@@ -36,6 +36,11 @@ export default async function handler(req, res) {
       amountUsd: Number(order.amount_usd),
       status: order.credited_at ? "completed" : order.payment_status,
       paymentId: order.payment_id,
+      payAddress: order.pay_address,
+      payAmount: order.pay_amount === null ? null : Number(order.pay_amount),
+      payCurrency: order.pay_currency,
+      payinExtraId: order.payin_extra_id,
+      payinExtraIdName: order.payin_extra_id_name,
       creditedAt: order.credited_at,
       createdAt: order.created_at,
       currentBalance: wallets?.length ? Number(wallets[0].current_balance) : null,

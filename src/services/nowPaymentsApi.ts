@@ -3,6 +3,11 @@ export interface NowPaymentsOrder {
   amountUsd: number
   status: string
   paymentId: string | null
+  payAddress: string | null
+  payAmount: number | null
+  payCurrency: string | null
+  payinExtraId: string | null
+  payinExtraIdName: string | null
   creditedAt: string | null
   createdAt: string
   currentBalance: number | null
@@ -52,12 +57,18 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return result as T
 }
 
-export function createNowPaymentsInvoice(amountUsd: number) {
-  return request<{ orderId: string; invoiceUrl: string }>(
-    "/payments/nowpayments/create-invoice",
+export function getNowPaymentsCurrencies() {
+  return request<{ currencies: string[] }>("/payments/nowpayments/currencies").then(
+    (result) => result.currencies,
+  )
+}
+
+export function createNowPaymentsPayment(amountUsd: number, payCurrency: string) {
+  return request<NowPaymentsOrder>(
+    "/payments/nowpayments/create-payment",
     {
       method: "POST",
-      body: JSON.stringify({ amountUsd }),
+      body: JSON.stringify({ amountUsd, payCurrency }),
     },
   )
 }

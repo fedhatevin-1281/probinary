@@ -28,7 +28,7 @@ export default async function handler(req, res) {
 
   try {
     const orders = await supabaseRequest(
-      `/nowpayments_orders?order_id=eq.${encodeURIComponent(orderId)}&select=order_id,amount_usd,invoice_id,credited_at`,
+      `/nowpayments_orders?order_id=eq.${encodeURIComponent(orderId)}&select=order_id,amount_usd,invoice_id,payment_id,credited_at`,
     )
 
     if (!orders?.length) return res.status(404).json({ error: "Order not found" })
@@ -41,11 +41,12 @@ export default async function handler(req, res) {
 
     if (
       (invoiceId && order.invoice_id && invoiceId !== String(order.invoice_id)) ||
+      (order.payment_id && payload.payment_id && String(payload.payment_id) !== String(order.payment_id)) ||
       currency !== "usd" ||
       !Number.isFinite(amount) ||
       amount !== expectedAmount
     ) {
-      return res.status(400).json({ error: "IPN does not match the invoice" })
+      return res.status(400).json({ error: "IPN does not match the stored payment" })
     }
 
     if (paymentStatus === "finished") {

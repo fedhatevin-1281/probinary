@@ -15,7 +15,7 @@ import {
 } from "../services/appApi"
 
 import {
-  createNowPaymentsInvoice,
+  createNowPaymentsPayment,
   getNowPaymentsOrder,
   type NowPaymentsOrder,
 } from "../services/nowPaymentsApi"
@@ -207,6 +207,7 @@ interface WithdrawInput {
 
 interface DepositInput {
   amountUsd: number
+  payCurrency: string
 }
 
 interface AppHeaderContextValue {
@@ -274,8 +275,7 @@ interface AppHeaderContextValue {
     input: DepositInput,
   ) => Promise<{
     ok: boolean
-    orderId?: string
-    invoiceUrl?: string
+    order?: NowPaymentsOrder
     error?: string
   }>
 
@@ -924,10 +924,10 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
       setLoadingStates((prev) => ({ ...prev, deposit: true }))
 
       try {
-        const order = await createNowPaymentsInvoice(amountUsd)
+        const order = await createNowPaymentsPayment(amountUsd, input.payCurrency)
 
         setPendingCryptoOrderId(order.orderId)
-        setCryptoOrderStatus(null)
+        setCryptoOrderStatus(order)
         setCryptoOrderError(null)
 
         const item: DepositRequest = {
@@ -955,12 +955,12 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
 
           title: "Crypto deposit started",
 
-          description: `A ${formatUsd(amountUsd)} NOWPayments invoice is ready. Your balance updates after payment confirmation.`,
+          description: `A ${formatUsd(amountUsd)} ${order.payCurrency?.toUpperCase()} deposit address is ready. Your balance updates after payment confirmation.`,
         })
 
-        pushToast("info", "NOWPayments invoice created")
+        pushToast("info", "Deposit address ready")
 
-        return { ok: true, orderId: order.orderId, invoiceUrl: order.invoiceUrl }
+        return { ok: true, order }
       } catch (error) {
         return {
           ok: false,

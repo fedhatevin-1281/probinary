@@ -7,6 +7,11 @@ import {
   type KeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react"
+import { QRCodeSVG } from "qrcode.react"
+
+import {
+  getNowPaymentsCurrencies,
+} from "../services/nowPaymentsApi"
 
 import {
   useTopNav,
@@ -411,6 +416,14 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
 
   const [amountUsd, setAmountUsd] = useState("10")
 
+  const [payCurrencies, setPayCurrencies] = useState<string[]>([])
+
+  const [payCurrency, setPayCurrency] = useState("")
+
+  const [currenciesError, setCurrenciesError] = useState<string | null>(null)
+
+  const [addressCopied, setAddressCopied] = useState(false)
+
   const [error, setError] = useState<string | null>(null)
 
   const amount = Number(amountUsd || "0")
@@ -419,16 +432,38 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
 
   const belowMinimum = !Number.isFinite(amount) || amount < effectiveMinimum
 
+  useEffect(() => {
+    let active = true
+
+    void getNowPaymentsCurrencies()
+      .then((currencies) => {
+        if (!active) return
+        setPayCurrencies(currencies)
+        setPayCurrency((current) => current || currencies[0] || "")
+      })
+      .catch((fetchError) => {
+        if (active) {
+          setCurrenciesError(
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Could not load supported cryptocurrencies.",
+          )
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
   const submit = async () => {
     setError(null)
-    const result = await submitDeposit({ amountUsd: amount })
+    const result = await submitDeposit({ amountUsd: amount, payCurrency })
 
-    if (!result.ok || !result.invoiceUrl || !result.orderId) {
-      setError(result.error || "Could not create a crypto invoice.")
+    if (!result.ok || !result.order) {
+      setError(result.error || "Could not create a crypto payment.")
       return
     }
-
-    window.location.assign(result.invoiceUrl)
   }
 
   return (
@@ -464,8 +499,27 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
         <div className="nav-feature-form-grid">
           <label className="field-label">Payment method</label>
           <div style={{ ...sectionCardStyle, fontSize: 13, color: "#DDD6FE" }}>
-            Cryptocurrency via NOWPayments. Choose a supported coin and network at checkout. Confirmed payments credit your real wallet.
+            Cryptocurrency via NOWPayments. Your wallet is credited after payment confirmation.
           </div>
+
+          <label className="field-label" htmlFor="deposit-crypto-currency">Cryptocurrency</label>
+          <select
+            id="deposit-crypto-currency"
+            className="field-input"
+            value={payCurrency}
+            onChange={(event) => setPayCurrency(event.target.value)}
+            disabled={!payCurrencies.length || loadingStates.deposit}
+          >
+            {payCurrencies.length ? (
+              payCurrencies.map((currency) => (
+                <option key={currency} value={currency}>
+                  {currency.toUpperCase()}
+                </option>
+              ))
+            ) : (
+              <option value="">Loading currencies…</option>
+            )}
+          </select>
 
           <label className="field-label">Amount (USD)</label>
           <input
@@ -490,6 +544,9 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
           {error && (
             <div style={{ color: "#F87171", fontSize: 12 }}>{error}</div>
           )}
+          {currenciesError && (
+            <div style={{ color: "#F87171", fontSize: 12 }}>{currenciesError}</div>
+          )}
           {(cryptoOrderError || error) && (
             <div style={{ color: "#F87171", fontSize: 12 }}>{cryptoOrderError || error}</div>
           )}
@@ -507,10 +564,55 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
           <button
             className="nav-feature-primary"
             onClick={() => void submit()}
-            disabled={loadingStates.deposit || belowMinimum}
+            disabled={loadingStates.deposit || belowMinimum || !payCurrency}
           >
-            {loadingStates.deposit ? "Creating invoice..." : "Continue to crypto checkout"}
+            {loadingStates.deposit ? "Preparing deposit address..." : "Show deposit address"}
           </button>
+
+          {cryptoOrderStatus?.payAddress && (
+            <div style={{ ...sectionCardStyle, display: "grid", gap: 12 }}>
+              <div style={{ color: "#F5F3FF", fontSize: 14, fontWeight: 600 }}>
+                Send {cryptoOrderStatus.payAmount} {cryptoOrderStatus.payCurrency?.toUpperCase()}
+              </div>
+              <div style={{ justifySelf: "center", background: "#FFFFFF", padding: 10, borderRadius: 8 }}>
+                <QRCodeSVG
+                  value={cryptoOrderStatus.payAddress}
+                  size={184}
+                  level="M"
+                  title={`Deposit address for ${cryptoOrderStatus.payCurrency?.toUpperCase()}`}
+                />
+              </div>
+              <label className="field-label" htmlFor="deposit-wallet-address">Deposit address</label>
+              <textarea
+                id="deposit-wallet-address"
+                className="field-input"
+                value={cryptoOrderStatus.payAddress}
+                readOnly
+                rows={3}
+                style={{ resize: "vertical", overflowWrap: "anywhere" }}
+              />
+              <button
+                type="button"
+                className="nav-feature-primary"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(cryptoOrderStatus.payAddress || "").then(() => {
+                    setAddressCopied(true)
+                    window.setTimeout(() => setAddressCopied(false), 1800)
+                  })
+                }}
+              >
+                {addressCopied ? "Address copied" : "Copy address"}
+              </button>
+              {cryptoOrderStatus.payinExtraId && (
+                <div style={{ color: "#DDD6FE", fontSize: 12, overflowWrap: "anywhere" }}>
+                  {cryptoOrderStatus.payinExtraIdName || "Payment memo"}: {cryptoOrderStatus.payinExtraId}
+                </div>
+              )}
+              <div style={{ color: "#A7A0BC", fontSize: 12 }}>
+                Deposit status: {cryptoOrderStatus.status.replaceAll("_", " ")}. Keep this panel open to track confirmation.
+              </div>
+            </div>
+          )}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
