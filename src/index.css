@@ -21,6 +21,178 @@ body {
 
 * { box-sizing: border-box; }
 
+.auth-page {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 0.82fr);
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: auto;
+  background: #09090F;
+  color: #FFFFFF;
+  animation: slide-up 0.25s ease-out;
+}
+
+.auth-brand-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  min-height: 100%;
+  padding: clamp(32px, 6vw, 88px);
+  overflow: hidden;
+  background-color: #111713;
+  background-image: linear-gradient(rgba(141, 240, 178, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(141, 240, 178, 0.035) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.auth-brand-panel::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, rgba(10, 15, 12, 0.15), rgba(10, 15, 12, 0.78));
+  content: "";
+  pointer-events: none;
+}
+
+.auth-brand-top,
+.auth-brand-copy,
+.auth-market-visual,
+.auth-brand-footnote {
+  position: relative;
+  z-index: 1;
+}
+
+.auth-brand-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.auth-brand-logo {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.auth-brand-logo span { color: #8DF0B2; }
+
+.auth-market-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #B8C6BC;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.auth-market-status span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8DF0B2;
+  box-shadow: 0 0 12px rgba(141, 240, 178, 0.65);
+}
+
+.auth-brand-copy { max-width: 580px; margin: auto 0 34px; }
+
+.auth-brand-copy p {
+  margin: 0 0 18px;
+  color: #8DF0B2;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+}
+
+.auth-brand-copy h1 {
+  margin: 0 0 18px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(44px, 5vw, 72px);
+  font-weight: 600;
+  line-height: 1.03;
+}
+
+.auth-brand-copy > span {
+  display: block;
+  max-width: 410px;
+  color: #A7B1AA;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.auth-market-visual {
+  width: 100%;
+  max-width: 640px;
+  padding: 18px 20px 14px;
+  border: 1px solid rgba(200, 230, 207, 0.12);
+  background: rgba(8, 13, 10, 0.55);
+}
+
+.auth-market-label { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 14px; }
+.auth-market-label span,
+.auth-market-footer { color: #758179; font-family: 'IBM Plex Mono', monospace; font-size: 9px; }
+.auth-market-label strong { color: #E8F0EA; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 500; }
+.auth-market-label em { color: #8DF0B2; font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-style: normal; }
+.auth-market-visual svg { display: block; width: 100%; height: 150px; margin: 16px 0 10px; }
+.auth-market-footer { display: flex; justify-content: space-between; gap: 12px; }
+.auth-brand-footnote { margin: 24px 0 0; color: #748078; font-size: 11px; }
+
+.auth-form-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 100%;
+  padding: 40px clamp(28px, 6vw, 88px);
+  overflow-y: auto;
+  background: #09090F;
+}
+
+.auth-form-inner {
+  width: min(440px, 100%);
+  margin: auto;
+}
+
+.auth-close { flex: 0 0 auto; }
+
+@media (max-width: 760px) {
+  .auth-page {
+    position: fixed;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .auth-brand-panel {
+    min-height: 0;
+    padding: max(20px, env(safe-area-inset-top)) 24px 18px;
+    background-size: 36px 36px;
+  }
+
+  .auth-brand-top { gap: 12px; }
+  .auth-brand-logo { font-size: 19px; }
+  .auth-market-status { font-size: 9px; }
+  .auth-brand-copy,
+  .auth-market-visual,
+  .auth-brand-footnote,
+  .auth-brand-panel::after { display: none; }
+
+  .auth-form-panel {
+    align-items: flex-start;
+    min-height: 0;
+    padding: 12px 20px max(24px, env(safe-area-inset-bottom));
+  }
+
+  .auth-form-inner { margin: 0 auto; }
+}
+
+@media (max-width: 380px) {
+  .auth-form-panel { padding-right: 14px; padding-left: 14px; }
+  .auth-form-inner form { padding-right: 18px !important; padding-left: 18px !important; }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 3px; height: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }

@@ -32,54 +32,6 @@ interface AuthModalProps {
 
 type AuthTab = "login" | "register" | "forgot" | "reset"
 
-const backdropStyle: CSSProperties = {
-  position: "fixed",
-
-  top: 0,
-
-  left: 0,
-
-  right: 0,
-
-  bottom: 0,
-
-  background: "rgba(5, 3, 10, 0.85)",
-
-  backdropFilter: "blur(8px)",
-
-  zIndex: 1000,
-
-  display: "flex",
-
-  alignItems: "center",
-
-  justifyContent: "center",
-
-  padding: 16,
-}
-
-const cardStyle: CSSProperties = {
-  width: "min(440px, 100%)",
-
-  background: "#141127",
-
-  border: "1px solid rgba(167, 139, 250, 0.25)",
-
-  borderRadius: 20,
-
-  boxShadow: "0 20px 60px rgba(12, 5, 25, 0.9)",
-
-  overflowY: "auto",
-
-  maxHeight: "95vh",
-
-  display: "flex",
-
-  flexDirection: "column",
-
-  animation: "slide-up 0.25s ease-out",
-}
-
 const headerStyle: CSSProperties = {
   padding: "20px 24px",
 
@@ -476,8 +428,60 @@ export default function AuthModal({
   }
 
   return createPortal(
-    <div style={backdropStyle} onClick={handleClose}>
-      <div style={cardStyle} onClick={(e) => e.stopPropagation()}>
+    <main className="auth-page">
+      <section className="auth-brand-panel" aria-label="Probinary trading">
+        <div className="auth-brand-top">
+          <span className="auth-brand-logo">
+            pro<span>binary</span>
+          </span>
+          <span className="auth-market-status">
+            <span /> MARKETS LIVE
+          </span>
+        </div>
+        <div className="auth-brand-copy">
+          <p>BUILT FOR THE NEXT MOVE</p>
+          <h1>Trade with clarity.</h1>
+          <span>
+            Find your edge in synthetic markets with tools built for decisive
+            trading.
+          </span>
+        </div>
+        <div className="auth-market-visual" aria-hidden="true">
+          <div className="auth-market-label">
+            <span>VOLATILITY 75 INDEX</span>
+            <strong>8,243.12</strong>
+            <em>+2.34%</em>
+          </div>
+          <svg viewBox="0 0 640 190" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="auth-chart-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#8DF0B2" stopOpacity="0.24" />
+                <stop offset="100%" stopColor="#8DF0B2" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M0 148 L36 132 L68 139 L104 92 L140 108 L176 72 L210 96 L248 61 L282 83 L320 48 L354 69 L392 35 L424 57 L462 28 L500 50 L536 18 L572 43 L606 15 L640 24 V190 H0 Z"
+              fill="url(#auth-chart-fill)"
+            />
+            <path
+              d="M0 148 L36 132 L68 139 L104 92 L140 108 L176 72 L210 96 L248 61 L282 83 L320 48 L354 69 L392 35 L424 57 L462 28 L500 50 L536 18 L572 43 L606 15 L640 24"
+              fill="none"
+              stroke="#8DF0B2"
+              strokeWidth="2.5"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+          <div className="auth-market-footer">
+            <span>24/7 MARKET ACCESS</span>
+            <span>REAL-TIME PRICING</span>
+            <span>FAST EXECUTION</span>
+          </div>
+        </div>
+        <p className="auth-brand-footnote">A clearer view of every opportunity.</p>
+      </section>
+
+      <section className="auth-form-panel">
+        <div className="auth-form-inner">
         {/* Header */}
         <div style={headerStyle}>
           <h2
@@ -498,6 +502,8 @@ export default function AuthModal({
           </h2>
           <button
             onClick={handleClose}
+            aria-label="Back to home"
+            className="auth-close"
             style={{
               background: "none",
 
@@ -803,8 +809,9 @@ export default function AuthModal({
             </button>
           </form>
         )}
-      </div>
-    </div>,
+        </div>
+      </section>
+    </main>,
 
     document.body,
   )
