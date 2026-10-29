@@ -31,7 +31,7 @@ This project is a Vite + React + Tailwind app and is ready to deploy to Vercel a
 
 Wallet credit is granted only for a signed `finished` IPN whose order, payment ID, and USD amount match the stored payment. A browser redirect alone never credits funds.
 
-If `VITE_API_URL` and `VITE_WS_URL` are not set, the app auto-derives from the current browser origin.
+If `VITE_API_URL` is not set, HTTP calls use the current browser origin. Set `VITE_WS_URL` to the separately deployed WebSocket server URL to enable live backend connections; without it, the app uses local simulation.
 
 ## Important Backend Note
 

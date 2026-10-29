@@ -286,7 +286,7 @@ type ServerMessage = { type: "STATE"; state: TradingState } | {
   error: string
 }
 
-function resolveWebSocketUrl() {
+function resolveWebSocketUrl(): string | null {
   const configured = import.meta.env.VITE_WS_URL
 
   if (configured) {
@@ -299,10 +299,10 @@ function resolveWebSocketUrl() {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
       return `${protocol}//${window.location.host}`
     }
-    return "ws://localhost:8080"
+    return null
   }
 
-  return "ws://localhost:8080"
+  return null
 }
 
 export const MARKET_SEEDS: MarketSeed[] = [
@@ -621,7 +621,14 @@ export function TradingProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const socket = new WebSocket(resolveWebSocketUrl())
+      const socketUrl = resolveWebSocketUrl()
+
+      if (!socketUrl) {
+        startLocalFallback()
+        return
+      }
+
+      const socket = new WebSocket(socketUrl)
 
       socketRef.current = socket
 
