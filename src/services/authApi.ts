@@ -83,8 +83,8 @@ export async function getMe(token: string): Promise<User> {
 
 export async function forgotPassword(
   email: string,
-): Promise<{ ok: boolean message: string otpCode?: string }> {
-  return requestJson<{ ok: boolean message: string otpCode?: string }>(
+): Promise<{ ok: boolean; message: string; otpCode?: string }> {
+  return requestJson<{ ok: boolean; message: string; otpCode?: string }>(
     "/auth/forgot-password",
     {
       method: "POST",
@@ -97,8 +97,8 @@ export async function resetPassword(
   email: string,
   otpCode: string,
   newPassword: string,
-): Promise<{ ok: boolean message: string }> {
-  return requestJson<{ ok: boolean message: string }>("/auth/reset-password", {
+): Promise<{ ok: boolean; message: string }> {
+  return requestJson<{ ok: boolean; message: string }>("/auth/reset-password", {
     method: "POST",
     body: JSON.stringify({ email, otpCode, newPassword }),
   })
@@ -119,8 +119,8 @@ export function clearAuthSession() {
 export async function updateProfile(
   token: string,
   username: string,
-): Promise<{ ok: boolean username: string }> {
-  return requestJson<{ ok: boolean username: string }>("/auth/update-profile", {
+): Promise<{ ok: boolean; username: string }> {
+  return requestJson<{ ok: boolean; username: string }>("/auth/update-profile", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -133,8 +133,8 @@ export async function changePassword(
   token: string,
   currentPassword: string,
   newPassword: string,
-): Promise<{ ok: boolean message: string }> {
-  return requestJson<{ ok: boolean message: string }>("/auth/change-password", {
+): Promise<{ ok: boolean; message: string }> {
+  return requestJson<{ ok: boolean; message: string }>("/auth/change-password", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -143,7 +143,7 @@ export async function changePassword(
   })
 }
 
-export async function getAdminStats(token: string): Promise<{ ok: boolean stats: { totalUsers: number, totalDeposited: number, totalWithdrawn: number, pendingWithdrawals: any[] } }> {
+export async function getAdminStats(token: string): Promise<{ ok: boolean; stats: { totalUsers: number; totalDeposited: number; totalWithdrawn: number; pendingWithdrawals: any[] } }> {
   return requestJson("/auth/admin/stats", {
     method: "GET",
     headers: {
@@ -152,8 +152,8 @@ export async function getAdminStats(token: string): Promise<{ ok: boolean stats:
   })
 }
 
-export async function getAdminUsers(token: string): Promise<{ ok: boolean users: User[] }> {
-  return requestJson<{ ok: boolean users: User[] }>("/auth/admin/users", {
+export async function getAdminUsers(token: string): Promise<{ ok: boolean; users: User[] }> {
+  return requestJson<{ ok: boolean; users: User[] }>("/auth/admin/users", {
     method: "GET",
     headers: { Authorization: `Bearer ${token}` },
   })

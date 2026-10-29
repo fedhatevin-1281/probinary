@@ -199,7 +199,7 @@ function Sparkline({
 }
 
 function VolatilityBadge({ level }: { level: string }) {
-  const colors: Record<string, { bg: string text: string }> = {
+  const colors: Record<string, { bg: string; text: string }> = {
     Low: { bg: "rgba(34,197,94,0.12)", text: "#22C55E" },
 
     Medium: { bg: "rgba(245,158,11,0.12)", text: "#F59E0B" },
@@ -276,7 +276,7 @@ export default function Markets({ onTrade }: Props) {
       return b.price - a.price
     })
 
-  const CATS: { id: Category label: string }[] = [
+  const CATS: { id: Category; label: string }[] = [
     { id: "all", label: "All Markets" },
 
     { id: "volatility", label: "Volatility" },

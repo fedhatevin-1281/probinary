@@ -269,7 +269,7 @@ interface AppHeaderContextValue {
 
   submitWithdrawal: (
     input: WithdrawInput,
-  ) => Promise<{ ok: boolean error?: string }>
+  ) => Promise<{ ok: boolean; error?: string }>
 
   submitDeposit: (
     input: DepositInput,

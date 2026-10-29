@@ -4,7 +4,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type KeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react"
 import { QRCodeSVG } from "qrcode.react"
@@ -552,7 +551,7 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
           )}
           {cryptoOrderStatus && (
             <div style={{ color: cryptoOrderStatus.status === "completed" ? "#22C55E" : "#F59E0B", fontSize: 12 }}>
-              Deposit {cryptoOrderStatus.status.replaceAll("_", " ")}
+              Deposit {cryptoOrderStatus.status.replace(/_/g, " ")}
               {cryptoOrderStatus.status === "completed" ? ` · Receipt ${cryptoOrderStatus.paymentId || pendingCryptoOrderId}` : " · Waiting for network confirmation"}
             </div>
           )}
@@ -609,7 +608,7 @@ function DepositPanel({ onClose }: { onClose: () => void }) {
                 </div>
               )}
               <div style={{ color: "#A7A0BC", fontSize: 12 }}>
-                Deposit status: {cryptoOrderStatus.status.replaceAll("_", " ")}. Keep this panel open to track confirmation.
+                Deposit status: {cryptoOrderStatus.status.replace(/_/g, " ")}. Keep this panel open to track confirmation.
               </div>
             </div>
           )}
@@ -887,7 +886,7 @@ function AiPanel({ onClose }: { onClose: () => void }) {
 
   const [position, setPosition] = useState({ x: 0, y: 0 })
 
-  const dragStartRef = useRef<{ x: number y: number } | null>(null)
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
     const move = (event: MouseEvent) => {

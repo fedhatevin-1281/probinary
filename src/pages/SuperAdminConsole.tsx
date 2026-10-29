@@ -523,7 +523,7 @@ function PulseMetric({
   )
 }
 
-function DataRow({ label, value }: { label: string value: string }) {
+function DataRow({ label, value }: { label: string; value: string }) {
   return (
     <div
       style={{

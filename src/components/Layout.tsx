@@ -8,7 +8,7 @@ import { useTopNav, type HeaderPanel } from "../state/topNav"
 
 import { useAnimatedNumber } from "../hooks/useAnimatedNumber"
 
-const NAV_ITEMS: { id: Page label: string icon: ReactNode }[] = [
+const NAV_ITEMS: { id: Page; label: string; icon: ReactNode }[] = [
   { id: "dashboard", label: "Dashboard", icon: <GridIcon /> },
 
   { id: "markets", label: "Markets", icon: <ChartBarIcon /> },
@@ -22,7 +22,7 @@ const NAV_ITEMS: { id: Page label: string icon: ReactNode }[] = [
   { id: "wallet", label: "Wallet", icon: <WalletIcon /> },
 ]
 
-const BOTTOM_ITEMS: { id: Page label: string icon: ReactNode }[] = [
+const BOTTOM_ITEMS: { id: Page; label: string; icon: ReactNode }[] = [
   { id: "settings", label: "Settings", icon: <SettingsIcon /> },
 ]
 

@@ -177,20 +177,20 @@ interface TradingContextValue {
 
   placeTrade: (
     input: TradeInput,
-  ) => { ok: boolean tradeId?: string error?: string }
+  ) => { ok: boolean; tradeId?: string; error?: string }
 
-  forceCloseTrade: (tradeId: string) => { ok: boolean error?: string }
+  forceCloseTrade: (tradeId: string) => { ok: boolean; error?: string }
 
   adjustBalance: (
     amount: number,
     reason: string,
-  ) => { ok: boolean error?: string }
+  ) => { ok: boolean; error?: string }
 
   syncBalanceFromServer: (balance: number) => void
 
   setAdminPolicy: (
     forceNextOutcome: "won" | "lost" | null,
-  ) => { ok: boolean error?: string }
+  ) => { ok: boolean; error?: string }
 }
 
 const STARTING_BALANCE = 0
@@ -270,7 +270,7 @@ const DEFAULT_ADMIN_POLICY: AdminSimPolicy = {
 
 type TransportMode = "connecting" | "server" | "local"
 
-type ServerMessage = { type: "STATE" state: TradingState } | {
+type ServerMessage = { type: "STATE"; state: TradingState } | {
   type: "ACK"
   ok: boolean
   action?: string
@@ -281,7 +281,7 @@ type ServerMessage = { type: "STATE" state: TradingState } | {
   simulationMode: boolean
   role: UserRole
   capabilities: RoleCapabilities
-} | { type: "SIM_POLICY_STATE" policy: AdminSimPolicy } | {
+} | { type: "SIM_POLICY_STATE"; policy: AdminSimPolicy } | {
   type: "ERROR"
   error: string
 }

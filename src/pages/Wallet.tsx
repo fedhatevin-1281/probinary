@@ -127,7 +127,7 @@ export default function Wallet() {
     const csv = [header, ...lines]
 
       .map((line) =>
-        line.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(","),
+        line.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","),
       )
 
       .join("\n")
