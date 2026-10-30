@@ -23,7 +23,7 @@ This project is a Vite + React + Tailwind app and is ready to deploy to Vercel a
 
 ### NOWPayments Setup
 
-1. Run `nowpayments.sql` in the Supabase SQL Editor. Rerun the updated script on existing installations to add the payment-address fields. It creates the private order table and atomic wallet functions used to prevent duplicate credits and balance overwrites.
+1. Run `nowpayments.sql` in the Supabase SQL Editor. Rerun the updated script on existing installations to add the payment-address fields, manual deposit support, and binary trade records. It creates the private order and trade tables and the wallet functions used for atomic credits and balance synchronization.
 2. Add `NOWPAYMENTS_API_KEY`, `NOWPAYMENTS_IPN_SECRET`, and `APP_BASE_URL` to the auth API environment. Keep these values server-side; do not use `VITE_` prefixes.
 3. The app sends `${APP_BASE_URL}/api/payments/nowpayments/webhook` as the IPN callback URL when it creates each invoice. Keep that route publicly reachable over HTTPS.
 4. Enable the supported coins and networks you want to offer in your NOWPayments account. Customers choose an available currency in the deposit panel and receive its payment address and QR code in the app.
@@ -31,7 +31,7 @@ This project is a Vite + React + Tailwind app and is ready to deploy to Vercel a
 
 Wallet credit is granted only for a signed `finished` IPN whose order, payment ID, and USD amount match the stored payment. A browser redirect alone never credits funds.
 
-If `VITE_API_URL` is not set, HTTP calls use the current browser origin. Set `VITE_WS_URL` to the separately deployed WebSocket server URL to enable live backend connections; without it, the app uses local simulation.
+If `VITE_API_URL` is not set, HTTP calls use the current browser origin. Set `VITE_WS_URL` to the separately deployed WebSocket server URL for market updates, demo simulation, and real-account trading. Without it, the app remains offline and cannot place or settle trades.
 
 ## Important Backend Note
 
@@ -43,6 +43,16 @@ Deploy backend separately (for example: Fly.io, Railway, Render, a VM, or Kubern
 - `VITE_WS_URL`
 
 ## Local Development
+
+Run the auth API and websocket trading server in separate terminals before starting the frontend:
+
+```bash
+npm run auth:server
+```
+
+```bash
+npm run server
+```
 
 ```bash
 npm install

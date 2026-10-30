@@ -222,8 +222,6 @@ interface AppHeaderContextValue {
 
   setActiveAccount: (account: AccountType) => void
 
-  setDemoBalance: React.Dispatch<React.SetStateAction<number>>
-
   balancePulse: boolean
 
   backendOnline: boolean
@@ -467,8 +465,6 @@ interface PersistedState {
 
   walletSettings: WalletSettings
 
-  demoBalance: number
-
   withdrawalHistory: WithdrawalRequest[]
 
   depositHistory: DepositRequest[]
@@ -583,10 +579,6 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
     persisted?.activeAccount ?? "real",
   )
 
-  const [demoBalance, setDemoBalance] = useState<number>(
-    persisted?.demoBalance ?? 10000,
-  )
-
   const [pendingBalance, setPendingBalance] = useState<number>(0)
 
   const [balancePulse, setBalancePulse] = useState(false)
@@ -654,12 +646,12 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
 
     return {
       real,
-      demo: Math.round(demoBalance * 100) / 100,
+      demo: Math.round(trading.demoBalance * 100) / 100,
       available,
       pending,
       currency: "USD",
     }
-  }, [demoBalance, pendingBalance, trading.balance])
+  }, [pendingBalance, trading.balance, trading.demoBalance])
 
   const refreshRealBalance = useCallback(async () => {
     const token = window.localStorage.getItem("pb.auth.token")
@@ -1284,17 +1276,11 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
 
       window.setTimeout(() => setBalancePulse(false), 280)
 
-      let demoGains = 0
-
       for (const trade of newTrades) {
-        if (trade.isDemo && trade.payout) {
-          demoGains += trade.payout
-        }
-
         appendTransaction(
           makeTradeTransaction(
             trade,
-            trade.isDemo ? demoBalance + demoGains : trading.balance,
+            trade.isDemo ? trading.demoBalance : trading.balance,
             trading.testBinarySystem,
           ),
         )
@@ -1310,9 +1296,6 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
         })
       }
 
-      if (demoGains > 0) {
-        setDemoBalance((prev) => prev + demoGains)
-      }
     }
 
     previousTradeIdsRef.current = ids
@@ -1320,6 +1303,7 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
     addNotification,
     appendTransaction,
     trading.balance,
+    trading.demoBalance,
     trading.closedTrades,
   ])
 
@@ -1344,8 +1328,6 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
 
       walletSettings,
 
-      demoBalance,
-
       withdrawalHistory,
 
       depositHistory,
@@ -1365,7 +1347,6 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
   }, [
     activeAccount,
     walletSettings,
-    demoBalance,
     withdrawalHistory,
     depositHistory,
     walletTransactions,
@@ -1477,8 +1458,6 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
 
       setActiveAccount,
 
-      setDemoBalance,
-
       balancePulse,
 
       backendOnline,
@@ -1563,8 +1542,6 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
       balances,
 
       activeAccount,
-
-      setDemoBalance,
 
       balancePulse,
 

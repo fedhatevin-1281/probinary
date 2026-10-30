@@ -232,3 +232,143 @@ revoke all on public.manual_wallet_deposits from anon, authenticated;
 grant select, insert on public.manual_wallet_deposits to service_role;
 revoke all on function public.apply_manual_wallet_deposit(text, numeric, text, text, text) from public, anon, authenticated;
 grant execute on function public.apply_manual_wallet_deposit(text, numeric, text, text, text) to service_role;
+
+create table if not exists public.binary_trade_records (
+  user_id text not null,
+  trade_id text not null,
+  is_demo boolean not null default false,
+  symbol text not null,
+  market_name text not null,
+  contract_type text not null,
+  direction text not null,
+  stake numeric(12, 2) not null check (stake > 0),
+  entry_price numeric(20, 8) not null,
+  entry_digit integer not null,
+  expiry_at timestamptz not null,
+  expiry_seconds integer not null,
+  payout_multiplier numeric(8, 4) not null,
+  status text not null check (status in ('open', 'won', 'lost')),
+  result text check (result in ('won', 'lost')),
+  exit_price numeric(20, 8),
+  exit_digit integer,
+  payout numeric(12, 2) not null default 0,
+  profit numeric(12, 2) not null default 0,
+  created_at timestamptz not null,
+  settled_at timestamptz,
+  primary key (user_id, trade_id)
+);
+
+create index if not exists binary_trade_records_user_created_idx
+  on public.binary_trade_records (user_id, created_at desc);
+
+alter table public.binary_trade_records enable row level security;
+revoke all on public.binary_trade_records from anon, authenticated;
+grant select, insert, update on public.binary_trade_records to service_role;
+
+create or replace function public.record_binary_trades(
+  p_user_id text,
+  p_trades jsonb
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if jsonb_typeof(p_trades) <> 'array' then
+    raise exception 'Trades must be provided as an array';
+  end if;
+
+  insert into public.binary_trade_records (
+    user_id,
+    trade_id,
+    is_demo,
+    symbol,
+    market_name,
+    contract_type,
+    direction,
+    stake,
+    entry_price,
+    entry_digit,
+    expiry_at,
+    expiry_seconds,
+    payout_multiplier,
+    status,
+    result,
+    exit_price,
+    exit_digit,
+    payout,
+    profit,
+    created_at,
+    settled_at
+  )
+  select
+    p_user_id,
+    trade.trade_id,
+    coalesce(trade.is_demo, false),
+    trade.symbol,
+    trade.market_name,
+    trade.contract_type,
+    trade.direction,
+    trade.stake,
+    trade.entry_price,
+    trade.entry_digit,
+    trade.expiry_at,
+    trade.expiry_seconds,
+    trade.payout_multiplier,
+    trade.status,
+    trade.result,
+    trade.exit_price,
+    trade.exit_digit,
+    coalesce(trade.payout, 0),
+    coalesce(trade.profit, 0),
+    trade.created_at,
+    trade.settled_at
+  from jsonb_to_recordset(p_trades) as trade(
+    trade_id text,
+    is_demo boolean,
+    symbol text,
+    market_name text,
+    contract_type text,
+    direction text,
+    stake numeric,
+    entry_price numeric,
+    entry_digit integer,
+    expiry_at timestamptz,
+    expiry_seconds integer,
+    payout_multiplier numeric,
+    status text,
+    result text,
+    exit_price numeric,
+    exit_digit integer,
+    payout numeric,
+    profit numeric,
+    created_at timestamptz,
+    settled_at timestamptz
+  )
+  on conflict (user_id, trade_id) do update
+  set is_demo = excluded.is_demo,
+      symbol = excluded.symbol,
+      market_name = excluded.market_name,
+      contract_type = excluded.contract_type,
+      direction = excluded.direction,
+      stake = excluded.stake,
+      entry_price = excluded.entry_price,
+      entry_digit = excluded.entry_digit,
+      expiry_at = excluded.expiry_at,
+      expiry_seconds = excluded.expiry_seconds,
+      payout_multiplier = excluded.payout_multiplier,
+      status = excluded.status,
+      result = excluded.result,
+      exit_price = excluded.exit_price,
+      exit_digit = excluded.exit_digit,
+      payout = excluded.payout,
+      profit = excluded.profit,
+      settled_at = excluded.settled_at
+  where public.binary_trade_records.status = 'open'
+     or public.binary_trade_records.status = excluded.status;
+end;
+$$;
+
+revoke all on function public.record_binary_trades(text, jsonb) from public, anon, authenticated;
+grant execute on function public.record_binary_trades(text, jsonb) to service_role;

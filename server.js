@@ -1,7 +1,8 @@
 import http from "node:http"
 
-import { WebSocketServer, WebSocket } from "ws"
+import { randomUUID } from "node:crypto"
 
+import { WebSocketServer, WebSocket } from "ws"
 import jwt from "jsonwebtoken"
 
 import fs from "node:fs"
@@ -264,6 +265,10 @@ const persistedBalances = new Map()
 
 const balanceSyncs = new Map()
 
+const persistedTradeStates = new Map()
+
+const tradeStateSyncs = new Map()
+
 const clients = new Set()
 
 const sessions = new WeakMap()
@@ -288,8 +293,6 @@ wss.on("connection", (socket) => {
   clients.add(socket)
 
   sessions.set(socket, createSession("demo-auth-token"))
-
-  sendAuthState(socket)
 
   sendPolicyState(socket)
 
@@ -339,7 +342,43 @@ wss.on("connection", (socket) => {
         return
       }
 
+      if (message.type === "RESTORE_DEMO_BALANCE") {
+        const demoBalance = Number(message.balance)
+        if (!Number.isFinite(demoBalance) || demoBalance < 0 || demoBalance > 100000000) {
+          socket.send(
+            JSON.stringify({
+              type: "ACK",
+              ok: false,
+              error: "Cached demo balance must be between 0 and 100,000,000",
+            }),
+          )
+          return
+        }
+
+        state.demoBalance = round2(demoBalance)
+        state.lastAction = "Demo balance restored from local cache"
+        state.lastError = null
+        sendClientState(socket)
+        socket.send(
+          JSON.stringify({ type: "ACK", ok: true, action: state.lastAction }),
+        )
+        return
+      }
+
       if (message.type === "PLACE_TRADE" && message.input) {
+        if (
+          !message.input.isDemo &&
+          (!session.userId ||
+            !process.env.SUPABASE_URL ||
+            !process.env.SUPABASE_SECRET_KEY)
+        ) {
+          const error = "Real trades require an authenticated account and configured database"
+          socket.send(JSON.stringify({ type: "ACK", ok: false, error }))
+          state.lastError = error
+          broadcastState()
+          return
+        }
+
         const result = placeTrade(state, message.input, session)
 
         if (result.error) {
@@ -839,8 +878,89 @@ async function syncBalanceToDb() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return
 
   await Promise.all(
-    [...updates.values()].map((session) => syncAccountBalance(session)),
+    [...updates.values()].map(async (session) => {
+      await Promise.all([
+        syncAccountBalance(session),
+        syncAccountTrades(session),
+      ])
+    }),
   )
+}
+
+async function syncAccountTrades(session) {
+  const accountKey = getAccountKey(session)
+  const activeSync = tradeStateSyncs.get(accountKey)
+  if (activeSync) return activeSync
+
+  const accountState = accountStates.get(accountKey)
+  if (!accountState) return
+
+  const tradeSnapshots = [...accountState.openTrades, ...accountState.closedTrades].map(
+    (trade) => ({
+      trade_id: trade.id,
+      is_demo: Boolean(trade.isDemo),
+      symbol: trade.symbol,
+      market_name: trade.marketName,
+      contract_type: trade.contractType,
+      direction: trade.direction,
+      stake: trade.stake,
+      entry_price: trade.entryPrice,
+      entry_digit: trade.entryDigit,
+      expiry_at: new Date(trade.expiryAt).toISOString(),
+      expiry_seconds: trade.expirySeconds,
+      payout_multiplier: trade.payoutMultiplier,
+      status: trade.status,
+      result: trade.result || null,
+      exit_price: trade.exitPrice ?? null,
+      exit_digit: trade.exitDigit ?? null,
+      payout: trade.payout ?? 0,
+      profit: trade.profit ?? 0,
+      created_at: new Date(trade.createdAt).toISOString(),
+      settled_at: trade.settledAt ? new Date(trade.settledAt).toISOString() : null,
+    }),
+  )
+  const changedTrades = tradeSnapshots.filter((trade) => {
+    const key = `${accountKey}:${trade.trade_id}`
+    return persistedTradeStates.get(key) !== JSON.stringify(trade)
+  })
+
+  if (changedTrades.length === 0) return
+
+  const sync = (async () => {
+    const response = await fetch(
+      `${process.env.SUPABASE_URL}/rest/v1/rpc/record_binary_trades`,
+      {
+        method: "POST",
+        headers: {
+          apikey: process.env.SUPABASE_SECRET_KEY,
+          Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          p_user_id: String(session.userId),
+          p_trades: changedTrades,
+        }),
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error(`Trade history sync failed: ${response.status}`)
+    }
+
+    for (const trade of changedTrades) {
+      persistedTradeStates.set(
+        `${accountKey}:${trade.trade_id}`,
+        JSON.stringify(trade),
+      )
+    }
+  })()
+
+  tradeStateSyncs.set(accountKey, sync)
+  try {
+    await sync
+  } finally {
+    tradeStateSyncs.delete(accountKey)
+  }
 }
 
 async function syncAccountBalance(session) {
@@ -1029,6 +1149,8 @@ function sendAuthState(socket) {
     JSON.stringify({
       type: "AUTH_STATE",
 
+      userId: session.userId ? String(session.userId) : null,
+
       simulationMode: SIMULATION_MODE,
 
       role: session.role,
@@ -1073,62 +1195,13 @@ function createInitialState() {
 
     balance: STARTING_BALANCE,
 
-    realizedPnl: 1471.35,
+    demoBalance: 10000,
+
+    realizedPnl: 0,
 
     openTrades: [],
 
-    closedTrades: [
-      sampleTrade(
-        "TRD-8821",
-        "VOL-75",
-        "Volatility 75 Index",
-        "rise-fall",
-        "rise",
-        50,
-        8120.44,
-        8243.12,
-        8,
-        30,
-        1.82,
-        "won",
-        41,
-        0,
-      ),
-
-      sampleTrade(
-        "TRD-8820",
-        "BOOM-500",
-        "Boom 500 Index",
-        "rise-fall",
-        "fall",
-        40,
-        13201,
-        12891.44,
-        5,
-        30,
-        1.82,
-        "won",
-        32.8,
-        1,
-      ),
-
-      sampleTrade(
-        "TRD-8819",
-        "CRASH-300",
-        "Crash 300 Index",
-        "even-odd",
-        "odd",
-        35,
-        5890.2,
-        5674.8,
-        2,
-        20,
-        1.8,
-        "lost",
-        -35,
-        2,
-      ),
-    ],
+    closedTrades: [],
 
     selectedSymbol: "VOL-75",
 
@@ -1211,7 +1284,11 @@ function settleExpiredTrades(state) {
 
     const settled = resolveTrade(trade, market.price, now)
 
-    state.balance = round2(state.balance + (settled.payout || 0))
+    if (trade.isDemo) {
+      state.demoBalance = round2(state.demoBalance + (settled.payout || 0))
+    } else {
+      state.balance = round2(state.balance + (settled.payout || 0))
+    }
 
     state.realizedPnl = round2(state.realizedPnl + (settled.profit || 0))
 
@@ -1236,7 +1313,10 @@ function placeTrade(currentState, input, session) {
     return { error: "Stake must be greater than zero" }
   }
 
-  if (stake > currentState.balance) {
+  const isDemo = input.isDemo === true
+  const availableBalance = isDemo ? currentState.demoBalance : currentState.balance
+
+  if (stake > availableBalance) {
     return { error: "Insufficient balance" }
   }
 
@@ -1246,7 +1326,7 @@ function placeTrade(currentState, input, session) {
   )
 
   const trade = {
-    id: `TRD-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 90 + 10)}`,
+    id: `TRD-${randomUUID()}`,
 
     symbol: market.symbol,
 
@@ -1275,9 +1355,15 @@ function placeTrade(currentState, input, session) {
     status: "open",
 
     createdAt: Date.now(),
+
+    isDemo,
   }
 
-  currentState.balance = round2(currentState.balance - stake)
+  if (isDemo) {
+    currentState.demoBalance = round2(currentState.demoBalance - stake)
+  } else {
+    currentState.balance = round2(currentState.balance - stake)
+  }
 
   currentState.openTrades.unshift(trade)
 
@@ -1301,7 +1387,11 @@ function forceCloseTrade(currentState, tradeId) {
 
   const settled = resolveTrade(trade, market.price, Date.now())
 
-  currentState.balance = round2(currentState.balance + (settled.payout || 0))
+  if (trade.isDemo) {
+    currentState.demoBalance = round2(currentState.demoBalance + (settled.payout || 0))
+  } else {
+    currentState.balance = round2(currentState.balance + (settled.payout || 0))
+  }
 
   currentState.realizedPnl = round2(
     currentState.realizedPnl + (settled.profit || 0),
@@ -1444,63 +1534,6 @@ function lastDigit(price) {
 
 function round2(value) {
   return Math.round(value * 100) / 100
-}
-
-function sampleTrade(
-  id,
-  symbol,
-  marketName,
-  contractType,
-  direction,
-  stake,
-  entryPrice,
-  exitPrice,
-  entryDigit,
-  expirySeconds,
-  payoutMultiplier,
-  result,
-  profit,
-  minuteOffset,
-) {
-  return {
-    id,
-
-    symbol,
-
-    marketName,
-
-    contractType,
-
-    direction,
-
-    stake,
-
-    entryPrice,
-
-    entryDigit,
-
-    expiryAt: Date.now() - minuteOffset * 60000,
-
-    expirySeconds,
-
-    payoutMultiplier,
-
-    status: result,
-
-    createdAt: Date.now() - minuteOffset * 60000,
-
-    settledAt: Date.now() - minuteOffset * 60000 + 30000,
-
-    exitPrice,
-
-    exitDigit: lastDigit(exitPrice),
-
-    payout: result === "won" ? round2(stake * payoutMultiplier) : 0,
-
-    profit,
-
-    result,
-  }
 }
 
 function consumeForcedOutcomeForTrade(trade) {
