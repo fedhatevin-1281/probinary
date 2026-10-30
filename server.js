@@ -823,11 +823,16 @@ async function syncUserSession(socket, token) {
 async function syncBalanceToDb() {
   const updates = new Map()
 
-  for (const client of clients) {
-    const session = sessions.get(client)
+  for (const accountKey of accountStates.keys()) {
+    if (!accountKey.startsWith("user:")) continue
 
-    if (session?.userId && !getTestBinaryPolicy(session)) {
-      updates.set(getAccountKey(session), session)
+    const session = {
+      userId: accountKey.slice("user:".length),
+      role: "user",
+    }
+
+    if (!getTestBinaryPolicy(session)) {
+      updates.set(accountKey, session)
     }
   }
 
