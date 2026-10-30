@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: probinary-trading-ws
+    runtime: node
+    plan: 0.5c-512mb
+    buildCommand: npm install
+    startCommand: npm run server
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
