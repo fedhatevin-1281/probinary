@@ -2,7 +2,7 @@ services:
   - type: web
     name: probinary-trading-ws
     runtime: node
-    plan: 0.5c-512mb
+    plan: free
     buildCommand: npm install
     startCommand: npm run server
     healthCheckPath: /health
