@@ -38,9 +38,7 @@ export interface AdminSimPolicy {
 
 export interface TestBinaryAccount {
   userId: string
-
   initialBalance: number
-
   winRate: number
 }
 
@@ -117,8 +115,6 @@ interface TradingState {
 
   balance: number
 
-  demoBalance: number
-
   realizedPnl: number
 
   openTrades: BinaryTrade[]
@@ -147,7 +143,7 @@ interface TradeInput {
 }
 
 interface TradingContextValue {
-  connectionMode: "connecting" | "server" | "offline"
+  connectionMode: "connecting" | "server" | "local"
 
   simulationMode: boolean
 
@@ -175,8 +171,6 @@ interface TradingContextValue {
 
   balance: number
 
-  demoBalance: number
-
   equity: number
 
   realizedPnl: number
@@ -203,7 +197,6 @@ interface TradingContextValue {
 
   adjustBalance: (
     amount: number,
-
     reason: string,
   ) => { ok: boolean; error?: string }
 
@@ -215,31 +208,12 @@ interface TradingContextValue {
 
   setTestBinaryAccount: (
     userId: string,
-
     enabled: boolean,
-
     initialBalance: number,
   ) => { ok: boolean; error?: string }
 }
 
 const STARTING_BALANCE = 0
-
-const DEMO_BALANCE_CACHE_PREFIX = "pb.demo-balance.v1:"
-
-function readCachedDemoBalance() {
-  if (typeof window === "undefined") return 0
-
-  const token = window.localStorage.getItem("pb.auth.token") || "demo-auth-token"
-  const value = Number(
-    window.localStorage.getItem(
-      `${DEMO_BALANCE_CACHE_PREFIX}${encodeURIComponent(token)}`,
-    ),
-  )
-
-  return Number.isFinite(value) && value >= 0 && value <= 100000000
-    ? value
-    : 0
-}
 
 const HISTORY_LIMIT = 120
 
@@ -249,6 +223,59 @@ const DEFAULT_CAPABILITIES: RoleCapabilities = {
   canForceClose: false,
 
   canViewAdminPanel: false,
+}
+
+const ROLE_CAPABILITIES: Record<UserRole, RoleCapabilities> = {
+  user: {
+    canAdjustBalance: false,
+    canForceClose: false,
+    canViewAdminPanel: false,
+  },
+
+  admin: {
+    canAdjustBalance: true,
+    canForceClose: true,
+    canViewAdminPanel: false,
+  },
+
+  super_admin: {
+    canAdjustBalance: true,
+    canForceClose: true,
+    canViewAdminPanel: true,
+  },
+}
+
+function resolveLocalAuth(): {
+  simulationMode: boolean
+  role: UserRole
+  capabilities: RoleCapabilities
+} {
+  const token =
+    typeof window !== "undefined"
+      ? (window.localStorage.getItem("pb.auth.token") ?? "")
+      : ""
+
+  if (token === "sim-super-admin") {
+    return {
+      simulationMode: true,
+      role: "super_admin",
+      capabilities: ROLE_CAPABILITIES.super_admin,
+    }
+  }
+
+  if (token === "sim-admin") {
+    return {
+      simulationMode: true,
+      role: "admin",
+      capabilities: ROLE_CAPABILITIES.admin,
+    }
+  }
+
+  return {
+    simulationMode: false,
+    role: "user",
+    capabilities: ROLE_CAPABILITIES.user,
+  }
 }
 
 const DEFAULT_ADMIN_POLICY: AdminSimPolicy = {
@@ -261,39 +288,25 @@ const DEFAULT_ADMIN_POLICY: AdminSimPolicy = {
   lastAppliedAt: null,
 }
 
-type TransportMode = "connecting" | "server" | "offline"
+type TransportMode = "connecting" | "server" | "local"
 
 type ServerMessage = { type: "STATE"; state: TradingState } | {
   type: "ACK"
-
   ok: boolean
-
   action?: string
-
   error?: string
-
   tradeId?: string
 } | {
   type: "AUTH_STATE"
-
-  userId: string | null
-
   simulationMode: boolean
-
   role: UserRole
-
   capabilities: RoleCapabilities
-
   testBinaryAvailable: boolean
-
   testBinarySystem: boolean
-
   testBinaryWinRate: number | null
-
   testBinaryAccounts: TestBinaryAccount[]
 } | { type: "SIM_POLICY_STATE"; policy: AdminSimPolicy } | {
   type: "ERROR"
-
   error: string
 }
 
@@ -306,13 +319,10 @@ function resolveWebSocketUrl(): string | null {
 
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname
-
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
-
-      return `${protocol}//${hostname}:8080`
+      return `${protocol}//${window.location.host}`
     }
-
     return null
   }
 
@@ -322,243 +332,231 @@ function resolveWebSocketUrl(): string | null {
 export const MARKET_SEEDS: MarketSeed[] = [
   {
     symbol: "VOL-10",
-
     name: "Volatility 10 Index",
-
     category: "volatility",
-
     basePrice: 3891.77,
-
     volatility: 0.0019,
-
     drift: 0.0001,
-
     volatilityLabel: "Low",
   },
 
   {
     symbol: "VOL-25",
-
     name: "Volatility 25 Index",
-
     category: "volatility",
-
     basePrice: 5234.44,
-
     volatility: 0.0021,
-
     drift: 0.00012,
-
     volatilityLabel: "Low",
   },
 
   {
     symbol: "VOL-50",
-
     name: "Volatility 50 Index",
-
     category: "volatility",
-
     basePrice: 6789.31,
-
     volatility: 0.0026,
-
     drift: 0.0001,
-
     volatilityLabel: "Medium",
   },
 
   {
     symbol: "VOL-75",
-
     name: "Volatility 75 Index",
-
     category: "volatility",
-
     basePrice: 8243.12,
-
     volatility: 0.0031,
-
     drift: 0.00008,
-
     volatilityLabel: "High",
   },
 
   {
     symbol: "VOL-100",
-
     name: "Volatility 100 Index",
-
     category: "volatility",
-
     basePrice: 15420.33,
-
     volatility: 0.0038,
-
     drift: 0.00008,
-
     volatilityLabel: "Very High",
   },
 
   {
     symbol: "BOOM-300",
-
     name: "Boom 300 Index",
-
     category: "boom",
-
     basePrice: 7841.2,
-
     volatility: 0.0028,
-
     drift: 0.0006,
-
     volatilityLabel: "Medium",
   },
 
   {
     symbol: "BOOM-500",
-
     name: "Boom 500 Index",
-
     category: "boom",
-
     basePrice: 12891.44,
-
     volatility: 0.0036,
-
     drift: 0.0009,
-
     volatilityLabel: "High",
   },
 
   {
     symbol: "BOOM-1000",
-
     name: "Boom 1000 Index",
-
     category: "boom",
-
     basePrice: 22104.55,
-
     volatility: 0.0043,
-
     drift: 0.0013,
-
     volatilityLabel: "Very High",
   },
 
   {
     symbol: "CRASH-300",
-
     name: "Crash 300 Index",
-
     category: "crash",
-
     basePrice: 5674.8,
-
     volatility: 0.0028,
-
     drift: -0.0005,
-
     volatilityLabel: "Medium",
   },
 
   {
     symbol: "CRASH-500",
-
     name: "Crash 500 Index",
-
     category: "crash",
-
     basePrice: 4312.2,
-
     volatility: 0.0034,
-
     drift: -0.0008,
-
     volatilityLabel: "High",
   },
 
   {
     symbol: "CRASH-1000",
-
     name: "Crash 1000 Index",
-
     category: "crash",
-
     basePrice: 2891.66,
-
     volatility: 0.0042,
-
     drift: -0.0012,
-
     volatilityLabel: "Very High",
   },
 
   {
     symbol: "STEP-UP",
-
     name: "Step Index (Up)",
-
     category: "step",
-
     basePrice: 9122.64,
-
     volatility: 0.0023,
-
     drift: 0.00035,
-
     volatilityLabel: "Low",
   },
 
   {
     symbol: "JUMP-10",
-
     name: "Jump 10 Index",
-
     category: "step",
-
     basePrice: 18934,
-
     volatility: 0.003,
-
     drift: 0.00045,
-
     volatilityLabel: "High",
   },
 
   {
     symbol: "JUMP-25",
-
     name: "Jump 25 Index",
-
     category: "step",
-
     basePrice: 44211.8,
-
     volatility: 0.0036,
-
     drift: 0.00065,
-
     volatilityLabel: "Very High",
   },
 
   {
     symbol: "JUMP-50",
-
     name: "Jump 50 Index",
-
     category: "step",
-
     basePrice: 91234,
-
     volatility: 0.0042,
-
     drift: 0.0008,
-
     volatilityLabel: "Extreme",
   },
+]
+
+const PAYOUTS: Record<ContractType, number> = {
+  "rise-fall": 1.82,
+
+  "even-odd": 1.8,
+
+  "match-differ": 2.15,
+}
+
+const SAMPLE_CLOSED_TRADES: BinaryTrade[] = [
+  makeSampleTrade(
+    "TRD-8821",
+    "VOL-75",
+    "Volatility 75 Index",
+    "rise-fall",
+    "rise",
+    50,
+    8120.44,
+    8243.12,
+    8,
+    30,
+    1.82,
+    "won",
+    41,
+    0,
+  ),
+
+  makeSampleTrade(
+    "TRD-8820",
+    "BOOM-500",
+    "Boom 500 Index",
+    "rise-fall",
+    "fall",
+    40,
+    13201,
+    12891.44,
+    5,
+    30,
+    1.82,
+    "won",
+    32.8,
+    1,
+  ),
+
+  makeSampleTrade(
+    "TRD-8819",
+    "CRASH-300",
+    "Crash 300 Index",
+    "even-odd",
+    "odd",
+    35,
+    5890.2,
+    5674.8,
+    2,
+    20,
+    1.8,
+    "lost",
+    -35,
+    2,
+  ),
+
+  makeSampleTrade(
+    "TRD-8818",
+    "VOL-100",
+    "Volatility 100 Index",
+    "match-differ",
+    "differ",
+    60,
+    15100,
+    15420.33,
+    0,
+    45,
+    2.15,
+    "won",
+    69,
+    3,
+  ),
 ]
 
 const TradingContext = createContext<TradingContextValue | null>(null)
@@ -583,28 +581,55 @@ export function TradingProvider({ children }: { children: ReactNode }) {
 
   const [testBinaryAvailable, setTestBinaryAvailable] = useState(false)
 
-  const [testBinaryWinRate, setTestBinaryWinRate] = useState<number | null>(
-    null,
-  )
+  const [testBinaryWinRate, setTestBinaryWinRate] = useState<number | null>(null)
 
-  const [testBinaryAccounts, setTestBinaryAccounts] =
-    useState<TestBinaryAccount[]>([])
+  const [testBinaryAccounts, setTestBinaryAccounts] = useState<TestBinaryAccount[]>([])
+
+  const stateRef = useRef(state)
 
   const socketRef = useRef<WebSocket | null>(null)
+
+  const localTimerRef = useRef<number | null>(null)
 
   const reconnectTimerRef = useRef<number | null>(null)
 
   const reconnectAllowedRef = useRef(true)
 
-  const [serverAuthReady, setServerAuthReady] = useState(false)
-
-  const [serverUserId, setServerUserId] = useState<string | null>(null)
-
-  const authenticatedStateRef = useRef(false)
-
-  const demoBalanceCacheKeyRef = useRef<string | null>(null)
+  useEffect(() => {
+    stateRef.current = state
+  }, [state])
 
   useEffect(() => {
+    const startLocalFallback = () => {
+      if (localTimerRef.current !== null) {
+        return
+      }
+
+      if (connectionMode !== "server") {
+        setConnectionMode("local")
+
+        const auth = resolveLocalAuth()
+
+        setSimulationMode(auth.simulationMode)
+
+        setRole(auth.role)
+
+        setCapabilities(auth.capabilities)
+      }
+
+      localTimerRef.current = window.setInterval(() => {
+        setState((prev) => advanceState(prev, Date.now()))
+      }, 1000)
+    }
+
+    const stopLocalFallback = () => {
+      if (localTimerRef.current !== null) {
+        window.clearInterval(localTimerRef.current)
+
+        localTimerRef.current = null
+      }
+    }
+
     const clearReconnectTimer = () => {
       if (reconnectTimerRef.current !== null) {
         window.clearTimeout(reconnectTimerRef.current)
@@ -615,7 +640,15 @@ export function TradingProvider({ children }: { children: ReactNode }) {
 
     const connect = () => {
       if (typeof window === "undefined") {
-        setConnectionMode("offline")
+        const auth = resolveLocalAuth()
+
+        setSimulationMode(auth.simulationMode)
+
+        setRole(auth.role)
+
+        setCapabilities(auth.capabilities)
+
+        startLocalFallback()
 
         return
       }
@@ -623,15 +656,7 @@ export function TradingProvider({ children }: { children: ReactNode }) {
       const socketUrl = resolveWebSocketUrl()
 
       if (!socketUrl) {
-        setConnectionMode("offline")
-
-        setState((prev) => ({
-          ...prev,
-
-          lastError:
-            "Trading server is not configured. Set VITE_WS_URL to enable server simulation.",
-        }))
-
+        startLocalFallback()
         return
       }
 
@@ -642,15 +667,9 @@ export function TradingProvider({ children }: { children: ReactNode }) {
       setConnectionMode("connecting")
 
       socket.onopen = () => {
+        stopLocalFallback()
+
         setConnectionMode("server")
-
-        setServerAuthReady(false)
-
-        setServerUserId(null)
-
-        authenticatedStateRef.current = false
-
-        demoBalanceCacheKeyRef.current = null
 
         const token =
           window.localStorage.getItem("pb.auth.token") || "demo-auth-token"
@@ -659,9 +678,7 @@ export function TradingProvider({ children }: { children: ReactNode }) {
 
         setState((prev) => ({
           ...prev,
-
           lastAction: "Connected to backend",
-
           lastError: null,
         }))
       }
@@ -671,31 +688,6 @@ export function TradingProvider({ children }: { children: ReactNode }) {
           const message = JSON.parse(event.data) as ServerMessage
 
           if (message.type === "STATE") {
-            if (!authenticatedStateRef.current) return
-
-            const cacheKey = demoBalanceCacheKeyRef.current
-            if (cacheKey && Number.isFinite(message.state.demoBalance)) {
-              try {
-                const cachedValue = String(message.state.demoBalance)
-                window.localStorage.setItem(
-                  cacheKey,
-                  cachedValue,
-                )
-                const token =
-                  window.localStorage.getItem("pb.auth.token") ||
-                  "demo-auth-token"
-                window.localStorage.setItem(
-                  `${DEMO_BALANCE_CACHE_PREFIX}${encodeURIComponent(token)}`,
-                  cachedValue,
-                )
-              } catch {
-                setState((prev) => ({
-                  ...prev,
-                  lastError: "Could not save this browser's demo balance cache.",
-                }))
-              }
-            }
-
             setState(message.state)
 
             return
@@ -714,58 +706,6 @@ export function TradingProvider({ children }: { children: ReactNode }) {
           }
 
           if (message.type === "AUTH_STATE") {
-            const token =
-              window.localStorage.getItem("pb.auth.token") || "demo-auth-token"
-            const requiresDatabaseUser =
-              token !== "demo-auth-token" && !token.startsWith("sim-")
-            const authenticated = !requiresDatabaseUser || message.userId !== null
-
-            authenticatedStateRef.current = authenticated
-            setServerAuthReady(authenticated)
-            setServerUserId(authenticated ? message.userId : null)
-
-            const cacheIdentity = message.userId || token
-            const cacheKey = `${DEMO_BALANCE_CACHE_PREFIX}${encodeURIComponent(cacheIdentity)}`
-            demoBalanceCacheKeyRef.current = message.testBinarySystem
-              || !authenticated
-              ? null
-              : cacheKey
-
-            if (authenticated && !message.testBinarySystem) {
-              try {
-                const cachedBalance =
-                  window.localStorage.getItem(cacheKey) ??
-                  window.localStorage.getItem(
-                    `${DEMO_BALANCE_CACHE_PREFIX}${encodeURIComponent(token)}`,
-                  )
-                if (cachedBalance !== null) {
-                  const balance = Number(cachedBalance)
-                  if (Number.isFinite(balance) && balance >= 0 && balance <= 100000000) {
-                    socket.send(
-                      JSON.stringify({
-                        type: "RESTORE_DEMO_BALANCE",
-                        balance,
-                      }),
-                    )
-                  }
-                }
-              } catch {
-                setState((prev) => ({
-                  ...prev,
-                  lastError: "Could not restore this browser's demo balance cache.",
-                }))
-              }
-            }
-
-            if (!authenticated) {
-              setState((prev) => ({
-                ...prev,
-                lastError:
-                  "Trading server could not authenticate this account. Check that JWT_SECRET matches the auth API.",
-              }))
-              return
-            }
-
             setSimulationMode(message.simulationMode)
 
             setRole(message.role)
@@ -782,7 +722,6 @@ export function TradingProvider({ children }: { children: ReactNode }) {
 
             setState((prev) => ({
               ...prev,
-
               lastAction: `Authenticated as ${message.role}`,
             }))
 
@@ -801,7 +740,6 @@ export function TradingProvider({ children }: { children: ReactNode }) {
         } catch {
           setState((prev) => ({
             ...prev,
-
             lastError: "Received malformed backend message",
           }))
         }
@@ -820,21 +758,9 @@ export function TradingProvider({ children }: { children: ReactNode }) {
           return
         }
 
-        setConnectionMode("offline")
+        setConnectionMode("local")
 
-        setServerAuthReady(false)
-
-        setServerUserId(null)
-
-        authenticatedStateRef.current = false
-
-        demoBalanceCacheKeyRef.current = null
-
-        setState((prev) => ({
-          ...prev,
-
-          lastError: "Trading server disconnected. Reconnecting...",
-        }))
+        startLocalFallback()
 
         clearReconnectTimer()
 
@@ -852,6 +778,8 @@ export function TradingProvider({ children }: { children: ReactNode }) {
 
     return () => {
       reconnectAllowedRef.current = false
+
+      stopLocalFallback()
 
       clearReconnectTimer()
 
@@ -878,60 +806,139 @@ export function TradingProvider({ children }: { children: ReactNode }) {
   const placeTrade = (input: TradeInput) => {
     const socket = socketRef.current
 
-    if (
-      connectionMode !== "server" ||
-      socket?.readyState !== WebSocket.OPEN ||
-      !serverAuthReady ||
-      (!input.isDemo && !serverUserId)
-    ) {
-      const error =
-        "Trading simulation requires an authenticated server connection."
+    if (connectionMode === "server" && socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "PLACE_TRADE", input }))
+
+      setState((prev) => ({
+        ...prev,
+
+        selectedSymbol: input.symbol,
+
+        lastAction: `Submitted ${input.contractType} trade on ${input.symbol}`,
+
+        lastError: null,
+      }))
+
+      return { ok: true, tradeId: `pending-${Date.now()}` }
+    }
+
+    const current = stateRef.current
+
+    const market = current.markets[input.symbol]
+
+    if (!market) {
+      const error = "Market is unavailable"
 
       setState((prev) => ({ ...prev, lastError: error }))
 
       return { ok: false, error }
     }
 
-    socket.send(JSON.stringify({ type: "PLACE_TRADE", input }))
+    const stake = round2(input.stake)
+
+    if (!Number.isFinite(stake) || stake <= 0) {
+      const error = "Stake must be greater than zero"
+
+      setState((prev) => ({ ...prev, lastError: error }))
+
+      return { ok: false, error }
+    }
+
+    if (!input.isDemo && stake > current.balance) {
+      const error = "Insufficient balance"
+
+      setState((prev) => ({ ...prev, lastError: error }))
+
+      return { ok: false, error }
+    }
+
+    const expirySeconds = Math.max(10, Math.round(input.expirySeconds || 30))
+
+    const trade: BinaryTrade = {
+      id: `TRD-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 90 + 10)}`,
+
+      symbol: market.symbol,
+
+      marketName: market.name,
+
+      contractType: input.contractType,
+
+      direction: input.direction,
+
+      stake,
+
+      entryPrice: market.price,
+
+      entryDigit: lastDigit(market.price),
+
+      expiryAt: Date.now() + expirySeconds * 1000,
+
+      expirySeconds,
+
+      payoutMultiplier: PAYOUTS[input.contractType],
+
+      status: "open",
+
+      createdAt: Date.now(),
+
+      isDemo: input.isDemo,
+    }
 
     setState((prev) => ({
       ...prev,
 
-      selectedSymbol: input.symbol,
+      balance: input.isDemo ? prev.balance : round2(prev.balance - stake),
 
-      lastAction: `Submitted ${input.contractType} trade on ${input.symbol}`,
+      openTrades: [trade, ...prev.openTrades],
 
       lastError: null,
+
+      lastAction: `Opened ${trade.contractType} trade on ${trade.symbol}`,
+
+      selectedSymbol: trade.symbol,
     }))
 
-    return { ok: true, tradeId: `pending-${Date.now()}` }
+    return { ok: true, tradeId: trade.id }
   }
 
   const forceCloseTrade = (tradeId: string) => {
     const socket = socketRef.current
 
-    if (
-      connectionMode !== "server" ||
-      socket?.readyState !== WebSocket.OPEN ||
-      !serverAuthReady
-    ) {
-      const error =
-        "Trading server is unavailable; trades cannot be settled locally."
+    if (connectionMode === "server" && socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "FORCE_CLOSE_TRADE", tradeId }))
+
+      setState((prev) => ({
+        ...prev,
+        lastAction: `Requested close for ${tradeId}`,
+        lastError: null,
+      }))
+
+      return { ok: true }
+    }
+
+    const current = stateRef.current
+
+    const trade = current.openTrades.find((item) => item.id === tradeId)
+
+    if (!trade) {
+      const error = "Trade not found"
 
       setState((prev) => ({ ...prev, lastError: error }))
 
       return { ok: false, error }
     }
 
-    socket.send(JSON.stringify({ type: "FORCE_CLOSE_TRADE", tradeId }))
+    const market = current.markets[trade.symbol]
 
-    setState((prev) => ({
-      ...prev,
+    if (!market) {
+      const error = "Market not available"
 
-      lastAction: `Requested close for ${tradeId}`,
+      setState((prev) => ({ ...prev, lastError: error }))
 
-      lastError: null,
-    }))
+      return { ok: false, error }
+    }
+
+    setState((prev) => settleTrade(prev, trade.id, market.price, Date.now()))
 
     return { ok: true }
   }
@@ -949,27 +956,40 @@ export function TradingProvider({ children }: { children: ReactNode }) {
 
     const socket = socketRef.current
 
-    if (
-      connectionMode !== "server" ||
-      socket?.readyState !== WebSocket.OPEN ||
-      !serverAuthReady
-    ) {
-      const error =
-        "Balance adjustments require an authenticated trading server."
+    if (connectionMode === "server" && socket?.readyState === WebSocket.OPEN) {
+      socket.send(
+        JSON.stringify({ type: "ADJUST_BALANCE", amount: delta, reason }),
+      )
+
+      setState((prev) => ({
+        ...prev,
+
+        lastAction: `Submitted balance adjustment: ${reason}`,
+
+        lastError: null,
+      }))
+
+      return { ok: true }
+    }
+
+    const current = stateRef.current
+
+    const nextBalance = round2(current.balance + delta)
+
+    if (nextBalance < 0) {
+      const error = "Insufficient balance for adjustment"
 
       setState((prev) => ({ ...prev, lastError: error }))
 
       return { ok: false, error }
     }
 
-    socket.send(
-      JSON.stringify({ type: "ADJUST_BALANCE", amount: delta, reason }),
-    )
-
     setState((prev) => ({
       ...prev,
 
-      lastAction: `Submitted balance adjustment: ${reason}`,
+      balance: nextBalance,
+
+      lastAction: reason,
 
       lastError: null,
     }))
@@ -987,16 +1007,12 @@ export function TradingProvider({ children }: { children: ReactNode }) {
         connectionMode === "server" &&
         socket?.readyState === WebSocket.OPEN
       ) {
-        setState((prev) => ({ ...prev, balance: round2(balance) }))
-
         socket.send(JSON.stringify({ type: "REFRESH_BALANCE" }))
-
         return
       }
 
       setState((prev) => ({ ...prev, balance: round2(balance) }))
     },
-
     [connectionMode],
   )
 
@@ -1032,9 +1048,7 @@ export function TradingProvider({ children }: { children: ReactNode }) {
 
   const setTestBinaryAccount = (
     userId: string,
-
     enabled: boolean,
-
     initialBalance: number,
   ) => {
     if (!simulationMode || !testBinaryAvailable || role !== "super_admin") {
@@ -1050,20 +1064,15 @@ export function TradingProvider({ children }: { children: ReactNode }) {
     socket.send(
       JSON.stringify({
         type: "SIM_SET_TEST_ACCOUNT",
-
         userId,
-
         enabled,
-
         initialBalance,
       }),
     )
 
     setState((prev) => ({
       ...prev,
-
       lastAction: `Submitted test system assignment for user ${userId}`,
-
       lastError: null,
     }))
 
@@ -1089,9 +1098,7 @@ export function TradingProvider({ children }: { children: ReactNode }) {
   )
 
   const recentTrades = [...state.closedTrades]
-
     .sort((a, b) => (b.settledAt ?? b.createdAt) - (a.settledAt ?? a.createdAt))
-
     .slice(0, 8)
 
   return (
@@ -1124,8 +1131,6 @@ export function TradingProvider({ children }: { children: ReactNode }) {
         selectedSymbol: state.selectedSymbol,
 
         balance: state.balance,
-
-        demoBalance: state.demoBalance,
 
         equity,
 
@@ -1175,11 +1180,8 @@ export function useTrading() {
 
 export function buildSeriesShape(
   values: number[],
-
   width: number,
-
   height: number,
-
   padding = 10,
 ) {
   const series = values.length > 1 ? values : [values[0] ?? 0, values[0] ?? 0]
@@ -1197,12 +1199,10 @@ export function buildSeriesShape(
   }))
 
   const line = points
-
     .map(
       (point, index) =>
         `${index === 0 ? "M" : "L"}${point.x.toFixed(1)},${point.y.toFixed(1)}`,
     )
-
     .join(" ")
 
   const area = `${line} L${width},${height} L0,${height} Z`
@@ -1242,24 +1242,22 @@ function createInitialState(): TradingState {
 
     balance: STARTING_BALANCE,
 
-    demoBalance: readCachedDemoBalance(),
-
-    realizedPnl: 0,
+    realizedPnl: 1471.35,
 
     openTrades: [],
 
-    closedTrades: [],
+    closedTrades: SAMPLE_CLOSED_TRADES,
 
     selectedSymbol: "VOL-75",
 
     lastError: null,
 
-    lastAction: "Connecting to trading server",
+    lastAction: "Simulation ready",
   }
 }
 
 function createMarket(seed: MarketSeed): MarketSnapshot {
-  const history = Array.from({ length: 90 }, () => round2(seed.basePrice))
+  const history = createHistory(seed.basePrice, seed.volatility, seed.drift)
 
   const price = history[history.length - 1] ?? seed.basePrice
 
@@ -1276,10 +1274,278 @@ function createMarket(seed: MarketSeed): MarketSnapshot {
   }
 }
 
+function createHistory(basePrice: number, volatility: number, drift: number) {
+  const history: number[] = [basePrice * 0.985]
+
+  for (let index = 1; index < 90; index++) {
+    const last = history[index - 1]
+
+    history.push(nextPrice(last, volatility, drift, basePrice, index))
+  }
+
+  return history.map(round2)
+}
+
+function advanceState(prev: TradingState, now: number): TradingState {
+  const markets: Record<string, MarketSnapshot> = {}
+
+  for (const seed of MARKET_SEEDS) {
+    const current = prev.markets[seed.symbol] ?? createMarket(seed)
+
+    const price = nextPrice(
+      current.price,
+      seed.volatility,
+      seed.drift,
+      seed.basePrice,
+    )
+
+    const history = [...current.history, price].slice(-HISTORY_LIMIT)
+
+    markets[seed.symbol] = {
+      ...current,
+
+      price,
+
+      history,
+
+      changePct: round2(((price - seed.basePrice) / seed.basePrice) * 100),
+
+      lastDigit: lastDigit(price),
+    }
+  }
+
+  let balance = prev.balance
+
+  let realizedPnl = prev.realizedPnl
+
+  const openTrades: BinaryTrade[] = []
+
+  const closedTrades = [...prev.closedTrades]
+
+  for (const trade of prev.openTrades) {
+    if (trade.expiryAt > now) {
+      openTrades.push(trade)
+
+      continue
+    }
+
+    const market = markets[trade.symbol] ?? prev.markets[trade.symbol]
+
+    const settled = resolveTrade(trade, market?.price ?? trade.entryPrice, now)
+
+    balance = trade.isDemo ? balance : round2(balance + (settled.payout ?? 0))
+
+    realizedPnl = trade.isDemo ? realizedPnl : round2(realizedPnl + (settled.profit ?? 0))
+
+    closedTrades.unshift(settled)
+  }
+
+  return {
+    ...prev,
+
+    markets,
+
+    balance,
+
+    realizedPnl,
+
+    openTrades,
+
+    closedTrades: closedTrades.slice(0, 40),
+  }
+}
+
+function settleTrade(
+  prev: TradingState,
+  tradeId: string,
+  exitPrice: number,
+  settledAt: number,
+): TradingState {
+  const trade = prev.openTrades.find((item) => item.id === tradeId)
+
+  if (!trade) {
+    return prev
+  }
+
+  const settled = resolveTrade(trade, exitPrice, settledAt)
+
+  return {
+    ...prev,
+
+    balance: trade.isDemo ? prev.balance : round2(prev.balance + (settled.payout ?? 0)),
+
+    realizedPnl: trade.isDemo ? prev.realizedPnl : round2(prev.realizedPnl + (settled.profit ?? 0)),
+
+    openTrades: prev.openTrades.filter((item) => item.id !== tradeId),
+
+    closedTrades: [settled, ...prev.closedTrades].slice(0, 40),
+
+    lastAction: `Closed ${trade.symbol}`,
+
+    lastError: null,
+  }
+}
+
+function resolveTrade(
+  trade: BinaryTrade,
+  exitPrice: number,
+  settledAt: number,
+): BinaryTrade {
+  const exitDigit = lastDigit(exitPrice)
+
+  const won = isWinningTrade(trade, exitPrice, exitDigit)
+
+  const payout = won ? round2(trade.stake * trade.payoutMultiplier) : 0
+
+  const profit = won ? round2(payout - trade.stake) : round2(-trade.stake)
+
+  return {
+    ...trade,
+
+    status: won ? "won" : "lost",
+
+    result: won ? "won" : "lost",
+
+    exitPrice: round2(exitPrice),
+
+    exitDigit,
+
+    settledAt,
+
+    payout,
+
+    profit,
+  }
+}
+
+function isWinningTrade(
+  trade: BinaryTrade,
+  exitPrice: number,
+  exitDigit: number,
+) {
+  switch (trade.contractType) {
+    case "rise-fall":
+      return trade.direction === "rise"
+        ? exitPrice > trade.entryPrice
+        : exitPrice < trade.entryPrice
+
+    case "even-odd":
+      return trade.direction === "even"
+        ? exitDigit % 2 === 0
+        : exitDigit % 2 === 1
+
+    case "match-differ":
+      return trade.direction === "match"
+        ? exitDigit === trade.entryDigit
+        : exitDigit !== trade.entryDigit
+  }
+}
+
+function nextPrice(
+  price: number,
+  volatility: number,
+  drift: number,
+  mean: number,
+  step = 0,
+) {
+  const gaussian = boxMuller()
+
+  const meanReversion = ((mean - price) / mean) * 0.02
+
+  const marketPulse = Math.sin(step / 8) * volatility * 0.2
+
+  const shock = gaussian * volatility
+
+  const spikeChance = Math.random() < 0.06 ? gaussian * volatility * 3.5 : 0
+
+  const delta =
+    price * (drift + meanReversion + marketPulse + shock + spikeChance)
+
+  return Math.max(0.01, round2(price + delta))
+}
+
+function boxMuller() {
+  const u1 = Math.max(Math.random(), 1e-8)
+
+  const u2 = Math.random()
+
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
+}
+
 function lastDigit(price: number) {
   return Number(price.toFixed(2).slice(-1))
 }
 
 function round2(value: number) {
   return Math.round(value * 100) / 100
+}
+
+function makeSampleTrade(
+  id: string,
+
+  symbol: string,
+
+  marketName: string,
+
+  contractType: ContractType,
+
+  direction: TradeDirection,
+
+  stake: number,
+
+  entryPrice: number,
+
+  exitPrice: number,
+
+  entryDigit: number,
+
+  expirySeconds: number,
+
+  payoutMultiplier: number,
+
+  result: "won" | "lost",
+
+  profit: number,
+
+  minuteOffset: number,
+): BinaryTrade {
+  return {
+    id,
+
+    symbol,
+
+    marketName,
+
+    contractType,
+
+    direction,
+
+    stake,
+
+    entryPrice,
+
+    entryDigit,
+
+    expiryAt: Date.now() - minuteOffset * 60000,
+
+    expirySeconds,
+
+    payoutMultiplier,
+
+    status: result,
+
+    createdAt: Date.now() - minuteOffset * 60000,
+
+    settledAt: Date.now() - minuteOffset * 60000 + 30000,
+
+    exitPrice,
+
+    exitDigit: lastDigit(exitPrice),
+
+    payout: result === "won" ? round2(stake * payoutMultiplier) : 0,
+
+    profit,
+
+    result,
+  }
 }

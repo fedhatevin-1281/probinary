@@ -448,7 +448,7 @@ export default function Terminal() {
     testBinarySystem,
   } = useTrading()
 
-  const { activeAccount, balances } = useTopNav()
+  const { activeAccount, balances, setDemoBalance } = useTopNav()
 
   const [showWatchlist, setShowWatchlist] = useState(true)
 
@@ -714,6 +714,9 @@ export default function Terminal() {
     })
 
     if (result.ok) {
+      if (!testBinarySystem && activeAccount === "demo") {
+        setDemoBalance((prev) => prev - tradeStake)
+      }
       setBottomTab("positions")
     }
   }
