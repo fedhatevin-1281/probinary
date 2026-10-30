@@ -183,3 +183,88 @@ export async function addManualDeposit(
     body: JSON.stringify({ userId, amount, reference, note }),
   })
 }
+
+export async function createAdminUser(
+  token: string,
+  userData: {
+    username: string
+    email: string
+    password: string
+    role?: "user" | "admin" | "super_admin"
+    initialBalance?: number
+    currency?: string
+  },
+): Promise<{ ok: boolean; user: User }> {
+  return requestJson<{ ok: boolean; user: User }>("/auth/admin/users", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(userData),
+  })
+}
+
+export async function updateAdminUser(
+  token: string,
+  userId: number,
+  updates: {
+    username?: string
+    email?: string
+    account_status?: "active" | "inactive" | "suspended"
+    role?: "user" | "admin" | "super_admin"
+  },
+): Promise<{ ok: boolean; message: string }> {
+  return requestJson<{ ok: boolean; message: string }>(`/auth/admin/users/${userId}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(updates),
+  })
+}
+
+export async function resetUserPasswordByAdmin(
+  token: string,
+  userId: number,
+  newPassword: string,
+): Promise<{ ok: boolean; message: string }> {
+  return requestJson<{ ok: boolean; message: string }>(`/auth/admin/users/${userId}/reset-password`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ newPassword }),
+  })
+}
+
+export async function adjustUserBalance(
+  token: string,
+  userId: number,
+  amount: number,
+  type: "credit" | "deduction",
+  reason: string,
+  reference?: string,
+): Promise<{ ok: boolean; currentBalance: number; totalDeposits: number; reference: string }> {
+  return requestJson<{ ok: boolean; currentBalance: number; totalDeposits: number; reference: string }>(
+    "/auth/admin/adjust-balance",
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ userId, amount, type, reason, reference }),
+    },
+  )
+}
+
+export interface ManualDepositRecord {
+  id: number
+  user_id: string
+  amount: number
+  reference: string
+  note?: string | null
+  credited_by: string
+  created_at: string
+}
+
+export async function getAdminManualDeposits(
+  token: string,
+): Promise<{ ok: boolean; deposits: ManualDepositRecord[] }> {
+  return requestJson<{ ok: boolean; deposits: ManualDepositRecord[] }>("/auth/admin/deposits", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+

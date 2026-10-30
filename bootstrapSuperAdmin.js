@@ -96,9 +96,18 @@ async function main() {
     if (existingUsers && existingUsers.length > 0) {
       const u = existingUsers[0]
       console.log(
-        `User [${u.username}] already exists in database with ID: ${u.id}.`,
+        `User [${u.username}] already exists in database with ID: ${u.id}. Updating password...`,
       )
       userId = u.id
+      const hashedPass = await bcrypt.hash(PASSWORD, 10)
+      await supabaseRequest(`/users?id=eq.${u.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          password_hash: hashedPass,
+          account_status: "active",
+          updated_at: now,
+        }),
+      })
     } else {
       // Create user
       const hashedPass = await bcrypt.hash(PASSWORD, 10)

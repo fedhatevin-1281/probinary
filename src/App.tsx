@@ -211,14 +211,14 @@ export default function App() {
     (user && user.role === "super_admin" && page === null)
   ) {
     return (
-      <TradingProvider>
+      <TradingProvider initialBalance={user?.current_balance}>
         <SuperAdminConsole />
       </TradingProvider>
     )
   }
 
   return (
-    <TradingProvider>
+    <TradingProvider initialBalance={user?.current_balance}>
       <TopNavProvider>
         {!page ? (
           <Landing

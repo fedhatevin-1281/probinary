@@ -54,6 +54,22 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
 
       watch: { ignored: ["**/.figma/**"] },
+
+      proxy: {
+        "/auth": {
+          target: "http://127.0.0.1:8090",
+          changeOrigin: true,
+        },
+        "/payments": {
+          target: "http://127.0.0.1:8090",
+          changeOrigin: true,
+        },
+        "/ws": {
+          target: "ws://127.0.0.1:8085",
+          ws: true,
+          rewrite: (path) => path.replace(/^\/ws/, ""),
+        },
+      },
     },
 
     preview: {

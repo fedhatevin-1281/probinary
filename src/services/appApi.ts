@@ -19,7 +19,7 @@ function resolveApiBaseUrl() {
     return window.location.origin
   }
 
-  return "http://localhost:8080"
+  return "http://localhost:8085"
 }
 
 const API_BASE = resolveApiBaseUrl()

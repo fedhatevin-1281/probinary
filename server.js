@@ -49,7 +49,7 @@ function loadEnv() {
 
 loadEnv()
 
-const PORT = Number(process.env.PORT || 8080)
+const PORT = Number(process.env.TRADING_PORT || process.env.PORT || 8085)
 
 const SIMULATION_MODE = process.env.SIMULATION_MODE === "true"
 
@@ -269,16 +269,70 @@ const clients = new Set()
 const sessions = new WeakMap()
 
 const server = http.createServer((request, response) => {
+  response.setHeader("Access-Control-Allow-Origin", "*")
+  response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+  response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+  if (request.method === "OPTIONS") {
+    response.writeHead(204)
+    response.end()
+    return
+  }
+
   if (request.url === "/health") {
     response.writeHead(200, { "Content-Type": "application/json" })
-
     response.end(JSON.stringify({ ok: true }))
+    return
+  }
 
+  if (request.url === "/internal/balance-update" && request.method === "POST") {
+    let body = ""
+    request.on("data", (chunk) => { body += chunk })
+    request.on("end", () => {
+      try {
+        const payload = JSON.parse(body || "{}")
+        const userId = String(payload.userId || "").trim()
+        const balance = Number(payload.balance)
+        const reason = String(payload.reason || "Balance updated by administrator")
+
+        if (userId && Number.isFinite(balance)) {
+          const key = `user:${userId}`
+          const state = accountStates.get(key)
+          if (state) {
+            state.balance = round2(balance)
+            state.lastAction = reason
+          }
+          persistedBalances.set(key, round2(balance))
+
+          // Instantly notify all connected WebSocket sessions for this client
+          for (const client of clients) {
+            const session = sessions.get(client)
+            if (String(session?.userId ?? "") === userId && client.readyState === WebSocket.OPEN) {
+              const clientState = getAccountState(session)
+              clientState.balance = round2(balance)
+              clientState.lastAction = reason
+              client.send(JSON.stringify({ type: "STATE", state: clientState }))
+              client.send(JSON.stringify({
+                type: "ACK",
+                ok: true,
+                action: reason,
+              }))
+            }
+          }
+          console.log(`[WS INTERNAL] Synchronized live balance for user ${userId} to ${balance} USD (${reason})`)
+        }
+
+        response.writeHead(200, { "Content-Type": "application/json" })
+        response.end(JSON.stringify({ ok: true }))
+      } catch (err) {
+        response.writeHead(400, { "Content-Type": "application/json" })
+        response.end(JSON.stringify({ error: err.message }))
+      }
+    })
     return
   }
 
   response.writeHead(200, { "Content-Type": "text/plain" })
-
   response.end("Binary trading websocket backend is running")
 })
 
@@ -357,6 +411,13 @@ wss.on("connection", (socket) => {
         state.lastAction = `Opened ${result.trade.contractType} trade on ${result.trade.symbol}`
 
         broadcastState()
+
+        // Persist stake deduction directly to database immediately
+        if (session.userId && !getTestBinaryPolicy(session)) {
+          syncAccountBalance(session).catch((err) => {
+            console.error("[WS TRADE] Error saving stake deduction to DB:", err)
+          })
+        }
 
         socket.send(
           JSON.stringify({
@@ -692,9 +753,9 @@ setInterval(() => {
   broadcastState("Live market tick")
 }, 1000)
 
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(
-    `Binary trading websocket backend listening on ws://localhost:${PORT}`,
+    `Binary trading websocket backend listening on ws://0.0.0.0:${PORT}`,
   )
 })
 
@@ -839,7 +900,7 @@ async function syncBalanceToDb() {
 }
 
 async function syncAccountBalance(session) {
-  if (getTestBinaryPolicy(session)) return
+  if (getTestBinaryPolicy(session) || !session?.userId) return
 
   const key = getAccountKey(session)
   const activeSync = balanceSyncs.get(key)
@@ -849,11 +910,40 @@ async function syncAccountBalance(session) {
   const accountState = getAccountState(session)
   const sync = (async () => {
     while (true) {
-      const previousBalance = persistedBalances.get(key)
+      let previousBalance = persistedBalances.get(key)
 
       if (previousBalance === undefined) {
-        persistedBalances.set(key, accountState.balance)
-        return
+        // Query database wallet to establish baseline
+        try {
+          if (process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY) {
+            const walletUrl = `${process.env.SUPABASE_URL}/rest/v1/wallets?user_id=eq.${encodeURIComponent(session.userId)}`
+            const headers = {
+              apikey: process.env.SUPABASE_SECRET_KEY,
+              Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+            }
+            const res = await fetch(walletUrl, { headers })
+            if (res.ok) {
+              const wallets = await res.json()
+              if (wallets && wallets.length > 0) {
+                const dbBalance = Number(wallets[0].current_balance)
+                if (Number.isFinite(dbBalance)) {
+                  previousBalance = dbBalance
+                  persistedBalances.set(key, dbBalance)
+                  if (accountState.openTrades.length === 0) {
+                    accountState.balance = dbBalance
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error("[WS AUTH] Failed to initialize baseline balance from DB:", e)
+        }
+
+        if (previousBalance === undefined) {
+          persistedBalances.set(key, accountState.balance)
+          return
+        }
       }
 
       const balanceAtStart = accountState.balance
@@ -878,6 +968,8 @@ async function syncAccountBalance(session) {
       )
 
       if (!response.ok) {
+        const errorText = await response.text()
+        console.error(`[WS AUTH] apply_wallet_delta failed: ${response.status} - ${errorText}`)
         throw new Error(`Balance sync failed: ${response.status}`)
       }
 

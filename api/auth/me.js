@@ -55,6 +55,13 @@ export default async function handler(req, res) {
 
     role = resolveLoginRole(user, role)
 
+    // Fetch user wallet
+    const wallets = await supabaseRequest(`/wallets?user_id=eq.${user.id}`)
+    const wallet = wallets && wallets.length > 0 ? wallets[0] : null
+    const currentBalance = Number(wallet?.current_balance || 0)
+    const totalDeposits = Number(wallet?.total_deposits || 0)
+    const totalWithdrawals = Number(wallet?.total_withdrawals || 0)
+
     res.status(200).json({
       id: user.id,
 
@@ -63,6 +70,14 @@ export default async function handler(req, res) {
       email: user.email,
 
       role,
+
+      account_status: user.account_status,
+
+      current_balance: currentBalance,
+
+      total_deposits: totalDeposits,
+
+      total_withdrawals: totalWithdrawals,
     })
   } catch (error) {
     console.error("Auth/me serverless error:", error)

@@ -286,6 +286,14 @@ app.post("/auth/register", async (req, res) => {
         email: newUser.email,
 
         role: "user",
+
+        account_status: "active",
+
+        current_balance: 0,
+
+        total_deposits: 0,
+
+        total_withdrawals: 0,
       },
     })
   } catch (error) {
@@ -359,6 +367,13 @@ app.post("/auth/login", async (req, res) => {
 
     roleName = resolveLoginRole(user, roleName)
 
+    // Fetch user wallet
+    const wallets = await supabaseRequest(`/wallets?user_id=eq.${user.id}`)
+    const wallet = wallets && wallets.length > 0 ? wallets[0] : null
+    const currentBalance = Number(wallet?.current_balance || 0)
+    const totalDeposits = Number(wallet?.total_deposits || 0)
+    const totalWithdrawals = Number(wallet?.total_withdrawals || 0)
+
     // Generate JWT
 
     const token = jwt.sign(
@@ -388,6 +403,14 @@ app.post("/auth/login", async (req, res) => {
         email: user.email,
 
         role: roleName,
+
+        account_status: user.account_status,
+
+        current_balance: currentBalance,
+
+        total_deposits: totalDeposits,
+
+        total_withdrawals: totalWithdrawals,
       },
     })
   } catch (error) {
@@ -439,6 +462,13 @@ app.get("/auth/me", async (req, res) => {
 
     roleName = resolveLoginRole(user, roleName)
 
+    // Fetch user wallet
+    const wallets = await supabaseRequest(`/wallets?user_id=eq.${user.id}`)
+    const wallet = wallets && wallets.length > 0 ? wallets[0] : null
+    const currentBalance = Number(wallet?.current_balance || 0)
+    const totalDeposits = Number(wallet?.total_deposits || 0)
+    const totalWithdrawals = Number(wallet?.total_withdrawals || 0)
+
     res.json({
       id: user.id,
 
@@ -447,6 +477,14 @@ app.get("/auth/me", async (req, res) => {
       username: user.username,
 
       role: roleName,
+
+      account_status: user.account_status,
+
+      current_balance: currentBalance,
+
+      total_deposits: totalDeposits,
+
+      total_withdrawals: totalWithdrawals,
     })
   } catch (error) {
     res.status(401).json({ error: "Invalid or expired token" })
@@ -828,6 +866,24 @@ app.get("/auth/admin/users", async (req, res) => {
   }
 })
 
+async function notifyTradingServer(userId, newBalance, totalDeposits, reason) {
+  try {
+    const tradingServerUrl = process.env.TRADING_SERVER_URL || "http://localhost:8085"
+    await fetch(`${tradingServerUrl}/internal/balance-update`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: String(userId),
+        balance: Number(newBalance),
+        totalDeposits: Number(totalDeposits || 0),
+        reason: reason || "Administrator balance adjustment",
+      }),
+    })
+  } catch (e) {
+    console.warn("[AUTH] Notice: Could not notify trading server of balance update (might be starting up):", e.message)
+  }
+}
+
 app.post("/auth/admin/manual-deposit", async (req, res) => {
   const authHeader = req.headers.authorization
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -867,11 +923,16 @@ app.post("/auth/admin/manual-deposit", async (req, res) => {
       }),
     })
     const deposit = result?.[0]
+    const currentBalance = Number(deposit.current_balance)
+    const totalDeposits = Number(deposit.total_deposits)
+
+    // Notify connected trading server immediately so the client sees the update in real time
+    notifyTradingServer(userId, currentBalance, totalDeposits, note ? `M-Pesa Till: ${note} (ref: ${reference})` : `M-Pesa Till Deposit: ref ${reference}`).catch(() => {})
 
     return res.json({
       ok: true,
-      currentBalance: Number(deposit.current_balance),
-      totalDeposits: Number(deposit.total_deposits),
+      currentBalance,
+      totalDeposits,
     })
   } catch (error) {
     if (/409|23505|duplicate key/i.test(error.message || "")) {
@@ -879,6 +940,319 @@ app.post("/auth/admin/manual-deposit", async (req, res) => {
     }
     console.error("Manual wallet deposit error:", error)
     return res.status(500).json({ error: error.message || "Could not apply manual deposit." })
+  }
+})
+
+// ADMIN MANUAL BALANCE ADJUSTMENT (Credit or Deduction)
+app.post("/auth/admin/adjust-balance", async (req, res) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" })
+  }
+
+  try {
+    const admin = jwt.verify(authHeader.slice("Bearer ".length), JWT_SECRET)
+    if (admin.role !== "admin" && admin.role !== "super_admin") {
+      return res.status(403).json({ error: "Forbidden: Admin access required" })
+    }
+
+    const userId = String(req.body?.userId || "").trim()
+    const amount = Number(req.body?.amount)
+    const type = req.body?.type === "deduction" ? "deduction" : "credit"
+    const reason = String(req.body?.reason || "").trim()
+    const reference = String(req.body?.reference || `ADJ-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`).trim()
+
+    if (!userId || !Number.isFinite(amount) || amount <= 0 || amount > 1000000) {
+      return res.status(400).json({ error: "Enter a positive amount up to $1,000,000" })
+    }
+
+    // Fetch target user's current wallet
+    const wallets = await supabaseRequest(`/wallets?user_id=eq.${encodeURIComponent(userId)}`)
+    if (!wallets || wallets.length === 0) {
+      return res.status(404).json({ error: "Wallet not found for this user." })
+    }
+
+    const wallet = wallets[0]
+    const currentBalance = Number(wallet.current_balance || 0)
+    const currentTotalDeposits = Number(wallet.total_deposits || 0)
+    const delta = type === "deduction" ? -Math.round(amount * 100) / 100 : Math.round(amount * 100) / 100
+    const newBalance = Math.round((currentBalance + delta) * 100) / 100
+
+    if (newBalance < 0) {
+      return res.status(400).json({ error: `Cannot deduct $${amount}. Current client balance is only $${currentBalance.toFixed(2)}.` })
+    }
+
+    const newTotalDeposits = delta > 0 ? Math.round((currentTotalDeposits + delta) * 100) / 100 : currentTotalDeposits
+    const now = new Date().toISOString()
+
+    // Update wallet in DB
+    await supabaseRequest(`/wallets?user_id=eq.${encodeURIComponent(userId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        current_balance: newBalance,
+        total_deposits: newTotalDeposits,
+        last_updated: now,
+        updated_at: now,
+      }),
+    })
+
+    // Record adjustment in manual_wallet_deposits
+    try {
+      await supabaseRequest("/manual_wallet_deposits", {
+        method: "POST",
+        body: JSON.stringify({
+          user_id: userId,
+          amount: Math.abs(delta),
+          reference: reference.slice(0, 100),
+          note: `[${type.toUpperCase()}] ${reason || "Manual balance adjustment"}`.slice(0, 500),
+          credited_by: String(admin.id),
+          created_at: now,
+        }),
+      })
+    } catch (auditErr) {
+      console.warn("[AUTH] Could not log adjustment audit record (non-fatal):", auditErr.message)
+    }
+
+    // Real-time broadcast to connected trading WebSocket server
+    notifyTradingServer(userId, newBalance, newTotalDeposits, reason || `Manual balance adjustment (${type})`).catch(() => {})
+
+    return res.json({
+      ok: true,
+      currentBalance: newBalance,
+      totalDeposits: newTotalDeposits,
+      reference,
+    })
+  } catch (error) {
+    console.error("Admin balance adjustment error:", error)
+    return res.status(500).json({ error: error.message || "Failed to adjust balance" })
+  }
+})
+
+// ADMIN CREATE USER
+app.post("/auth/admin/users", async (req, res) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" })
+  }
+
+  try {
+    const admin = jwt.verify(authHeader.slice("Bearer ".length), JWT_SECRET)
+    if (admin.role !== "admin" && admin.role !== "super_admin") {
+      return res.status(403).json({ error: "Forbidden: Admin access required" })
+    }
+
+    const { username, email, password, role = "user", initialBalance = 0, currency = "USD" } = req.body
+
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: "Username, email, and password are required." })
+    }
+
+    // Check existing email
+    const existingEmail = await supabaseRequest(`/users?email=eq.${encodeURIComponent(email.trim())}`)
+    if (existingEmail && existingEmail.length > 0) {
+      return res.status(400).json({ error: "Email is already in use." })
+    }
+
+    // Check existing username
+    const existingUsername = await supabaseRequest(`/users?username=eq.${encodeURIComponent(username.trim())}`)
+    if (existingUsername && existingUsername.length > 0) {
+      return res.status(400).json({ error: "Username is already taken." })
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10)
+    const now = new Date().toISOString()
+
+    const users = await supabaseRequest("/users", {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({
+        email: email.trim(),
+        username: username.trim(),
+        password_hash: passwordHash,
+        account_status: "active",
+        created_at: now,
+        updated_at: now,
+      }),
+    })
+
+    if (!users || users.length === 0) {
+      throw new Error("Failed to create user record in database.")
+    }
+
+    const newUser = users[0]
+    const roleId = role === "super_admin" ? 3 : role === "admin" ? 2 : 1
+
+    await supabaseRequest("/user_roles", {
+      method: "POST",
+      body: JSON.stringify({
+        user_id: newUser.id,
+        role_id: roleId,
+        created_at: now,
+      }),
+    })
+
+    const parsedInitialBalance = Math.max(0, Math.round(Number(initialBalance || 0) * 100) / 100)
+
+    await supabaseRequest("/wallets", {
+      method: "POST",
+      body: JSON.stringify({
+        user_id: newUser.id,
+        current_balance: parsedInitialBalance,
+        currency: currency || "USD",
+        total_deposits: parsedInitialBalance,
+        total_withdrawals: 0,
+        last_updated: now,
+        created_at: now,
+        updated_at: now,
+      }),
+    })
+
+    if (parsedInitialBalance > 0) {
+      try {
+        await supabaseRequest("/manual_wallet_deposits", {
+          method: "POST",
+          body: JSON.stringify({
+            user_id: String(newUser.id),
+            amount: parsedInitialBalance,
+            reference: `INIT-${newUser.id}-${Date.now()}`,
+            note: "Starting balance allocated upon account creation",
+            credited_by: String(admin.id),
+            created_at: now,
+          }),
+        })
+      } catch (e) {
+        console.warn("[AUTH] Initial deposit audit note:", e.message)
+      }
+    }
+
+    return res.status(201).json({
+      ok: true,
+      user: {
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email,
+        role,
+        account_status: "active",
+        current_balance: parsedInitialBalance,
+        total_deposits: parsedInitialBalance,
+        total_withdrawals: 0,
+        created_at: now,
+      },
+    })
+  } catch (error) {
+    console.error("Admin create user error:", error)
+    return res.status(500).json({ error: error.message || "Failed to create user." })
+  }
+})
+
+// ADMIN UPDATE USER (details / status)
+app.patch("/auth/admin/users/:id", async (req, res) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" })
+  }
+
+  try {
+    const admin = jwt.verify(authHeader.slice("Bearer ".length), JWT_SECRET)
+    if (admin.role !== "admin" && admin.role !== "super_admin") {
+      return res.status(403).json({ error: "Forbidden: Admin access required" })
+    }
+
+    const targetUserId = req.params.id
+    const { username, email, account_status, role } = req.body
+
+    const updates = {}
+    if (username && username.trim()) updates.username = username.trim()
+    if (email && email.trim()) updates.email = email.trim()
+    if (account_status && ["active", "inactive", "suspended"].includes(account_status)) {
+      updates.account_status = account_status
+    }
+
+    if (Object.keys(updates).length > 0) {
+      updates.updated_at = new Date().toISOString()
+      await supabaseRequest(`/users?id=eq.${targetUserId}`, {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      })
+    }
+
+    if (role && ["user", "admin", "super_admin"].includes(role)) {
+      const roleId = role === "super_admin" ? 3 : role === "admin" ? 2 : 1
+      const existing = await supabaseRequest(`/user_roles?user_id=eq.${targetUserId}`)
+      if (existing && existing.length > 0) {
+        await supabaseRequest(`/user_roles?user_id=eq.${targetUserId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ role_id: roleId }),
+        })
+      } else {
+        await supabaseRequest("/user_roles", {
+          method: "POST",
+          body: JSON.stringify({ user_id: targetUserId, role_id: roleId }),
+        })
+      }
+    }
+
+    return res.json({ ok: true, message: "User updated successfully" })
+  } catch (error) {
+    console.error("Admin update user error:", error)
+    return res.status(500).json({ error: error.message || "Failed to update user." })
+  }
+})
+
+// ADMIN RESET USER PASSWORD
+app.post("/auth/admin/users/:id/reset-password", async (req, res) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" })
+  }
+
+  try {
+    const admin = jwt.verify(authHeader.slice("Bearer ".length), JWT_SECRET)
+    if (admin.role !== "admin" && admin.role !== "super_admin") {
+      return res.status(403).json({ error: "Forbidden: Admin access required" })
+    }
+
+    const targetUserId = req.params.id
+    const { newPassword } = req.body
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: "New password must be at least 6 characters." })
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10)
+    await supabaseRequest(`/users?id=eq.${targetUserId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        password_hash: passwordHash,
+        updated_at: new Date().toISOString(),
+      }),
+    })
+
+    return res.json({ ok: true, message: "User password reset successfully" })
+  } catch (error) {
+    console.error("Admin reset password error:", error)
+    return res.status(500).json({ error: error.message || "Failed to reset password." })
+  }
+})
+
+// ADMIN MANUAL DEPOSITS & ADJUSTMENTS AUDIT HISTORY
+app.get("/auth/admin/deposits", async (req, res) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" })
+  }
+
+  try {
+    const admin = jwt.verify(authHeader.slice("Bearer ".length), JWT_SECRET)
+    if (admin.role !== "admin" && admin.role !== "super_admin") {
+      return res.status(403).json({ error: "Forbidden: Admin access required" })
+    }
+
+    const deposits = await supabaseRequest("/manual_wallet_deposits?order=created_at.desc&limit=100")
+    return res.json({ ok: true, deposits: deposits || [] })
+  } catch (error) {
+    console.error("Admin get deposits error:", error)
+    return res.status(500).json({ error: error.message || "Failed to fetch deposits history." })
   }
 })
 
@@ -901,18 +1275,19 @@ app.post("/auth/admin/users/:id/role", async (req, res) => {
       return res.status(403).json({ error: "Forbidden: Admin access required" })
     }
 
+    const roleId = role === "super_admin" ? 3 : role === "admin" ? 2 : 1
+
     // Upsert the role
-    // Check if role exists
     const existingRoles = await supabaseRequest(`/user_roles?user_id=eq.${targetUserId}`)
     if (existingRoles && existingRoles.length > 0) {
       await supabaseRequest(`/user_roles?user_id=eq.${targetUserId}`, {
         method: "PATCH",
-        body: JSON.stringify({ role })
+        body: JSON.stringify({ role_id: roleId })
       })
     } else {
       await supabaseRequest("/user_roles", {
         method: "POST",
-        body: JSON.stringify({ user_id: targetUserId, role })
+        body: JSON.stringify({ user_id: targetUserId, role_id: roleId })
       })
     }
 
@@ -923,6 +1298,6 @@ app.post("/auth/admin/users/:id/role", async (req, res) => {
   }
 })
 
-app.listen(PORT, () => {
-  console.log(`Auth API server listening on http://localhost:${PORT}`)
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Auth API server listening on http://0.0.0.0:${PORT}`)
 })

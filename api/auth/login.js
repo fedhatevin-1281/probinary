@@ -73,6 +73,13 @@ export default async function handler(req, res) {
 
     role = resolveLoginRole(user, role)
 
+    // Fetch user wallet
+    const wallets = await supabaseRequest(`/wallets?user_id=eq.${user.id}`)
+    const wallet = wallets && wallets.length > 0 ? wallets[0] : null
+    const currentBalance = Number(wallet?.current_balance || 0)
+    const totalDeposits = Number(wallet?.total_deposits || 0)
+    const totalWithdrawals = Number(wallet?.total_withdrawals || 0)
+
     const token = jwt.sign(
       { id: user.id, email: user.email, role },
 
@@ -92,6 +99,14 @@ export default async function handler(req, res) {
         email: user.email,
 
         role,
+
+        account_status: user.account_status,
+
+        current_balance: currentBalance,
+
+        total_deposits: totalDeposits,
+
+        total_withdrawals: totalWithdrawals,
       },
     })
   } catch (error) {

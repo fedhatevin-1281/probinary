@@ -319,14 +319,18 @@ function resolveWebSocketUrl(): string | null {
 
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
+
     if (hostname === "localhost" || hostname === "127.0.0.1") {
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
-      return `${protocol}//${window.location.host}`
+      // Connect directly to the trading WebSocket server on port 8085
+      return `${protocol}//${hostname}:8085`
     }
-    return null
+
+    // Tunnel or reverse proxy with /ws route
+    return `${protocol}//${window.location.host}/ws`
   }
 
-  return null
+  return "ws://localhost:8085"
 }
 
 export const MARKET_SEEDS: MarketSeed[] = [
@@ -561,8 +565,31 @@ const SAMPLE_CLOSED_TRADES: BinaryTrade[] = [
 
 const TradingContext = createContext<TradingContextValue | null>(null)
 
-export function TradingProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<TradingState>(() => createInitialState())
+export function TradingProvider({
+  children,
+  initialBalance,
+}: {
+  children: ReactNode
+  initialBalance?: number
+}) {
+  const [state, setState] = useState<TradingState>(() => {
+    const s = createInitialState()
+    if (initialBalance !== undefined && Number.isFinite(initialBalance) && initialBalance >= 0) {
+      s.balance = round2(initialBalance)
+    }
+    return s
+  })
+
+  useEffect(() => {
+    if (initialBalance !== undefined && Number.isFinite(initialBalance) && initialBalance >= 0) {
+      setState((prev) => {
+        if (prev.openTrades.length === 0 && Math.abs(prev.balance - initialBalance) > 0.001) {
+          return { ...prev, balance: round2(initialBalance) }
+        }
+        return prev
+      })
+    }
+  }, [initialBalance])
 
   const [connectionMode, setConnectionMode] =
     useState<TransportMode>("connecting")

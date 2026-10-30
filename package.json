@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "backend": "node backend.js",
     "server": "node server.js",
     "auth:server": "node authServer.js",
     "auth:bootstrap-super-admin": "node bootstrapSuperAdmin.js",
