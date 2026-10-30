@@ -226,6 +226,21 @@ const STARTING_BALANCE = 0
 
 const DEMO_BALANCE_CACHE_PREFIX = "pb.demo-balance.v1:"
 
+function readCachedDemoBalance() {
+  if (typeof window === "undefined") return 0
+
+  const token = window.localStorage.getItem("pb.auth.token") || "demo-auth-token"
+  const value = Number(
+    window.localStorage.getItem(
+      `${DEMO_BALANCE_CACHE_PREFIX}${encodeURIComponent(token)}`,
+    ),
+  )
+
+  return Number.isFinite(value) && value >= 0 && value <= 100000000
+    ? value
+    : 0
+}
+
 const HISTORY_LIMIT = 120
 
 const DEFAULT_CAPABILITIES: RoleCapabilities = {
@@ -585,6 +600,8 @@ export function TradingProvider({ children }: { children: ReactNode }) {
 
   const [serverUserId, setServerUserId] = useState<string | null>(null)
 
+  const authenticatedStateRef = useRef(false)
+
   const demoBalanceCacheKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -631,6 +648,8 @@ export function TradingProvider({ children }: { children: ReactNode }) {
 
         setServerUserId(null)
 
+        authenticatedStateRef.current = false
+
         demoBalanceCacheKeyRef.current = null
 
         const token =
@@ -652,12 +671,22 @@ export function TradingProvider({ children }: { children: ReactNode }) {
           const message = JSON.parse(event.data) as ServerMessage
 
           if (message.type === "STATE") {
+            if (!authenticatedStateRef.current) return
+
             const cacheKey = demoBalanceCacheKeyRef.current
             if (cacheKey && Number.isFinite(message.state.demoBalance)) {
               try {
+                const cachedValue = String(message.state.demoBalance)
                 window.localStorage.setItem(
                   cacheKey,
-                  String(message.state.demoBalance),
+                  cachedValue,
+                )
+                const token =
+                  window.localStorage.getItem("pb.auth.token") ||
+                  "demo-auth-token"
+                window.localStorage.setItem(
+                  `${DEMO_BALANCE_CACHE_PREFIX}${encodeURIComponent(token)}`,
+                  cachedValue,
                 )
               } catch {
                 setState((prev) => ({
@@ -685,21 +714,30 @@ export function TradingProvider({ children }: { children: ReactNode }) {
           }
 
           if (message.type === "AUTH_STATE") {
-            setServerAuthReady(true)
-
-            setServerUserId(message.userId)
-
             const token =
               window.localStorage.getItem("pb.auth.token") || "demo-auth-token"
+            const requiresDatabaseUser =
+              token !== "demo-auth-token" && !token.startsWith("sim-")
+            const authenticated = !requiresDatabaseUser || message.userId !== null
+
+            authenticatedStateRef.current = authenticated
+            setServerAuthReady(authenticated)
+            setServerUserId(authenticated ? message.userId : null)
+
             const cacheIdentity = message.userId || token
             const cacheKey = `${DEMO_BALANCE_CACHE_PREFIX}${encodeURIComponent(cacheIdentity)}`
             demoBalanceCacheKeyRef.current = message.testBinarySystem
+              || !authenticated
               ? null
               : cacheKey
 
-            if (!message.testBinarySystem) {
+            if (authenticated && !message.testBinarySystem) {
               try {
-                const cachedBalance = window.localStorage.getItem(cacheKey)
+                const cachedBalance =
+                  window.localStorage.getItem(cacheKey) ??
+                  window.localStorage.getItem(
+                    `${DEMO_BALANCE_CACHE_PREFIX}${encodeURIComponent(token)}`,
+                  )
                 if (cachedBalance !== null) {
                   const balance = Number(cachedBalance)
                   if (Number.isFinite(balance) && balance >= 0 && balance <= 100000000) {
@@ -717,6 +755,15 @@ export function TradingProvider({ children }: { children: ReactNode }) {
                   lastError: "Could not restore this browser's demo balance cache.",
                 }))
               }
+            }
+
+            if (!authenticated) {
+              setState((prev) => ({
+                ...prev,
+                lastError:
+                  "Trading server could not authenticate this account. Check that JWT_SECRET matches the auth API.",
+              }))
+              return
             }
 
             setSimulationMode(message.simulationMode)
@@ -778,6 +825,8 @@ export function TradingProvider({ children }: { children: ReactNode }) {
         setServerAuthReady(false)
 
         setServerUserId(null)
+
+        authenticatedStateRef.current = false
 
         demoBalanceCacheKeyRef.current = null
 
@@ -1193,7 +1242,7 @@ function createInitialState(): TradingState {
 
     balance: STARTING_BALANCE,
 
-    demoBalance: 0,
+    demoBalance: readCachedDemoBalance(),
 
     realizedPnl: 0,
 
