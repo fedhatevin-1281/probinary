@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react"
 import { useTopNav } from "../state/topNav"
-import { getAdminStats, getAdminUsers, promoteUser } from "../services/authApi"
+import { addManualDeposit, getAdminStats, getAdminUsers, promoteUser, type User } from "../services/authApi"
 
 function isSimulationToken(token: string) {
   return token === "sim-admin" || token === "sim-super-admin"
@@ -78,7 +78,13 @@ export default function AdminConsole() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
-        <UserManagement />
+        <UserManagement
+          formatUsdValue={formatUsdValue}
+          onDepositApplied={amount => setDbStats(current => current ? {
+            ...current,
+            totalDeposited: current.totalDeposited + amount,
+          } : current)}
+        />
 
         <div style={{
           background: "rgba(255,255,255,0.03)",
@@ -133,10 +139,22 @@ export default function AdminConsole() {
   )
 }
 
-function UserManagement() {
-  const [users, setUsers] = useState<any[]>([])
+function UserManagement({
+  formatUsdValue,
+  onDepositApplied,
+}: {
+  formatUsdValue: (value: number) => string
+  onDepositApplied: (amount: number) => void
+}) {
+  const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [amount, setAmount] = useState("")
+  const [reference, setReference] = useState("")
+  const [note, setNote] = useState("")
+  const [depositError, setDepositError] = useState("")
+  const [depositBusy, setDepositBusy] = useState(false)
 
   const fetchUsers = async () => {
     const token = typeof window !== "undefined" ? window.localStorage.getItem("pb.auth.token") : null
@@ -182,6 +200,36 @@ function UserManagement() {
     }
   }
 
+  const handleManualDeposit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const token = typeof window !== "undefined" ? window.localStorage.getItem("pb.auth.token") : null
+    if (!token || !selectedUser) return
+
+    setDepositBusy(true)
+    setDepositError("")
+    try {
+      const result = await addManualDeposit(
+        token,
+        selectedUser.id,
+        Number(amount),
+        reference.trim(),
+        note.trim(),
+      )
+      setUsers(current => current.map(user => user.id === selectedUser.id
+        ? { ...user, current_balance: result.currentBalance, total_deposits: result.totalDeposits }
+        : user))
+      onDepositApplied(result.totalDeposits - (selectedUser.total_deposits || 0))
+      setSelectedUser(null)
+      setAmount("")
+      setReference("")
+      setNote("")
+    } catch (err: any) {
+      setDepositError(err.message || "Could not apply manual deposit.")
+    } finally {
+      setDepositBusy(false)
+    }
+  }
+
   return (
     <div style={{
       background: "rgba(255,255,255,0.03)",
@@ -206,6 +254,8 @@ function UserManagement() {
                 <th style={{ padding: "8px 0" }}>ID</th>
                 <th style={{ padding: "8px 0" }}>Username</th>
                 <th style={{ padding: "8px 0" }}>Email</th>
+                <th style={{ padding: "8px 0" }}>Balance</th>
+                <th style={{ padding: "8px 0" }}>Deposited</th>
                 <th style={{ padding: "8px 0" }}>Role</th>
                 <th style={{ padding: "8px 0" }}>Actions</th>
               </tr>
@@ -216,6 +266,8 @@ function UserManagement() {
                   <td style={{ padding: "12px 0" }}>{u.id}</td>
                   <td style={{ padding: "12px 0" }}>{u.username}</td>
                   <td style={{ padding: "12px 0" }}>{u.email}</td>
+                  <td style={{ padding: "12px 12px 12px 0", color: "#6EE7B7", whiteSpace: "nowrap" }}>{formatUsdValue(u.current_balance || 0)}</td>
+                  <td style={{ padding: "12px 12px 12px 0", whiteSpace: "nowrap" }}>{formatUsdValue(u.total_deposits || 0)}</td>
                   <td style={{ padding: "12px 0" }}>
                     <span style={{
                       background: u.role === "super_admin" ? "rgba(168,85,247,0.2)" : u.role === "admin" ? "rgba(59,130,246,0.2)" : "rgba(255,255,255,0.1)",
@@ -228,6 +280,24 @@ function UserManagement() {
                     </span>
                   </td>
                   <td style={{ padding: "12px 0" }}>
+                    <button
+                      onClick={() => {
+                        setSelectedUser(u)
+                        setDepositError("")
+                      }}
+                      style={{
+                        background: "#047857",
+                        border: "none",
+                        color: "white",
+                        padding: "4px 8px",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        fontSize: 12,
+                        marginRight: 8,
+                      }}
+                    >
+                      Manual deposit
+                    </button>
                     {u.role !== "super_admin" && (
                       <button
                         onClick={() => handlePromote(u.id, "super_admin")}
@@ -268,8 +338,48 @@ function UserManagement() {
           </table>
         </div>
       )}
+      {selectedUser && (
+        <form onSubmit={handleManualDeposit} style={{ marginTop: 16, padding: 16, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: 8 }}>
+          <h3 style={{ margin: "0 0 12px", fontSize: 15, color: "#A7F3D0" }}>
+            Credit till deposit to {selectedUser.username}
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+            <label style={{ display: "grid", gap: 5, color: "#D1D5DB", fontSize: 12 }}>
+              Amount (USD)
+              <input required type="number" min="0.01" max="1000000" step="0.01" value={amount} onChange={event => setAmount(event.target.value)} style={depositInputStyle} />
+            </label>
+            <label style={{ display: "grid", gap: 5, color: "#D1D5DB", fontSize: 12 }}>
+              Till / payment reference
+              <input required maxLength={100} value={reference} onChange={event => setReference(event.target.value)} style={depositInputStyle} />
+            </label>
+            <label style={{ display: "grid", gap: 5, color: "#D1D5DB", fontSize: 12 }}>
+              Note (optional)
+              <input maxLength={500} value={note} onChange={event => setNote(event.target.value)} style={depositInputStyle} />
+            </label>
+          </div>
+          {depositError && <div role="alert" style={{ color: "#FCA5A5", fontSize: 13, marginTop: 10 }}>{depositError}</div>}
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button type="submit" disabled={depositBusy} style={{ background: "#047857", border: "none", color: "white", padding: "8px 12px", borderRadius: 6, cursor: depositBusy ? "wait" : "pointer", opacity: depositBusy ? 0.65 : 1 }}>
+              {depositBusy ? "Crediting..." : "Confirm deposit"}
+            </button>
+            <button type="button" disabled={depositBusy} onClick={() => setSelectedUser(null)} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", color: "#D1D5DB", padding: "8px 12px", borderRadius: 6, cursor: "pointer" }}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   )
+}
+
+const depositInputStyle: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  background: "#111827",
+  border: "1px solid rgba(255,255,255,0.16)",
+  borderRadius: 6,
+  color: "#F9FAFB",
+  padding: "8px 10px",
 }
 
 function StatCard({ title, value, accent }: { title: string, value: string, accent: string }) {

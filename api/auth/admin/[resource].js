@@ -63,16 +63,25 @@ export default async function handler(req, res) {
     const userRoles = await supabaseRequest(
       "/user_roles?select=user_id,role_id",
     )
+    const wallets = await supabaseRequest(
+      "/wallets?select=user_id,current_balance,total_deposits,total_withdrawals",
+    )
     const roleMap = new Map(
       (userRoles ?? []).map((userRole) => [
         String(userRole.user_id),
         ROLE_BY_ID[Number(userRole.role_id)] || "user",
       ]),
     )
+    const walletMap = new Map(
+      (wallets ?? []).map((wallet) => [String(wallet.user_id), wallet]),
+    )
 
     const usersWithRoles = users.map((account) => ({
       ...account,
       role: roleMap.get(String(account.id)) || "user",
+      current_balance: Number(walletMap.get(String(account.id))?.current_balance || 0),
+      total_deposits: Number(walletMap.get(String(account.id))?.total_deposits || 0),
+      total_withdrawals: Number(walletMap.get(String(account.id))?.total_withdrawals || 0),
     }))
 
     return res.status(200).json({ ok: true, users: usersWithRoles })

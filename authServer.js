@@ -801,24 +801,84 @@ app.get("/auth/admin/users", async (req, res) => {
       return res.json({ ok: true, users: [] })
     }
     
-    // We need roles. Let's fetch all user roles
-    const userRoles = await supabaseRequest("/user_roles")
+    const [userRoles, wallets] = await Promise.all([
+      supabaseRequest("/user_roles?select=user_id,role_id"),
+      supabaseRequest("/wallets?select=user_id,current_balance,total_deposits,total_withdrawals"),
+    ])
     const roleMap = {}
     if (userRoles) {
       for (const ur of userRoles) {
-        roleMap[ur.user_id] = ur.role
+        roleMap[ur.user_id] = ({ 1: "user", 2: "admin", 3: "super_admin" })[ur.role_id] || "user"
       }
     }
+    const walletMap = new Map((wallets || []).map(wallet => [String(wallet.user_id), wallet]))
 
     const usersWithRoles = users.map(u => ({
       ...u,
-      role: roleMap[u.id] || "user"
+      role: roleMap[u.id] || "user",
+      current_balance: Number(walletMap.get(String(u.id))?.current_balance || 0),
+      total_deposits: Number(walletMap.get(String(u.id))?.total_deposits || 0),
+      total_withdrawals: Number(walletMap.get(String(u.id))?.total_withdrawals || 0),
     }))
 
     res.json({ ok: true, users: usersWithRoles })
   } catch (error) {
     console.error("Admin users error:", error)
     res.status(500).json({ error: error.message || "Internal server error" })
+  }
+})
+
+app.post("/auth/admin/manual-deposit", async (req, res) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" })
+  }
+
+  try {
+    const admin = jwt.verify(authHeader.slice("Bearer ".length), JWT_SECRET)
+    if (admin.role !== "admin" && admin.role !== "super_admin") {
+      return res.status(403).json({ error: "Forbidden: Admin access required" })
+    }
+
+    const userId = String(req.body?.userId || "").trim()
+    const amountText = String(req.body?.amount ?? "")
+    const amount = Number(amountText)
+    const reference = String(req.body?.reference || "").trim()
+    const note = String(req.body?.note || "").trim()
+
+    if (!userId || !/^\d+(\.\d{1,2})?$/.test(amountText) || !Number.isFinite(amount) || amount <= 0 || amount > 1000000) {
+      return res.status(400).json({ error: "Enter an amount between $0.01 and $1,000,000 with up to two decimals." })
+    }
+    if (!reference || reference.length > 100) {
+      return res.status(400).json({ error: "Enter a payment reference of up to 100 characters." })
+    }
+    if (note.length > 500) {
+      return res.status(400).json({ error: "Note must be 500 characters or fewer." })
+    }
+
+    const result = await supabaseRequest("/rpc/apply_manual_wallet_deposit", {
+      method: "POST",
+      body: JSON.stringify({
+        p_user_id: userId,
+        p_amount: amount,
+        p_reference: reference,
+        p_note: note,
+        p_credited_by: String(admin.id),
+      }),
+    })
+    const deposit = result?.[0]
+
+    return res.json({
+      ok: true,
+      currentBalance: Number(deposit.current_balance),
+      totalDeposits: Number(deposit.total_deposits),
+    })
+  } catch (error) {
+    if (/409|23505|duplicate key/i.test(error.message || "")) {
+      return res.status(409).json({ error: "That payment reference has already been credited." })
+    }
+    console.error("Manual wallet deposit error:", error)
+    return res.status(500).json({ error: error.message || "Could not apply manual deposit." })
   }
 })
 

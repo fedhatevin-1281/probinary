@@ -129,3 +129,70 @@ revoke all on function public.apply_wallet_delta(text, numeric) from public, ano
 revoke all on function public.complete_nowpayments_order(text, text, numeric, text) from public, anon, authenticated;
 grant execute on function public.apply_wallet_delta(text, numeric) to service_role;
 grant execute on function public.complete_nowpayments_order(text, text, numeric, text) to service_role;
+
+create table if not exists public.manual_wallet_deposits (
+  id bigint generated always as identity primary key,
+  user_id text not null,
+  amount numeric(12, 2) not null check (amount > 0),
+  reference text not null unique,
+  note text,
+  credited_by text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists manual_wallet_deposits_user_created_idx
+  on public.manual_wallet_deposits (user_id, created_at desc);
+
+alter table public.manual_wallet_deposits enable row level security;
+
+create or replace function public.apply_manual_wallet_deposit(
+  p_user_id text,
+  p_amount numeric,
+  p_reference text,
+  p_note text,
+  p_credited_by text
+)
+returns table (current_balance numeric, total_deposits numeric)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_balance numeric;
+  new_total_deposits numeric;
+begin
+  if p_amount <= 0 or p_amount <> round(p_amount, 2) then
+    raise exception 'Deposit amount must be positive and have at most two decimal places';
+  end if;
+
+  if length(trim(p_reference)) = 0 then
+    raise exception 'A payment reference is required';
+  end if;
+
+  update public.wallets
+  set current_balance = coalesce(current_balance, 0) + p_amount,
+      total_deposits = coalesce(total_deposits, 0) + p_amount,
+      last_updated = now(),
+      updated_at = now()
+  where user_id::text = p_user_id
+  returning current_balance, total_deposits
+  into new_balance, new_total_deposits;
+
+  if not found then
+    raise exception 'Wallet not found for user';
+  end if;
+
+  insert into public.manual_wallet_deposits (
+    user_id, amount, reference, note, credited_by
+  ) values (
+    p_user_id, p_amount, trim(p_reference), nullif(trim(p_note), ''), p_credited_by
+  );
+
+  return query select new_balance, new_total_deposits;
+end;
+$$;
+
+revoke all on public.manual_wallet_deposits from anon, authenticated;
+grant select, insert on public.manual_wallet_deposits to service_role;
+revoke all on function public.apply_manual_wallet_deposit(text, numeric, text, text, text) from public, anon, authenticated;
+grant execute on function public.apply_manual_wallet_deposit(text, numeric, text, text, text) to service_role;

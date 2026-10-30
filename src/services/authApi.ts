@@ -5,6 +5,9 @@ export interface User {
   role: "user" | "admin" | "super_admin"
   account_status?: string
   created_at?: string
+  current_balance?: number
+  total_deposits?: number
+  total_withdrawals?: number
 }
 
 export interface AuthResponse {
@@ -164,5 +167,19 @@ export async function promoteUser(token: string, userId: number, role: "admin" |
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ role }),
+  })
+}
+
+export async function addManualDeposit(
+  token: string,
+  userId: number,
+  amount: number,
+  reference: string,
+  note: string,
+): Promise<{ ok: boolean; currentBalance: number; totalDeposits: number }> {
+  return requestJson("/auth/admin/manual-deposit", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ userId, amount, reference, note }),
   })
 }
