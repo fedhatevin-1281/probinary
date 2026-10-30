@@ -166,7 +166,7 @@ function UserManagement({
 
     if (isSimulationToken(token)) {
       setLoading(false)
-      setError("Database user management is unavailable in simulation mode.")
+      setError("Sign out of simulation and sign in with a database-backed admin account to manage database users.")
       return
     }
     try {

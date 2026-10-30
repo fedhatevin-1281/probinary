@@ -26,20 +26,6 @@ import { type User, getMe, clearAuthSession } from "./services/authApi"
 
 export type Page = "dashboard" | "terminal" | "markets" | "portfolio" | "analytics" | "wallet" | "settings" | "admin" | "superadmin"
 
-function getLoginAccessKey(user: User) {
-  const normalizedUsername = user.username.trim().toLowerCase()
-
-  if (normalizedUsername === "supradmin") {
-    return "superadmin"
-  }
-
-  if (normalizedUsername === "dfirekenya") {
-    return "adminsim"
-  }
-
-  return null
-}
-
 const ACCESS_TOKEN_BY_LINK_KEY: Record<string, string> = {
   adminsim: "sim-admin",
 
@@ -184,21 +170,6 @@ export default function App() {
 
   const handleAuthSuccess = (token: string, profile: User) => {
     setUser(profile)
-
-    const accessKey = getLoginAccessKey(profile)
-
-    if (accessKey) {
-      const nextUrl = new URL(window.location.href)
-
-      nextUrl.searchParams.set("access", accessKey)
-
-      nextUrl.hash = ""
-
-      window.location.replace(nextUrl.toString())
-
-      return
-    }
-
     setPage("dashboard")
 
     window.setTimeout(() => {
