@@ -414,9 +414,15 @@ wss.on("connection", (socket) => {
 
         // Persist stake deduction directly to database immediately
         if (session.userId && !getTestBinaryPolicy(session)) {
-          syncAccountBalance(session).catch((err) => {
-            console.error("[WS TRADE] Error saving stake deduction to DB:", err)
-          })
+          if (!result.trade.isDemo) {
+            applyWalletDeltaDirect(session.userId, -result.trade.stake).catch((err) => {
+              console.error("[WS TRADE] Error saving stake deduction to DB:", err)
+            })
+            persistOpenTradeRecord(session.userId, result.trade).catch((err) => {
+              console.error("[WS TRADE] Error recording open trade to DB:", err)
+            })
+            persistedBalances.set(`user:${session.userId}`, state.balance)
+          }
         }
 
         socket.send(
@@ -864,6 +870,43 @@ async function syncUserSession(socket, token) {
             `[WS AUTH] Synchronized balance for user ${session.username} to ${accountState.balance} USD`,
           )
         }
+
+        // Fetch recent trade records from database
+        try {
+          const tradesUrl = `${process.env.SUPABASE_URL}/rest/v1/binary_trade_records?user_id=eq.${encodeURIComponent(String(session.userId))}&order=created_at.desc&limit=40`
+          const tradesRes = await fetch(tradesUrl, { headers })
+          if (tradesRes.ok) {
+            const records = await tradesRes.json()
+            if (Array.isArray(records) && records.length > 0) {
+              accountState.closedTrades = records
+                .filter((r) => r.status === "won" || r.status === "lost")
+                .map((r) => ({
+                  id: r.trade_id,
+                  symbol: r.symbol,
+                  marketName: r.market_name || r.symbol,
+                  contractType: r.contract_type,
+                  direction: r.direction,
+                  stake: Number(r.stake),
+                  entryPrice: Number(r.entry_price),
+                  exitPrice: Number(r.exit_price),
+                  entryDigit: Number(r.entry_digit),
+                  exitDigit: Number(r.exit_digit),
+                  expiryAt: new Date(r.expiry_at).getTime(),
+                  expirySeconds: Number(r.expiry_seconds || 30),
+                  payoutMultiplier: Number(r.payout_multiplier || 1.82),
+                  status: r.status,
+                  result: r.result,
+                  payout: Number(r.payout || 0),
+                  profit: Number(r.profit || 0),
+                  createdAt: new Date(r.created_at).getTime(),
+                  settledAt: r.settled_at ? new Date(r.settled_at).getTime() : Date.now(),
+                  isDemo: Boolean(r.is_demo),
+                }))
+            }
+          }
+        } catch (tradesErr) {
+          console.warn("[WS AUTH] Notice: Could not restore previous trades from DB:", tradesErr.message)
+        }
       }
     } catch (e) {
       console.error("[WS AUTH] Failed to fetch user wallet balance:", e)
@@ -1303,11 +1346,195 @@ function settleExpiredTrades(state) {
     state.realizedPnl = round2(state.realizedPnl + (settled.profit || 0))
 
     state.closedTrades.unshift(settled)
+
+    if (trade.userId && !trade.isDemo) {
+      persistSettledTradeRecord(trade.userId, settled).catch((err) => {
+        console.error("[WS TRADE] Error persisting settled trade:", err)
+      })
+      if (settled.payout > 0) {
+        applyWalletDeltaDirect(trade.userId, settled.payout).catch((err) => {
+          console.error("[WS TRADE] Error applying payout to wallet in DB:", err)
+        })
+      }
+      persistedBalances.set(`user:${trade.userId}`, state.balance)
+    }
   }
 
   state.openTrades = remaining
 
   state.closedTrades = state.closedTrades.slice(0, 40)
+}
+
+async function applyWalletDeltaDirect(userId, delta) {
+  if (!userId || !delta || !process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return
+  const roundDelta = round2(delta)
+  if (roundDelta === 0) return
+
+  try {
+    const response = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/apply_wallet_delta`, {
+      method: "POST",
+      headers: {
+        apikey: process.env.SUPABASE_SECRET_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        p_user_id: String(userId),
+        p_delta: roundDelta,
+      }),
+    })
+
+    if (!response.ok) {
+      const txt = await response.text()
+      console.error(`[WS TRADE] apply_wallet_delta failed for user ${userId}:`, txt)
+    } else {
+      const updatedBalance = Number(await response.json())
+      if (Number.isFinite(updatedBalance)) {
+        persistedBalances.set(`user:${userId}`, updatedBalance)
+      }
+    }
+  } catch (e) {
+    console.error(`[WS TRADE] Error applying wallet delta for user ${userId}:`, e)
+  }
+}
+
+async function persistOpenTradeRecord(userId, trade) {
+  if (!userId || !process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return
+
+  try {
+    const url = `${process.env.SUPABASE_URL}/rest/v1`
+    const headers = {
+      apikey: process.env.SUPABASE_SECRET_KEY,
+      Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    }
+
+    const tradeRecord = {
+      user_id: String(userId),
+      trade_id: trade.id,
+      is_demo: Boolean(trade.isDemo),
+      symbol: trade.symbol,
+      market_name: trade.marketName || trade.symbol,
+      contract_type: trade.contractType,
+      direction: trade.direction,
+      stake: trade.stake,
+      entry_price: trade.entryPrice,
+      entry_digit: trade.entryDigit,
+      expiry_at: new Date(trade.expiryAt).toISOString(),
+      expiry_seconds: trade.expirySeconds,
+      payout_multiplier: trade.payoutMultiplier,
+      status: "open",
+      result: null,
+      exit_price: null,
+      exit_digit: null,
+      payout: 0,
+      profit: 0,
+      created_at: new Date(trade.createdAt).toISOString(),
+      settled_at: null,
+    }
+
+    await fetch(`${url}/binary_trade_records`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(tradeRecord),
+    })
+  } catch (e) {
+    console.warn("[WS TRADE] Notice: Could not insert open trade record:", e.message)
+  }
+}
+
+async function persistSettledTradeRecord(userId, settledTrade) {
+  if (!userId || !process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return
+
+  try {
+    const url = `${process.env.SUPABASE_URL}/rest/v1`
+    const headers = {
+      apikey: process.env.SUPABASE_SECRET_KEY,
+      Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    }
+
+    const tradeRecord = {
+      user_id: String(userId),
+      trade_id: settledTrade.id,
+      is_demo: Boolean(settledTrade.isDemo),
+      symbol: settledTrade.symbol,
+      market_name: settledTrade.marketName || settledTrade.symbol,
+      contract_type: settledTrade.contractType,
+      direction: settledTrade.direction,
+      stake: settledTrade.stake,
+      entry_price: settledTrade.entryPrice,
+      entry_digit: settledTrade.entryDigit,
+      expiry_at: new Date(settledTrade.expiryAt).toISOString(),
+      expiry_seconds: settledTrade.expirySeconds,
+      payout_multiplier: settledTrade.payoutMultiplier,
+      status: settledTrade.result,
+      result: settledTrade.result,
+      exit_price: settledTrade.exitPrice,
+      exit_digit: settledTrade.exitDigit,
+      payout: settledTrade.payout || 0,
+      profit: settledTrade.profit || 0,
+      created_at: new Date(settledTrade.createdAt).toISOString(),
+      settled_at: new Date(settledTrade.settledAt || Date.now()).toISOString(),
+    }
+
+    const checkRes = await fetch(
+      `${url}/binary_trade_records?user_id=eq.${encodeURIComponent(String(userId))}&trade_id=eq.${encodeURIComponent(settledTrade.id)}`,
+      { headers }
+    )
+    const existing = await checkRes.json()
+
+    if (existing && existing.length > 0) {
+      await fetch(
+        `${url}/binary_trade_records?user_id=eq.${encodeURIComponent(String(userId))}&trade_id=eq.${encodeURIComponent(settledTrade.id)}`,
+        {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify(tradeRecord),
+        }
+      )
+    } else {
+      await fetch(`${url}/binary_trade_records`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(tradeRecord),
+      })
+    }
+
+    if (!settledTrade.isDemo) {
+      try {
+        await fetch(`${url}/transaction_history`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            user_id: Number(userId),
+            transaction_type: "trade",
+            amount: Math.abs(settledTrade.profit || 0),
+            currency: "USD",
+            status: "completed",
+            payment_reference: settledTrade.id.slice(0, 100),
+            description: `Trade ${settledTrade.result.toUpperCase()}: ${settledTrade.symbol} (${(settledTrade.profit || 0) >= 0 ? "+" : ""}${settledTrade.profit})`,
+            metadata_json: {
+              tradeId: settledTrade.id,
+              symbol: settledTrade.symbol,
+              stake: settledTrade.stake,
+              payout: settledTrade.payout,
+              profit: settledTrade.profit,
+              result: settledTrade.result,
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }),
+        })
+      } catch (txErr) {
+        console.warn("[WS TRADE] Could not log transaction_history record:", txErr.message)
+      }
+    }
+  } catch (e) {
+    console.error("[WS TRADE] Error persisting trade to DB:", e)
+  }
 }
 
 function placeTrade(currentState, input, session) {
@@ -1357,6 +1584,10 @@ function placeTrade(currentState, input, session) {
 
     traderRole: session?.role || "user",
 
+    userId: session?.userId ? String(session.userId) : null,
+
+    isDemo: Boolean(input.isDemo),
+
     testBinaryWinRate: getTestBinaryPolicy(session)?.winRate,
 
     status: "open",
@@ -1376,27 +1607,51 @@ function placeTrade(currentState, input, session) {
 }
 
 function forceCloseTrade(currentState, tradeId) {
-  const index = currentState.openTrades.findIndex((item) => item.id === tradeId)
+  let targetState = currentState
+  let index = targetState.openTrades.findIndex((item) => item.id === tradeId)
+
+  if (index === -1) {
+    for (const [key, s] of accountStates.entries()) {
+      const idx = s.openTrades.findIndex((item) => item.id === tradeId)
+      if (idx !== -1) {
+        targetState = s
+        index = idx
+        break
+      }
+    }
+  }
 
   if (index === -1) {
     return { error: "Trade not found" }
   }
 
-  const trade = currentState.openTrades[index]
+  const trade = targetState.openTrades[index]
 
-  const market = currentState.markets[trade.symbol]
+  const market = targetState.markets[trade.symbol]
 
   const settled = resolveTrade(trade, market.price, Date.now())
 
-  currentState.balance = round2(currentState.balance + (settled.payout || 0))
+  targetState.balance = round2(targetState.balance + (settled.payout || 0))
 
-  currentState.realizedPnl = round2(
-    currentState.realizedPnl + (settled.profit || 0),
+  targetState.realizedPnl = round2(
+    targetState.realizedPnl + (settled.profit || 0),
   )
 
-  currentState.closedTrades.unshift(settled)
+  targetState.closedTrades.unshift(settled)
 
-  currentState.openTrades.splice(index, 1)
+  targetState.openTrades.splice(index, 1)
+
+  if (trade.userId && !trade.isDemo) {
+    persistSettledTradeRecord(trade.userId, settled).catch((err) => {
+      console.error("[WS TRADE] Error persisting force-closed trade:", err)
+    })
+    if (settled.payout > 0) {
+      applyWalletDeltaDirect(trade.userId, settled.payout).catch((err) => {
+        console.error("[WS TRADE] Error applying force-close payout to wallet in DB:", err)
+      })
+    }
+    persistedBalances.set(`user:${trade.userId}`, targetState.balance)
+  }
 
   return { trade: settled }
 }

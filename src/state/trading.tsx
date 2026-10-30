@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from "react"
 
+import { recordCompletedTrade, fetchCompletedTrades } from "../services/authApi"
+
 export type MarketCategory = "volatility" | "boom" | "crash" | "step"
 
 export type ContractType = "rise-fall" | "even-odd" | "match-differ"
@@ -580,16 +582,133 @@ export function TradingProvider({
     return s
   })
 
+  const hasInitializedBalanceRef = useRef(false)
+  const previousInitialBalanceRef = useRef<number | undefined>(undefined)
+  const syncedTradeIdsRef = useRef<Set<string>>(new Set())
+
   useEffect(() => {
     if (initialBalance !== undefined && Number.isFinite(initialBalance) && initialBalance >= 0) {
-      setState((prev) => {
-        if (prev.openTrades.length === 0 && Math.abs(prev.balance - initialBalance) > 0.001) {
-          return { ...prev, balance: round2(initialBalance) }
-        }
-        return prev
-      })
+      if (!hasInitializedBalanceRef.current) {
+        hasInitializedBalanceRef.current = true
+        previousInitialBalanceRef.current = initialBalance
+        setState((prev) => ({
+          ...prev,
+          balance: round2(initialBalance),
+        }))
+      } else if (
+        previousInitialBalanceRef.current !== undefined &&
+        Math.abs(initialBalance - previousInitialBalanceRef.current) > 0.001
+      ) {
+        const diff = initialBalance - previousInitialBalanceRef.current
+        previousInitialBalanceRef.current = initialBalance
+        setState((prev) => ({
+          ...prev,
+          balance: round2(Math.max(0, prev.balance + diff)),
+        }))
+      }
     }
   }, [initialBalance])
+
+  // Automatically commit completed trades to database
+  useEffect(() => {
+    const token =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("pb.auth.token")
+        : null
+
+    if (!token || token === "demo-auth-token" || token.startsWith("sim-")) {
+      return
+    }
+
+    const unpersisted = state.closedTrades.filter(
+      (trade) =>
+        !trade.isDemo &&
+        (trade.status === "won" || trade.status === "lost") &&
+        !syncedTradeIdsRef.current.has(trade.id),
+    )
+
+    if (unpersisted.length === 0) return
+
+    for (const trade of unpersisted) {
+      syncedTradeIdsRef.current.add(trade.id)
+      recordCompletedTrade(token, trade)
+        .then((res) => {
+          if (res.ok && typeof res.currentBalance === "number") {
+            setState((prev) => {
+              if (Math.abs(prev.balance - res.currentBalance) > 0.001) {
+                return { ...prev, balance: round2(res.currentBalance) }
+              }
+              return prev
+            })
+          }
+        })
+        .catch((err) => {
+          console.warn("[TRADE PERSIST] Failed to record completed trade:", err.message)
+          syncedTradeIdsRef.current.delete(trade.id)
+        })
+    }
+  }, [state.closedTrades])
+
+  // Restore user trade history from database on mount
+  useEffect(() => {
+    const token =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("pb.auth.token")
+        : null
+
+    if (!token || token === "demo-auth-token" || token.startsWith("sim-")) {
+      return
+    }
+
+    fetchCompletedTrades(token)
+      .then((res) => {
+        const records = res?.trades
+        if (Array.isArray(records) && records.length > 0) {
+          for (const r of records) {
+            syncedTradeIdsRef.current.add(r.trade_id)
+          }
+
+          setState((prev) => {
+            const existingIds = new Set(prev.closedTrades.map((t) => t.id))
+            const newTrades: BinaryTrade[] = records
+              .filter((r) => !existingIds.has(r.trade_id))
+              .map((r) => ({
+                id: r.trade_id,
+                symbol: r.symbol,
+                marketName: r.market_name || r.symbol,
+                contractType: (r.contract_type as any) || "rise-fall",
+                direction: (r.direction as any) || "rise",
+                stake: Number(r.stake),
+                entryPrice: Number(r.entry_price),
+                exitPrice: Number(r.exit_price),
+                entryDigit: Number(r.entry_digit),
+                exitDigit: Number(r.exit_digit),
+                expiryAt: new Date(r.expiry_at).getTime(),
+                expirySeconds: Number(r.expiry_seconds || 30),
+                payoutMultiplier: Number(r.payout_multiplier || 1.82),
+                status: r.status as any,
+                result: r.result as any,
+                payout: Number(r.payout || 0),
+                profit: Number(r.profit || 0),
+                createdAt: new Date(r.created_at).getTime(),
+                settledAt: r.settled_at ? new Date(r.settled_at).getTime() : Date.now(),
+                isDemo: Boolean(r.is_demo),
+              }))
+
+            if (newTrades.length === 0) return prev
+
+            const nonSample = prev.closedTrades.filter((t) => !t.id.startsWith("TRD-88"))
+            return {
+              ...prev,
+              closedTrades: [...nonSample, ...newTrades].slice(0, 50),
+            }
+          })
+        }
+      })
+      .catch((err) => {
+        console.warn("[TRADE HISTORY] Could not fetch trade history:", err.message)
+      })
+  }, [])
 
   const [connectionMode, setConnectionMode] =
     useState<TransportMode>("connecting")

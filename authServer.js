@@ -1028,6 +1028,200 @@ app.post("/auth/admin/adjust-balance", async (req, res) => {
   }
 })
 
+// CLIENT RECORD COMPLETED TRADE (Persistent REST sync)
+app.post("/auth/trading/record-trade", async (req, res) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" })
+  }
+
+  try {
+    const token = authHeader.slice("Bearer ".length)
+    const user = jwt.verify(token, JWT_SECRET)
+    if (!user || !user.id) {
+      return res.status(401).json({ error: "Invalid user token" })
+    }
+
+    const trade = req.body
+    if (!trade || !trade.id) {
+      return res.status(400).json({ error: "Trade payload is required" })
+    }
+
+    const tradeId = String(trade.id).trim()
+    const isDemo = Boolean(trade.isDemo)
+    const stake = Number(trade.stake || 0)
+    const profit = Number(trade.profit || 0)
+    const payout = Number(trade.payout || 0)
+    const result = trade.result === "won" ? "won" : "lost"
+    const now = new Date().toISOString()
+    const userId = String(user.id)
+
+    // Check if this trade has already been recorded
+    const existingTrades = await supabaseRequest(
+      `/binary_trade_records?user_id=eq.${encodeURIComponent(userId)}&trade_id=eq.${encodeURIComponent(tradeId)}`
+    )
+
+    const existingRecord = existingTrades && existingTrades.length > 0 ? existingTrades[0] : null
+    if (existingRecord && existingRecord.settled_at) {
+      const wallets = await supabaseRequest(`/wallets?user_id=eq.${encodeURIComponent(userId)}`)
+      const currentBalance = Number(wallets?.[0]?.current_balance || 0)
+      return res.json({ ok: true, currentBalance, alreadyRecorded: true })
+    }
+
+    let updatedBalance = 0
+    let totalDeposits = 0
+
+    if (!isDemo) {
+      // Real trade: update database wallet permanently
+      const wallets = await supabaseRequest(`/wallets?user_id=eq.${encodeURIComponent(userId)}`)
+      if (!wallets || wallets.length === 0) {
+        return res.status(404).json({ error: "Wallet not found" })
+      }
+
+      const wallet = wallets[0]
+      const currentBalance = Number(wallet.current_balance || 0)
+      totalDeposits = Number(wallet.total_deposits || 0)
+
+      let delta = 0
+      if (existingRecord && existingRecord.status === "open") {
+        // Stake was already deducted by server.js on open; only credit payout if won
+        delta = result === "won" ? payout : 0
+      } else {
+        // Full local/fallback trade: add profit if won (+profit) or deduct stake if lost (-stake)
+        delta = Math.round(profit * 100) / 100
+      }
+
+      let newBalance = Math.round((currentBalance + delta) * 100) / 100
+      if (newBalance < 0) newBalance = 0
+
+      // Update wallet in DB if delta is non-zero
+      if (delta !== 0) {
+        await supabaseRequest(`/wallets?user_id=eq.${encodeURIComponent(userId)}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            current_balance: newBalance,
+            last_updated: now,
+            updated_at: now,
+          }),
+        })
+      }
+
+      updatedBalance = newBalance
+
+      // Record in transaction_history
+      try {
+        await supabaseRequest("/transaction_history", {
+          method: "POST",
+          body: JSON.stringify({
+            user_id: Number(user.id),
+            transaction_type: "trade",
+            amount: Math.abs(delta),
+            currency: wallet.currency || "USD",
+            status: "completed",
+            payment_reference: tradeId.slice(0, 100),
+            description: `Trade ${result.toUpperCase()}: ${trade.symbol || ""} (${delta >= 0 ? "+" : ""}${delta})`,
+            metadata_json: {
+              tradeId,
+              symbol: trade.symbol,
+              stake,
+              payout,
+              profit,
+              result,
+            },
+            created_at: now,
+            updated_at: now,
+          }),
+        })
+      } catch (txErr) {
+        console.warn("[AUTH] Could not log transaction_history record (non-fatal):", txErr.message)
+      }
+
+      // Notify trading server immediately so in-memory state matches database
+      notifyTradingServer(userId, updatedBalance, totalDeposits, `Trade ${result} (${trade.symbol})`).catch(() => {})
+    } else {
+      // Demo trade: do not modify real wallet, but fetch current real balance
+      const wallets = await supabaseRequest(`/wallets?user_id=eq.${encodeURIComponent(userId)}`)
+      updatedBalance = Number(wallets?.[0]?.current_balance || 0)
+      totalDeposits = Number(wallets?.[0]?.total_deposits || 0)
+    }
+
+    // Record trade in binary_trade_records
+    const tradeRecord = {
+      user_id: userId,
+      trade_id: tradeId,
+      is_demo: isDemo,
+      symbol: String(trade.symbol || "UNKNOWN"),
+      market_name: String(trade.marketName || trade.symbol || "Market"),
+      contract_type: String(trade.contractType || "rise-fall"),
+      direction: String(trade.direction || "rise"),
+      stake: Math.max(0, stake),
+      entry_price: Number(trade.entryPrice || 0),
+      entry_digit: Number(trade.entryDigit || 0),
+      expiry_at: trade.expiryAt ? new Date(trade.expiryAt).toISOString() : now,
+      expiry_seconds: Number(trade.expirySeconds || 30),
+      payout_multiplier: Number(trade.payoutMultiplier || 1.8),
+      status: result,
+      result: result,
+      exit_price: Number(trade.exitPrice || trade.entryPrice || 0),
+      exit_digit: Number(trade.exitDigit ?? 0),
+      payout: Math.max(0, payout),
+      profit: profit,
+      created_at: trade.createdAt ? new Date(trade.createdAt).toISOString() : now,
+      settled_at: trade.settledAt ? new Date(trade.settledAt).toISOString() : now,
+    }
+
+    if (existingTrades && existingTrades.length > 0) {
+      await supabaseRequest(
+        `/binary_trade_records?user_id=eq.${encodeURIComponent(userId)}&trade_id=eq.${encodeURIComponent(tradeId)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(tradeRecord),
+        }
+      )
+    } else {
+      await supabaseRequest("/binary_trade_records", {
+        method: "POST",
+        body: JSON.stringify(tradeRecord),
+      })
+    }
+
+    return res.json({
+      ok: true,
+      currentBalance: updatedBalance,
+      totalDeposits,
+      trade: tradeRecord,
+    })
+  } catch (err) {
+    console.error("Record trade error:", err)
+    return res.status(500).json({ error: err.message || "Failed to record trade" })
+  }
+})
+
+// CLIENT GET RECENT TRADES
+app.get("/auth/trading/trades", async (req, res) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" })
+  }
+
+  try {
+    const token = authHeader.slice("Bearer ".length)
+    const user = jwt.verify(token, JWT_SECRET)
+    if (!user || !user.id) {
+      return res.status(401).json({ error: "Invalid user token" })
+    }
+
+    const records = await supabaseRequest(
+      `/binary_trade_records?user_id=eq.${encodeURIComponent(String(user.id))}&order=created_at.desc&limit=50`
+    )
+
+    return res.json({ ok: true, trades: records || [] })
+  } catch (err) {
+    console.error("Fetch trades error:", err)
+    return res.status(500).json({ error: err.message || "Failed to fetch trades" })
+  }
+})
+
 // ADMIN CREATE USER
 app.post("/auth/admin/users", async (req, res) => {
   const authHeader = req.headers.authorization

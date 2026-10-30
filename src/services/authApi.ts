@@ -268,3 +268,27 @@ export async function getAdminManualDeposits(
   })
 }
 
+export async function recordCompletedTrade(
+  token: string,
+  trade: any,
+): Promise<{ ok: boolean; currentBalance: number; totalDeposits: number; trade?: any }> {
+  return requestJson<{ ok: boolean; currentBalance: number; totalDeposits: number; trade?: any }>(
+    "/auth/trading/record-trade",
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(trade),
+    },
+  )
+}
+
+export async function fetchCompletedTrades(
+  token: string,
+): Promise<{ ok: boolean; trades: any[] }> {
+  return requestJson<{ ok: boolean; trades: any[] }>("/auth/trading/trades", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+
