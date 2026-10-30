@@ -1007,6 +1007,7 @@ export function TradingProvider({ children }: { children: ReactNode }) {
         connectionMode === "server" &&
         socket?.readyState === WebSocket.OPEN
       ) {
+        setState((prev) => ({ ...prev, balance: round2(balance) }))
         socket.send(JSON.stringify({ type: "REFRESH_BALANCE" }))
         return
       }

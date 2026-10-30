@@ -42,7 +42,12 @@ export default async function handler(req, res) {
 
     const user = users[0]
 
-    const userRoles = await supabaseRequest(`/user_roles?user_id=eq.${user.id}`)
+    const [userRoles, wallets] = await Promise.all([
+      supabaseRequest(`/user_roles?user_id=eq.${user.id}`),
+      supabaseRequest(
+        `/wallets?user_id=eq.${user.id}&select=current_balance`,
+      ),
+    ])
 
     let role = "user"
 
@@ -63,6 +68,8 @@ export default async function handler(req, res) {
       email: user.email,
 
       role,
+
+      current_balance: Number(wallets?.[0]?.current_balance || 0),
     })
   } catch (error) {
     console.error("Auth/me serverless error:", error)

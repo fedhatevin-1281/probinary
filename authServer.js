@@ -347,7 +347,12 @@ app.post("/auth/login", async (req, res) => {
 
     // Get user role
 
-    const userRoles = await supabaseRequest(`/user_roles?user_id=eq.${user.id}`)
+    const [userRoles, wallets] = await Promise.all([
+      supabaseRequest(`/user_roles?user_id=eq.${user.id}`),
+      supabaseRequest(
+        `/wallets?user_id=eq.${user.id}&select=current_balance`,
+      ),
+    ])
 
     const roleId = userRoles && userRoles.length > 0 ? userRoles[0].role_id : 1
 
@@ -447,6 +452,8 @@ app.get("/auth/me", async (req, res) => {
       username: user.username,
 
       role: roleName,
+
+      current_balance: Number(wallets?.[0]?.current_balance || 0),
     })
   } catch (error) {
     res.status(401).json({ error: "Invalid or expired token" })

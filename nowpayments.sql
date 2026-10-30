@@ -100,13 +100,13 @@ begin
     return;
   end if;
 
-  update public.wallets
-  set current_balance = current_balance + payment_order.amount_usd,
-      total_deposits = coalesce(total_deposits, 0) + payment_order.amount_usd,
+  update public.wallets as wallet
+  set current_balance = wallet.current_balance + payment_order.amount_usd,
+      total_deposits = coalesce(wallet.total_deposits, 0) + payment_order.amount_usd,
       last_updated = now(),
       updated_at = now()
-  where user_id::text = payment_order.user_id
-  returning current_balance into new_balance;
+  where wallet.user_id::text = payment_order.user_id
+  returning wallet.current_balance into new_balance;
 
   if not found then
     raise exception 'Wallet not found for NOWPayments order';
@@ -158,6 +158,7 @@ security definer
 set search_path = public
 as $$
 declare
+  target_user_id public.users.id%type;
   new_balance numeric;
   new_total_deposits numeric;
 begin
@@ -169,13 +170,48 @@ begin
     raise exception 'A payment reference is required';
   end if;
 
-  update public.wallets
-  set current_balance = coalesce(current_balance, 0) + p_amount,
-      total_deposits = coalesce(total_deposits, 0) + p_amount,
+  select account.id into target_user_id
+  from public.users as account
+  where account.id::text = p_user_id
+  for update;
+
+  if not found then
+    raise exception 'User not found';
+  end if;
+
+  if not exists (
+    select 1
+    from public.wallets as existing_wallet
+    where existing_wallet.user_id::text = p_user_id
+  ) then
+    insert into public.wallets (
+      user_id,
+      current_balance,
+      currency,
+      total_deposits,
+      total_withdrawals,
+      last_updated,
+      created_at,
+      updated_at
+    ) values (
+      target_user_id,
+      0,
+      'USD',
+      0,
+      0,
+      now(),
+      now(),
+      now()
+    );
+  end if;
+
+  update public.wallets as wallet
+  set current_balance = coalesce(wallet.current_balance, 0) + p_amount,
+      total_deposits = coalesce(wallet.total_deposits, 0) + p_amount,
       last_updated = now(),
       updated_at = now()
-  where user_id::text = p_user_id
-  returning current_balance, total_deposits
+  where wallet.user_id::text = p_user_id
+  returning wallet.current_balance, wallet.total_deposits
   into new_balance, new_total_deposits;
 
   if not found then

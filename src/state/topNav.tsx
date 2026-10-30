@@ -19,6 +19,7 @@ import {
   getNowPaymentsOrder,
   type NowPaymentsOrder,
 } from "../services/nowPaymentsApi"
+import { getMe } from "../services/authApi"
 
 import {
   formatKes,
@@ -659,6 +660,36 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
       currency: "USD",
     }
   }, [demoBalance, pendingBalance, trading.balance])
+
+  const refreshRealBalance = useCallback(async () => {
+    const token = window.localStorage.getItem("pb.auth.token")
+    if (!token || token === "demo-auth-token" || token.startsWith("sim-")) return
+
+    try {
+      const profile = await getMe(token)
+      const balance = Number(profile.current_balance)
+      if (Number.isFinite(balance)) {
+        trading.syncBalanceFromServer(balance)
+      }
+    } catch {
+      // Session restoration and other API calls report authentication errors.
+    }
+  }, [trading.syncBalanceFromServer])
+
+  useEffect(() => {
+    void refreshRealBalance()
+
+    const interval = window.setInterval(() => {
+      void refreshRealBalance()
+    }, 30000)
+    const handleFocus = () => void refreshRealBalance()
+
+    window.addEventListener("focus", handleFocus)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener("focus", handleFocus)
+    }
+  }, [refreshRealBalance])
 
   const pushToast = useCallback((type: ToastItem["type"], message: string) => {
     const id = makeId("toast")
