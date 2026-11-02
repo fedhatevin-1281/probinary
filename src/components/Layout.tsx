@@ -61,7 +61,7 @@ export default function Layout({
 
   const balanceRef = useRef<HTMLDivElement | null>(null)
 
-  const { testBinarySystem, testBinaryWinRate } = useTrading()
+  const { testBinarySystem, testBinaryWinRate, openTrades } = useTrading()
 
   const {
     panel,
@@ -89,7 +89,38 @@ export default function Layout({
     addNotification,
 
     formatUsdValue,
+
+    headerCollapsed,
+
+    setHeaderCollapsed,
+
+    footerCollapsed,
+
+    setFooterCollapsed,
+
+    toggleBarsCollapsed,
   } = useTopNav()
+
+  const isTradePage = currentPage === "terminal"
+
+  // Auto-collapse header and footer on mobile when entering Trade page or while on trade
+  useEffect(() => {
+    if (isTradePage) {
+      setHeaderCollapsed(true)
+      setFooterCollapsed(true)
+    } else {
+      setHeaderCollapsed(false)
+      setFooterCollapsed(false)
+    }
+  }, [isTradePage, setHeaderCollapsed, setFooterCollapsed])
+
+  // While on trade with active open contracts, ensure bars remain collapsed
+  useEffect(() => {
+    if (isTradePage && openTrades.length > 0) {
+      setHeaderCollapsed(true)
+      setFooterCollapsed(true)
+    }
+  }, [isTradePage, openTrades.length, setHeaderCollapsed, setFooterCollapsed])
 
   useEffect(() => {
     const onResize = () => setViewportWidth(window.innerWidth)
@@ -458,7 +489,9 @@ export default function Layout({
         <header
           className="glass-nav"
           style={{
-            height: 56,
+            height: isTradePage && headerCollapsed ? 0 : 56,
+
+            minHeight: isTradePage && headerCollapsed ? 0 : 56,
 
             flexShrink: 0,
 
@@ -468,7 +501,7 @@ export default function Layout({
 
             justifyContent: "space-between",
 
-            padding: "0 20px",
+            padding: isTradePage && headerCollapsed ? "0 20px" : "0 20px",
 
             gap: 12,
 
@@ -480,7 +513,17 @@ export default function Layout({
 
             WebkitBackdropFilter: "blur(14px)",
 
-            borderBottom: "1px solid rgba(167, 139, 250, 0.16)",
+            borderBottom: isTradePage && headerCollapsed ? "none" : "1px solid rgba(167, 139, 250, 0.16)",
+
+            transform: isTradePage && headerCollapsed ? "translateY(-100%)" : "translateY(0)",
+
+            opacity: isTradePage && headerCollapsed ? 0 : 1,
+
+            overflow: "hidden",
+
+            pointerEvents: isTradePage && headerCollapsed ? "none" : "auto",
+
+            transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.3s ease, min-height 0.3s ease, opacity 0.2s ease",
           }}
         >
           <div
@@ -985,9 +1028,43 @@ export default function Layout({
                   />
                 </div>
               )}
+              {isTradePage && (
+                <button
+                  onClick={() => setHeaderCollapsed(true)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-purple-400 hover:text-white hover:bg-purple-900/30 transition-colors"
+                  title="Collapse Header"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M18 15l-6-6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
         </header>
+
+        {/* Floating Top Header Pill when header is collapsed on Trade */}
+        {isTradePage && headerCollapsed && (
+          <div className="fixed top-2 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 pointer-events-auto">
+            <button
+              onClick={() => setHeaderCollapsed(false)}
+              className="px-3 py-1 rounded-full bg-[#120D26]/95 border border-purple-500/35 text-purple-200 text-[11px] font-bold flex items-center gap-2 shadow-xl shadow-purple-950/80 backdrop-blur-md hover:bg-purple-900/40 active:scale-95 transition-all"
+              title="Tap to expand header"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[10px] text-zinc-400 font-semibold">pro-binary</span>
+              <span className="text-emerald-400 font-mono font-bold">{formatUsdValue(animatedAccountBalance)}</span>
+              <span className="text-purple-400 font-bold text-xs">⌄</span>
+            </button>
+            <button
+              onClick={() => openPanel("deposit")}
+              className="px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[10px] font-bold shadow-md shadow-purple-900/40 active:scale-95 transition-all flex items-center gap-1"
+            >
+              <span>+</span>
+              <span>Deposit</span>
+            </button>
+          </div>
+        )}
 
         {mobileActionsOpen && (
           <div

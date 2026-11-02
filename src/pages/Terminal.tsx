@@ -246,7 +246,20 @@ export default function Terminal() {
     testBinarySystem,
   } = useTrading()
 
-  const { activeAccount, setActiveAccount, balances, setDemoBalance, formatUsdValue, backendOnline, setPanel } = useTopNav()
+  const {
+    activeAccount,
+    setActiveAccount,
+    balances,
+    setDemoBalance,
+    formatUsdValue,
+    backendOnline,
+    setPanel,
+    headerCollapsed,
+    setHeaderCollapsed,
+    footerCollapsed,
+    setFooterCollapsed,
+    toggleBarsCollapsed,
+  } = useTopNav()
 
   // Mobile specific navigation & dropdown states (matching clean mobile layout)
   const [mobileNavTab, setMobileNavTab] = useState<"trade" | "positions">("trade")
@@ -605,7 +618,7 @@ export default function Terminal() {
       {/* ======================================================== */}
       {/* MOBILE VIEW (MATCHING SPURTRADE LAYOUT & SIMPLICITY)    */}
       {/* ======================================================== */}
-      <div className="lg:hidden flex flex-col w-full min-h-full pb-20 px-3 pt-2 relative">
+      <div className={`lg:hidden flex flex-col w-full min-h-full ${footerCollapsed ? "pb-8" : "pb-20"} px-3 pt-2 relative`}>
         {/* 1. Horizontal Contract Type Selector */}
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 flex-shrink-0">
           {CONTRACT_TABS.map((tab) => {
@@ -674,6 +687,29 @@ export default function Terminal() {
                 {activeAccount === "real" ? "Real" : "Demo"}
               </span>
               <span className="text-zinc-500 text-[10px]">⌄</span>
+            </button>
+
+            {/* Collapse / Fullscreen Focus Toggle Button */}
+            <button
+              onClick={() => toggleBarsCollapsed()}
+              className="flex items-center gap-1 bg-[#140E2A] hover:bg-[#1B1338] border border-purple-500/30 rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-purple-300 shadow-sm transition-all active:scale-95"
+              title={headerCollapsed && footerCollapsed ? "Expand Header & Footer" : "Collapse Header & Footer"}
+            >
+              {headerCollapsed && footerCollapsed ? (
+                <>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span>Expand</span>
+                </>
+              ) : (
+                <>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span>Focus</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -1399,7 +1435,11 @@ export default function Terminal() {
         )}
 
         {/* 8. Fixed Bottom Navigation Bar */}
-        <div className="fixed bottom-0 left-0 right-0 z-30 bg-[#0C0818]/95 backdrop-blur-md border-t border-purple-500/20 px-4 py-2 flex items-center justify-around">
+        <div
+          className={`fixed bottom-0 left-0 right-0 z-30 bg-[#0C0818]/95 backdrop-blur-md border-t border-purple-500/20 px-4 py-2 flex items-center justify-around transition-all duration-300 ${
+            footerCollapsed ? "translate-y-full opacity-0 pointer-events-none" : "translate-y-0 opacity-100 pointer-events-auto"
+          }`}
+        >
           <button
             onClick={() => setMobileNavTab("trade")}
             className={`flex flex-col items-center gap-1 transition-colors relative py-1 px-3 ${
@@ -1454,7 +1494,39 @@ export default function Terminal() {
             </div>
             <span className="text-[10px]">Positions</span>
           </button>
+
+          <button
+            onClick={() => setFooterCollapsed(true)}
+            className="flex flex-col items-center gap-1 text-zinc-500 hover:text-purple-300 transition-colors py-1 px-2"
+            title="Collapse Navigation"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="text-[9px]">Hide</span>
+          </button>
         </div>
+
+        {/* Floating Bottom Nav Expand Pill when footer is collapsed */}
+        {footerCollapsed && (
+          <div className="fixed bottom-2 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+            <button
+              onClick={() => setFooterCollapsed(false)}
+              className="px-3.5 py-1.5 rounded-full bg-[#120D26]/95 border border-purple-500/35 text-purple-300 text-[11px] font-bold flex items-center gap-1.5 shadow-xl shadow-purple-950/80 backdrop-blur-md hover:bg-purple-900/40 active:scale-95 transition-all"
+              title="Tap to show navigation bar"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M18 15l-6-6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span>Nav Menu</span>
+              {openTrades.length > 0 && (
+                <span className="px-1.5 py-0.2 bg-purple-600 text-[9px] font-bold text-white rounded-full">
+                  {openTrades.length}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Floating Live Chat FAB */}
         <button

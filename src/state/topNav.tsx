@@ -310,6 +310,16 @@ interface AppHeaderContextValue {
   formatUsdValue: (amount: number) => string
 
   formatKesValue: (amount: number) => string
+
+  headerCollapsed: boolean
+
+  setHeaderCollapsed: React.Dispatch<React.SetStateAction<boolean>>
+
+  footerCollapsed: boolean
+
+  setFooterCollapsed: React.Dispatch<React.SetStateAction<boolean>>
+
+  toggleBarsCollapsed: () => void
 }
 
 const WITHDRAW_MAX_USD = 10000
@@ -581,6 +591,18 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
   const [activeAccount, setActiveAccount] = useState<AccountType>(
     persisted?.activeAccount ?? "real",
   )
+
+  const [headerCollapsed, setHeaderCollapsed] = useState(false)
+
+  const [footerCollapsed, setFooterCollapsed] = useState(false)
+
+  const toggleBarsCollapsed = useCallback(() => {
+    setHeaderCollapsed((prev) => {
+      const next = !prev
+      setFooterCollapsed(next)
+      return next
+    })
+  }, [])
 
   const [demoBalance, setDemoBalance] = useState<number>(
     persisted?.demoBalance ?? 10000,
@@ -1525,6 +1547,16 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
       formatUsdValue,
 
       formatKesValue,
+
+      headerCollapsed,
+
+      setHeaderCollapsed,
+
+      footerCollapsed,
+
+      setFooterCollapsed,
+
+      toggleBarsCollapsed,
     }),
     [
       panel,
@@ -1606,6 +1638,12 @@ export function TopNavProvider({ children }: { children: ReactNode }) {
       formatUsdValue,
 
       formatKesValue,
+
+      headerCollapsed,
+
+      footerCollapsed,
+
+      toggleBarsCollapsed,
     ],
   )
 
