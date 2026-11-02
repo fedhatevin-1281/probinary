@@ -101,26 +101,26 @@ export default function Layout({
     toggleBarsCollapsed,
   } = useTopNav()
 
-  const isTradePage = currentPage === "terminal"
+  const isHeaderHidden = isTradePage && isMobile && headerCollapsed
 
   // Auto-collapse header and footer on mobile when entering Trade page or while on trade
   useEffect(() => {
-    if (isTradePage) {
+    if (isTradePage && isMobile) {
       setHeaderCollapsed(true)
       setFooterCollapsed(true)
     } else {
       setHeaderCollapsed(false)
       setFooterCollapsed(false)
     }
-  }, [isTradePage, setHeaderCollapsed, setFooterCollapsed])
+  }, [isTradePage, isMobile, setHeaderCollapsed, setFooterCollapsed])
 
-  // While on trade with active open contracts, ensure bars remain collapsed
+  // While on trade with active open contracts, ensure bars remain collapsed on mobile
   useEffect(() => {
-    if (isTradePage && openTrades.length > 0) {
+    if (isTradePage && isMobile && openTrades.length > 0) {
       setHeaderCollapsed(true)
       setFooterCollapsed(true)
     }
-  }, [isTradePage, openTrades.length, setHeaderCollapsed, setFooterCollapsed])
+  }, [isTradePage, isMobile, openTrades.length, setHeaderCollapsed, setFooterCollapsed])
 
   useEffect(() => {
     const onResize = () => setViewportWidth(window.innerWidth)
@@ -489,9 +489,9 @@ export default function Layout({
         <header
           className="glass-nav"
           style={{
-            height: isTradePage && headerCollapsed ? 0 : 56,
+            height: isHeaderHidden ? 0 : 56,
 
-            minHeight: isTradePage && headerCollapsed ? 0 : 56,
+            minHeight: isHeaderHidden ? 0 : 56,
 
             flexShrink: 0,
 
@@ -501,7 +501,7 @@ export default function Layout({
 
             justifyContent: "space-between",
 
-            padding: isTradePage && headerCollapsed ? "0 20px" : "0 20px",
+            padding: isHeaderHidden ? "0 20px" : "0 20px",
 
             gap: 12,
 
@@ -513,15 +513,15 @@ export default function Layout({
 
             WebkitBackdropFilter: "blur(14px)",
 
-            borderBottom: isTradePage && headerCollapsed ? "none" : "1px solid rgba(167, 139, 250, 0.16)",
+            borderBottom: isHeaderHidden ? "none" : "1px solid rgba(167, 139, 250, 0.16)",
 
-            transform: isTradePage && headerCollapsed ? "translateY(-100%)" : "translateY(0)",
+            transform: isHeaderHidden ? "translateY(-100%)" : "translateY(0)",
 
-            opacity: isTradePage && headerCollapsed ? 0 : 1,
+            opacity: isHeaderHidden ? 0 : 1,
 
-            overflow: "hidden",
+            overflow: isHeaderHidden ? "hidden" : "visible",
 
-            pointerEvents: isTradePage && headerCollapsed ? "none" : "auto",
+            pointerEvents: isHeaderHidden ? "none" : "auto",
 
             transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.3s ease, min-height 0.3s ease, opacity 0.2s ease",
           }}
@@ -1028,7 +1028,7 @@ export default function Layout({
                   />
                 </div>
               )}
-              {isTradePage && (
+              {isTradePage && isMobile && (
                 <button
                   onClick={() => setHeaderCollapsed(true)}
                   className="w-8 h-8 rounded-lg flex items-center justify-center text-purple-400 hover:text-white hover:bg-purple-900/30 transition-colors"
@@ -1043,8 +1043,8 @@ export default function Layout({
           </div>
         </header>
 
-        {/* Floating Top Header Pill when header is collapsed on Trade */}
-        {isTradePage && headerCollapsed && (
+        {/* Floating Top Header Pill when header is collapsed on mobile Trade */}
+        {isHeaderHidden && (
           <div className="fixed top-2 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 pointer-events-auto">
             <button
               onClick={() => setHeaderCollapsed(false)}

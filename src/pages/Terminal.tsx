@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef, useCallback } from "react"
+import { useEffect, useState, useMemo, useRef, useCallback, useId } from "react"
 import { useTrading } from "../state/trading"
 import { useTopNav } from "../state/topNav"
 import LastDigitStatistics from "../components/LastDigitStatistics"
@@ -32,6 +32,10 @@ function LineChart({
   livePrice?: number
   zoomFactor?: number
 }) {
+  const chartId = useId().replace(/[^a-zA-Z0-9_-]/g, "")
+  const gradientId = `purpleAreaGrad-${chartId}`
+  const glowFilterId = `purpleGlow-${chartId}`
+
   const W = 900
   const H = 380
   const PADDING = { top: 22, right: 75, bottom: 28, left: 12 }
@@ -86,7 +90,9 @@ function LineChart({
     )
     .join(" ")
 
-  const areaPath = `${linePath} L${toX(series.length - 1).toFixed(1)},${(H - PADDING.bottom).toFixed(1)} L${PADDING.left},${(H - PADDING.bottom).toFixed(1)} Z`
+  const areaPath = points.length > 0
+    ? `${linePath} L${toX(series.length - 1).toFixed(1)},${(H - PADDING.bottom).toFixed(1)} L${PADDING.left},${(H - PADDING.bottom).toFixed(1)} Z`
+    : ""
   const currentY = toY(validLivePrice)
   const isUp = validLivePrice >= (series[0] ?? validLivePrice)
 
@@ -100,12 +106,12 @@ function LineChart({
       style={{ display: "block" }}
     >
       <defs>
-        <linearGradient id="purpleAreaGrad" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#A855F7" stopOpacity="0.32" />
           <stop offset="60%" stopColor="#7C3AED" stopOpacity="0.08" />
           <stop offset="100%" stopColor="#7C3AED" stopOpacity="0.0" />
         </linearGradient>
-        <filter id="purpleGlow" x="-20%" y="-20%" width="140%" height="140%">
+        <filter id={glowFilterId} x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#A855F7" floodOpacity="0.75" />
         </filter>
       </defs>
@@ -156,7 +162,18 @@ function LineChart({
       })}
 
       {/* Glowing Purple Area Gradient */}
-      <path d={areaPath} fill="url(#purpleAreaGrad)" />
+      {areaPath && <path d={areaPath} fill={`url(#${gradientId})`} />}
+
+      {/* Underline Soft Depth Glow */}
+      <path
+        d={linePath}
+        fill="none"
+        stroke="#7C3AED"
+        strokeWidth="4"
+        strokeOpacity="0.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
 
       {/* Purple Glowing Price Line */}
       <path
@@ -166,7 +183,9 @@ function LineChart({
         strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-        filter="url(#purpleGlow)"
+        style={{
+          filter: "drop-shadow(0 0 6px rgba(192, 132, 252, 0.85))",
+        }}
       />
 
       {/* Current Price Dashed Reference Line */}
@@ -203,17 +222,19 @@ function LineChart({
       </text>
 
       {/* Pulsing Live Price Dot on Graph */}
-      <circle
-        cx={toX(series.length - 1)}
-        cy={toY(series[series.length - 1] ?? livePrice)}
-        r="4.5"
-        fill="#FFFFFF"
-        stroke="#A855F7"
-        strokeWidth="2"
-        style={{
-          filter: "drop-shadow(0 0 8px #C084FC)",
-        }}
-      />
+      {points.length > 0 && (
+        <circle
+          cx={points[points.length - 1].x}
+          cy={points[points.length - 1].y}
+          r="4.5"
+          fill="#FFFFFF"
+          stroke="#A855F7"
+          strokeWidth="2"
+          style={{
+            filter: "drop-shadow(0 0 8px #C084FC)",
+          }}
+        />
+      )}
     </svg>
   )
 }
