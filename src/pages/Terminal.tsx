@@ -222,8 +222,8 @@ const CONTRACT_TABS = [
   { id: "rise-fall", label: "Rise/Fall", contractType: "rise-fall" as const, defaultPrediction: "rise" as const },
   { id: "even-odd", label: "Even/Odd", contractType: "even-odd" as const, defaultPrediction: "even" as const },
   { id: "match-differ", label: "Matches", contractType: "match-differ" as const, defaultPrediction: "match" as const },
-  { id: "over-under", label: "Over/Under", contractType: "rise-fall" as const, defaultPrediction: "rise" as const },
-  { id: "higher-lower", label: "Higher/Lower", contractType: "rise-fall" as const, defaultPrediction: "rise" as const },
+  { id: "over-under", label: "Over/Under", contractType: "over-under" as const, defaultPrediction: "over" as const },
+  { id: "higher-lower", label: "Higher/Lower", contractType: "higher-lower" as const, defaultPrediction: "higher" as const },
 ] as const
 
 export default function Terminal() {
@@ -266,8 +266,9 @@ export default function Terminal() {
 
   // Trade manual parameters
   const [bottomTab, setBottomTab] = useState<"positions" | "orders" | "history" | "logs">("positions")
-  const [contractType, setContractType] = useState<"rise-fall" | "even-odd" | "match-differ">("rise-fall")
-  const [prediction, setPrediction] = useState<"rise" | "fall" | "even" | "odd" | "match" | "differ">("rise")
+  const [contractType, setContractType] = useState<ContractType>("rise-fall")
+  const [prediction, setPrediction] = useState<TradeDirection>("rise")
+  const [predictionDigit, setPredictionDigit] = useState<number>(5)
   const [stake, setStake] = useState("50")
   const [expirySeconds, setExpirySeconds] = useState("30")
   const [martingaleEnabled, setMartingaleEnabled] = useState(false)
@@ -356,7 +357,7 @@ export default function Terminal() {
   }
 
   // Manual Trade Placement
-  const placeManualTrade = (directionOverride?: typeof prediction) => {
+  const placeManualTrade = (directionOverride?: TradeDirection) => {
     const tradeStake = parseFloat(stake)
     if (isNaN(tradeStake) || tradeStake <= 0) return
 
@@ -369,6 +370,7 @@ export default function Terminal() {
       stake: tradeStake,
       expirySeconds: parseInt(expirySeconds || "30", 10),
       isDemo: !testBinarySystem && activeAccount === "demo",
+      predictionDigit,
     })
 
     if (result.ok) {
@@ -607,16 +609,13 @@ export default function Terminal() {
         {/* 1. Horizontal Contract Type Selector */}
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 flex-shrink-0">
           {CONTRACT_TABS.map((tab) => {
-            const isSelected =
-              tab.id === contractType ||
-              (tab.id === "higher-lower" && contractType === "rise-fall") ||
-              (tab.id === "over-under" && contractType === "rise-fall" && prediction === "rise")
+            const isSelected = tab.contractType === contractType
             return (
               <button
                 key={tab.id}
                 onClick={() => {
-                  setContractType(tab.contractType as typeof contractType)
-                  setPrediction(tab.defaultPrediction as typeof prediction)
+                  setContractType(tab.contractType)
+                  setPrediction(tab.defaultPrediction)
                 }}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                   isSelected
@@ -1017,21 +1016,191 @@ export default function Terminal() {
                 </button>
               </div>
 
-              {/* Big Execution Action Buttons (Rise / Fall) */}
-              <div className="grid grid-cols-2 gap-2.5 pt-1">
-                <button
-                  onClick={() => placeManualTrade(contractType === "even-odd" ? "even" : contractType === "match-differ" ? "match" : "rise")}
-                  className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 active:scale-98 text-white font-black text-base shadow-lg shadow-emerald-950/40 transition-all font-display"
-                >
-                  {contractType === "even-odd" ? "Even" : contractType === "match-differ" ? "Matches" : "Rise"}
-                </button>
-                <button
-                  onClick={() => placeManualTrade(contractType === "even-odd" ? "odd" : contractType === "match-differ" ? "differ" : "fall")}
-                  className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 active:scale-98 text-white font-black text-base shadow-lg shadow-rose-950/40 transition-all font-display"
-                >
-                  {contractType === "even-odd" ? "Odd" : contractType === "match-differ" ? "Differs" : "Fall"}
-                </button>
-              </div>
+              {/* Big Execution Action Buttons for Every Trade Type */}
+              {contractType === "rise-fall" && (
+                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                  <button
+                    onClick={() => placeManualTrade("rise")}
+                    className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 active:scale-98 text-white font-black text-base shadow-lg shadow-emerald-950/40 transition-all font-display flex flex-col items-center justify-center gap-0.5"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <path d="M12 19V5M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span>Rise</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-emerald-100/90 font-semibold">+82% Payout</span>
+                  </button>
+                  <button
+                    onClick={() => placeManualTrade("fall")}
+                    className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 active:scale-98 text-white font-black text-base shadow-lg shadow-rose-950/40 transition-all font-display flex flex-col items-center justify-center gap-0.5"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <path d="M12 5v14M5 12l7 7 7-7" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span>Fall</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-rose-100/90 font-semibold">+82% Payout</span>
+                  </button>
+                </div>
+              )}
+
+              {contractType === "even-odd" && (
+                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                  <button
+                    onClick={() => placeManualTrade("even")}
+                    className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-98 text-white font-black text-base shadow-lg shadow-purple-950/40 transition-all font-display flex flex-col items-center justify-center gap-0.5 border border-purple-400/30"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm">⚖️</span>
+                      <span>Even</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-purple-200 font-semibold">1.80x Payout</span>
+                  </button>
+                  <button
+                    onClick={() => placeManualTrade("odd")}
+                    className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-fuchsia-600 to-purple-800 hover:from-fuchsia-500 hover:to-purple-700 active:scale-98 text-white font-black text-base shadow-lg shadow-purple-950/40 transition-all font-display flex flex-col items-center justify-center gap-0.5 border border-purple-400/30"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm">⚡</span>
+                      <span>Odd</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-purple-200 font-semibold">1.80x Payout</span>
+                  </button>
+                </div>
+              )}
+
+              {contractType === "match-differ" && (
+                <div className="space-y-2 pt-1">
+                  <div className="bg-[#100B22] border border-purple-500/25 rounded-xl p-2.5">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] text-zinc-400 uppercase font-semibold">Target Digit</span>
+                      <span className="text-xs font-mono font-bold text-purple-300">Selected: {predictionDigit}</span>
+                    </div>
+                    <div className="grid grid-cols-10 gap-1">
+                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => setPredictionDigit(d)}
+                          className={`py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+                            predictionDigit === d
+                              ? "bg-purple-600 text-white shadow-md shadow-purple-900/60 scale-105 border border-purple-400"
+                              : "bg-[#181136] text-zinc-400 hover:text-white border border-purple-500/20"
+                          }`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      onClick={() => placeManualTrade("match")}
+                      className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:scale-98 text-white font-black text-base shadow-lg shadow-emerald-950/40 transition-all font-display flex flex-col items-center justify-center gap-0.5"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">🎯</span>
+                        <span>Matches {predictionDigit}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-emerald-100 font-semibold">2.15x (+115%)</span>
+                    </button>
+                    <button
+                      onClick={() => placeManualTrade("differ")}
+                      className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-rose-500 to-purple-700 hover:from-rose-400 hover:to-purple-600 active:scale-98 text-white font-black text-base shadow-lg shadow-purple-950/40 transition-all font-display flex flex-col items-center justify-center gap-0.5"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">≠</span>
+                        <span>Differs {predictionDigit}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-purple-200 font-semibold">1.82x (+82%)</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {contractType === "over-under" && (
+                <div className="space-y-2 pt-1">
+                  <div className="bg-[#100B22] border border-purple-500/25 rounded-xl p-2.5">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] text-zinc-400 uppercase font-semibold">Prediction Digit Barrier</span>
+                      <span className="text-xs font-mono font-bold text-purple-300">Digit: {predictionDigit}</span>
+                    </div>
+                    <div className="grid grid-cols-10 gap-1">
+                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => setPredictionDigit(d)}
+                          className={`py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+                            predictionDigit === d
+                              ? "bg-purple-600 text-white shadow-md shadow-purple-900/60 scale-105 border border-purple-400"
+                              : "bg-[#181136] text-zinc-400 hover:text-white border border-purple-500/20"
+                          }`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      onClick={() => placeManualTrade("over")}
+                      className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:scale-98 text-white font-black text-base shadow-lg shadow-emerald-950/40 transition-all font-display flex flex-col items-center justify-center gap-0.5"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <path d="M12 19V5M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span>Over {predictionDigit}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-emerald-100 font-semibold">+82% Payout</span>
+                    </button>
+                    <button
+                      onClick={() => placeManualTrade("under")}
+                      className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-400 hover:to-pink-500 active:scale-98 text-white font-black text-base shadow-lg shadow-rose-950/40 transition-all font-display flex flex-col items-center justify-center gap-0.5"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <path d="M12 5v14M5 12l7 7 7-7" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span>Under {predictionDigit}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-rose-100 font-semibold">+82% Payout</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {contractType === "higher-lower" && (
+                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                  <button
+                    onClick={() => placeManualTrade("higher")}
+                    className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 active:scale-98 text-white font-black text-base shadow-lg shadow-emerald-950/40 transition-all font-display flex flex-col items-center justify-center gap-0.5"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <path d="M12 19V5M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span>Higher</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-emerald-100/90 font-semibold">+82% Payout</span>
+                  </button>
+                  <button
+                    onClick={() => placeManualTrade("lower")}
+                    className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 active:scale-98 text-white font-black text-base shadow-lg shadow-rose-950/40 transition-all font-display flex flex-col items-center justify-center gap-0.5"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <path d="M12 5v14M5 12l7 7 7-7" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span>Lower</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-rose-100/90 font-semibold">+82% Payout</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-2 flex-shrink-0 pt-0.5">
@@ -1839,50 +2008,28 @@ export default function Terminal() {
                 </div>
                 <div className="grid grid-cols-3 gap-1.5">
                   {[
-                    { id: "rise-fall", label: "Rise/Fall", supported: true },
-                    { id: "even-odd", label: "Even/Odd", supported: true },
-                    { id: "match-differ", label: "Matches", supported: true },
-                    { id: "over-under", label: "Over/Under", supported: false },
-                    { id: "higher-lower", label: "Higher/Lower", supported: true },
-                    { id: "touch", label: "Touch", supported: false },
+                    { id: "rise-fall", label: "Rise/Fall", contractType: "rise-fall" as const, defaultPrediction: "rise" as const },
+                    { id: "even-odd", label: "Even/Odd", contractType: "even-odd" as const, defaultPrediction: "even" as const },
+                    { id: "match-differ", label: "Matches", contractType: "match-differ" as const, defaultPrediction: "match" as const },
+                    { id: "over-under", label: "Over/Under", contractType: "over-under" as const, defaultPrediction: "over" as const },
+                    { id: "higher-lower", label: "Higher/Lower", contractType: "higher-lower" as const, defaultPrediction: "higher" as const },
                   ].map((item) => {
-                    const isSelected =
-                      item.id === contractType ||
-                      (item.id === "higher-lower" && contractType === "rise-fall")
+                    const isSelected = item.contractType === contractType
 
                     return (
                       <button
                         key={item.id}
                         onClick={() => {
-                          if (item.supported) {
-                            if (item.id === "higher-lower") {
-                              setContractType("rise-fall")
-                              setPrediction("rise")
-                            } else {
-                              setContractType(item.id as typeof contractType)
-                              setPrediction(
-                                item.id === "rise-fall"
-                                  ? "rise"
-                                  : item.id === "even-odd"
-                                    ? "even"
-                                    : "match",
-                              )
-                            }
-                          }
+                          setContractType(item.contractType)
+                          setPrediction(item.defaultPrediction)
                         }}
-                        disabled={!item.supported}
                         className={`p-2 rounded-xl text-center border transition-all ${
                           isSelected
                             ? "bg-purple-600/30 border-purple-500 text-white shadow-sm shadow-purple-900/40"
-                            : item.supported
-                              ? "bg-[#160F2E] border-purple-500/15 text-zinc-300 hover:border-purple-500/40"
-                              : "bg-[#0E0A1E] border-white/5 text-zinc-600 cursor-not-allowed opacity-50"
+                            : "bg-[#160F2E] border-purple-500/15 text-zinc-300 hover:border-purple-500/40"
                         }`}
                       >
                         <div className="text-[11px] font-bold">{item.label}</div>
-                        {!item.supported && (
-                          <div className="text-[8px] text-zinc-500 uppercase mt-0.5">Soon</div>
-                        )}
                       </button>
                     )
                   })}
@@ -2087,21 +2234,127 @@ export default function Terminal() {
                 )}
 
                 {contractType === "match-differ" && (
+                  <div className="space-y-2">
+                    <div className="bg-[#120B24] border border-purple-500/20 rounded-xl p-2">
+                      <div className="flex justify-between text-[10px] text-zinc-400 mb-1 font-semibold uppercase">
+                        <span>Target Digit</span>
+                        <span className="text-purple-300 font-mono font-bold">Selected: {predictionDigit}</span>
+                      </div>
+                      <div className="grid grid-cols-10 gap-1">
+                        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
+                          <button
+                            key={d}
+                            onClick={() => setPredictionDigit(d)}
+                            className={`py-1 rounded text-xs font-mono font-bold ${
+                              predictionDigit === d
+                                ? "bg-purple-600 text-white shadow-sm shadow-purple-900 border border-purple-400"
+                                : "bg-[#181136] text-zinc-400 hover:text-white"
+                            }`}
+                          >
+                            {d}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => placeManualTrade("match")}
+                        className="p-3.5 rounded-xl font-display font-bold text-sm bg-gradient-to-br from-purple-600 to-purple-800 text-white hover:from-purple-500 hover:to-purple-700 active:scale-[0.98] transition-all shadow-lg shadow-purple-950/50 flex flex-col items-center justify-center gap-1"
+                      >
+                        <span>MATCH {predictionDigit}</span>
+                        <span className="text-[11px] font-mono text-purple-200 font-semibold">2.15x Payout</span>
+                      </button>
+
+                      <button
+                        onClick={() => placeManualTrade("differ")}
+                        className="p-3.5 rounded-xl font-display font-bold text-sm bg-gradient-to-br from-purple-800 to-purple-950 border border-purple-500/30 text-white hover:bg-purple-900 active:scale-[0.98] transition-all shadow-lg shadow-purple-950/50 flex flex-col items-center justify-center gap-1"
+                      >
+                        <span>DIFFER {predictionDigit}</span>
+                        <span className="text-[11px] font-mono text-purple-200 font-semibold">1.82x Payout</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {contractType === "over-under" && (
+                  <div className="space-y-2">
+                    <div className="bg-[#120B24] border border-purple-500/20 rounded-xl p-2">
+                      <div className="flex justify-between text-[10px] text-zinc-400 mb-1 font-semibold uppercase">
+                        <span>Prediction Digit Barrier</span>
+                        <span className="text-purple-300 font-mono font-bold">Barrier: {predictionDigit}</span>
+                      </div>
+                      <div className="grid grid-cols-10 gap-1">
+                        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
+                          <button
+                            key={d}
+                            onClick={() => setPredictionDigit(d)}
+                            className={`py-1 rounded text-xs font-mono font-bold ${
+                              predictionDigit === d
+                                ? "bg-purple-600 text-white shadow-sm shadow-purple-900 border border-purple-400"
+                                : "bg-[#181136] text-zinc-400 hover:text-white"
+                            }`}
+                          >
+                            {d}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => placeManualTrade("over")}
+                        className="p-3.5 rounded-xl font-display font-bold text-sm bg-gradient-to-br from-emerald-600 to-emerald-700 text-white hover:from-emerald-500 hover:to-emerald-600 active:scale-[0.98] transition-all shadow-lg shadow-emerald-950/50 flex flex-col items-center justify-center gap-1"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                            <path d="M12 19V5M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          <span>OVER {predictionDigit}</span>
+                        </div>
+                        <span className="text-[11px] font-mono text-emerald-200 font-semibold">+82% Payout</span>
+                      </button>
+
+                      <button
+                        onClick={() => placeManualTrade("under")}
+                        className="p-3.5 rounded-xl font-display font-bold text-sm bg-gradient-to-br from-rose-600 to-rose-700 text-white hover:from-rose-500 hover:to-rose-600 active:scale-[0.98] transition-all shadow-lg shadow-rose-950/50 flex flex-col items-center justify-center gap-1"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                            <path d="M12 5v14M5 12l7 7 7-7" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          <span>UNDER {predictionDigit}</span>
+                        </div>
+                        <span className="text-[11px] font-mono text-rose-200 font-semibold">+82% Payout</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {contractType === "higher-lower" && (
                   <div className="grid grid-cols-2 gap-2">
                     <button
-                      onClick={() => placeManualTrade("match")}
-                      className="p-3.5 rounded-xl font-display font-bold text-sm bg-gradient-to-br from-purple-600 to-purple-800 text-white hover:from-purple-500 hover:to-purple-700 active:scale-[0.98] transition-all shadow-lg shadow-purple-950/50 flex flex-col items-center justify-center gap-1"
+                      onClick={() => placeManualTrade("higher")}
+                      className="p-3.5 rounded-xl font-display font-bold text-sm bg-gradient-to-br from-emerald-600 to-emerald-700 text-white hover:from-emerald-500 hover:to-emerald-600 active:scale-[0.98] transition-all shadow-lg shadow-emerald-950/50 flex flex-col items-center justify-center gap-1"
                     >
-                      <span>MATCH</span>
-                      <span className="text-[11px] font-mono text-purple-200 font-semibold">2.15x Payout</span>
+                      <div className="flex items-center gap-1.5">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <path d="M12 19V5M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span>HIGHER</span>
+                      </div>
+                      <span className="text-[11px] font-mono text-emerald-200 font-semibold">+82% Payout</span>
                     </button>
 
                     <button
-                      onClick={() => placeManualTrade("differ")}
-                      className="p-3.5 rounded-xl font-display font-bold text-sm bg-gradient-to-br from-purple-800 to-purple-950 border border-purple-500/30 text-white hover:bg-purple-900 active:scale-[0.98] transition-all shadow-lg shadow-purple-950/50 flex flex-col items-center justify-center gap-1"
+                      onClick={() => placeManualTrade("lower")}
+                      className="p-3.5 rounded-xl font-display font-bold text-sm bg-gradient-to-br from-rose-600 to-rose-700 text-white hover:from-rose-500 hover:to-rose-600 active:scale-[0.98] transition-all shadow-lg shadow-rose-950/50 flex flex-col items-center justify-center gap-1"
                     >
-                      <span>DIFFER</span>
-                      <span className="text-[11px] font-mono text-purple-200 font-semibold">1.82x Payout</span>
+                      <div className="flex items-center gap-1.5">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <path d="M12 5v14M5 12l7 7 7-7" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span>LOWER</span>
+                      </div>
+                      <span className="text-[11px] font-mono text-rose-200 font-semibold">+82% Payout</span>
                     </button>
                   </div>
                 )}

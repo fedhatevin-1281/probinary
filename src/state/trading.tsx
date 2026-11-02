@@ -12,9 +12,24 @@ import { recordCompletedTrade, fetchCompletedTrades } from "../services/authApi"
 
 export type MarketCategory = "volatility" | "boom" | "crash" | "step"
 
-export type ContractType = "rise-fall" | "even-odd" | "match-differ"
+export type ContractType =
+  | "rise-fall"
+  | "even-odd"
+  | "match-differ"
+  | "over-under"
+  | "higher-lower"
 
-export type TradeDirection = "rise" | "fall" | "even" | "odd" | "match" | "differ"
+export type TradeDirection =
+  | "rise"
+  | "fall"
+  | "even"
+  | "odd"
+  | "match"
+  | "differ"
+  | "over"
+  | "under"
+  | "higher"
+  | "lower"
 
 export type TradeStatus = "open" | "won" | "lost"
 
@@ -87,6 +102,8 @@ export interface BinaryTrade {
 
   entryDigit: number
 
+  predictionDigit?: number
+
   expiryAt: number
 
   expirySeconds: number
@@ -142,6 +159,8 @@ interface TradeInput {
   expirySeconds: number
 
   isDemo?: boolean
+
+  predictionDigit?: number
 }
 
 interface TradingContextValue {
@@ -493,6 +512,10 @@ const PAYOUTS: Record<ContractType, number> = {
   "even-odd": 1.8,
 
   "match-differ": 2.15,
+
+  "over-under": 1.82,
+
+  "higher-lower": 1.82,
 }
 
 const SAMPLE_CLOSED_TRADES: BinaryTrade[] = [
@@ -1017,11 +1040,13 @@ export function TradingProvider({
 
       entryDigit: lastDigit(market.price),
 
+      predictionDigit: input.predictionDigit,
+
       expiryAt: Date.now() + expirySeconds * 1000,
 
       expirySeconds,
 
-      payoutMultiplier: PAYOUTS[input.contractType],
+      payoutMultiplier: PAYOUTS[input.contractType] || 1.82,
 
       status: "open",
 
@@ -1580,10 +1605,27 @@ function isWinningTrade(
         ? exitDigit % 2 === 0
         : exitDigit % 2 === 1
 
-    case "match-differ":
+    case "match-differ": {
+      const matchTarget = trade.predictionDigit ?? trade.entryDigit
       return trade.direction === "match"
-        ? exitDigit === trade.entryDigit
-        : exitDigit !== trade.entryDigit
+        ? exitDigit === matchTarget
+        : exitDigit !== matchTarget
+    }
+
+    case "over-under": {
+      const underTarget = trade.predictionDigit ?? 5
+      return trade.direction === "over"
+        ? exitDigit > underTarget
+        : exitDigit < underTarget
+    }
+
+    case "higher-lower":
+      return trade.direction === "higher" || trade.direction === "rise"
+        ? exitPrice > trade.entryPrice
+        : exitPrice < trade.entryPrice
+
+    default:
+      return false
   }
 }
 

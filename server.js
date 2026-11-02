@@ -216,6 +216,10 @@ const PAYOUTS = {
   "even-odd": 1.8,
 
   "match-differ": 2.15,
+
+  "over-under": 1.82,
+
+  "higher-lower": 1.82,
 }
 
 const STARTING_BALANCE = 0
@@ -1570,6 +1574,8 @@ function placeTrade(currentState, input, session) {
 
     direction: input.direction,
 
+    predictionDigit: input.predictionDigit !== undefined ? Number(input.predictionDigit) : undefined,
+
     stake,
 
     entryPrice: market.price,
@@ -1580,7 +1586,7 @@ function placeTrade(currentState, input, session) {
 
     expirySeconds,
 
-    payoutMultiplier: PAYOUTS[input.contractType],
+    payoutMultiplier: PAYOUTS[input.contractType] || 1.82,
 
     traderRole: session?.role || "user",
 
@@ -1728,10 +1734,24 @@ function isWinningTrade(trade, exitPrice, exitDigit) {
         ? exitDigit % 2 === 0
         : exitDigit % 2 === 1
 
-    case "match-differ":
+    case "match-differ": {
+      const target = trade.predictionDigit !== undefined ? trade.predictionDigit : trade.entryDigit
       return trade.direction === "match"
-        ? exitDigit === trade.entryDigit
-        : exitDigit !== trade.entryDigit
+        ? exitDigit === target
+        : exitDigit !== target
+    }
+
+    case "over-under": {
+      const target = trade.predictionDigit !== undefined ? trade.predictionDigit : 5
+      return trade.direction === "over"
+        ? exitDigit > target
+        : exitDigit < target
+    }
+
+    case "higher-lower":
+      return trade.direction === "higher" || trade.direction === "rise"
+        ? exitPrice > trade.entryPrice
+        : exitPrice < trade.entryPrice
 
     default:
       return false
