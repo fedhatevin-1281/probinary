@@ -101,6 +101,8 @@ export default function Layout({
     toggleBarsCollapsed,
   } = useTopNav()
 
+  const isMobile = viewportWidth <= 900
+  const isTradePage = currentPage === "terminal"
   const isHeaderHidden = isTradePage && isMobile && headerCollapsed
 
   // Auto-collapse header and footer on mobile when entering Trade page or while on trade
@@ -168,8 +170,6 @@ export default function Layout({
       onNavigate("terminal")
     }
   }, [currentPage, onNavigate, testBinarySystem])
-
-  const isMobile = viewportWidth <= 900
 
   const hideSidebar = viewportWidth <= 1120
 

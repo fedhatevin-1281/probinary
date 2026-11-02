@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback, useId } from "react"
-import { useTrading } from "../state/trading"
+import { useTrading, type ContractType, type TradeDirection } from "../state/trading"
 import { useTopNav } from "../state/topNav"
 import LastDigitStatistics from "../components/LastDigitStatistics"
 
@@ -218,7 +218,7 @@ function LineChart({
         fill="#FFFFFF"
         fontFamily="'IBM Plex Mono', monospace"
       >
-        {livePrice.toFixed(2)}
+        {validLivePrice.toFixed(2)}
       </text>
 
       {/* Pulsing Live Price Dot on Graph */}
