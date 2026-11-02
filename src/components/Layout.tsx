@@ -1012,7 +1012,16 @@ export default function Layout({
         )}
 
         {/* Page content */}
-        <main style={{ flex: 1, overflow: "auto", background: "#09090F" }}>
+        <main
+          style={{
+            flex: 1,
+            overflow: currentPage === "terminal" ? "hidden" : "auto",
+            display: "flex",
+            flexDirection: "column",
+            background: "#09090F",
+            minHeight: 0,
+          }}
+        >
           {children}
         </main>
       </div>

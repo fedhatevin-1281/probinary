@@ -70,14 +70,14 @@ function useRollingDigitStatistics(
 
 function getPercentageColor(percentage: number) {
   if (percentage > 10.05) {
-    return "#2CF9AE"
+    return "#C084FC"
   }
 
   if (percentage < 9.95) {
-    return "#FF5D7A"
+    return "#71717A"
   }
 
-  return "#F8FAFC"
+  return "#E2E8F0"
 }
 
 function arcLengthFromPercentage(percentage: number) {
@@ -116,7 +116,7 @@ const DigitCircle = memo(
     percentage: number
     isActive: boolean
   }) {
-    const arcColor = getPercentageColor(percentage)
+    const arcColor = isActive ? "#E9D5FF" : getPercentageColor(percentage)
 
     const arcLength = arcLengthFromPercentage(percentage)
 
@@ -126,56 +126,47 @@ const DigitCircle = memo(
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          minWidth: 32,
+          minWidth: 34,
+          flex: 1,
         }}
       >
         <div
           style={{
-            width: 42,
-
-            height: 42,
-
+            width: 40,
+            height: 40,
             borderRadius: "50%",
-
             position: "relative",
-
             display: "flex",
-
             alignItems: "center",
-
             justifyContent: "center",
-
             fontFamily: "'IBM Plex Mono', monospace",
-
-            fontSize: 18,
-
+            fontSize: 17,
             fontWeight: 700,
-
-            color: isActive ? "#0B111B" : "#F8FAFC",
-
-            background: isActive ? "#FFFFFF" : "#0F1722",
-
+            color: isActive ? "#FFFFFF" : "#F1F5F9",
+            background: isActive
+              ? "linear-gradient(135deg, #7C3AED, #A855F7)"
+              : "#130E26",
             border: isActive
-              ? "2px solid rgba(255,255,255,0.95)"
-              : "1px solid rgba(148,163,184,0.28)",
-
+              ? "2px solid #C084FC"
+              : "1px solid rgba(168, 85, 247, 0.22)",
             boxShadow: isActive
-              ? "0 0 0 2px rgba(34,197,94,0.35)"
-              : "inset 0 -3px 10px rgba(0,0,0,0.35)",
-
+              ? "0 0 16px rgba(168, 85, 247, 0.7), inset 0 0 8px rgba(255,255,255,0.2)"
+              : "inset 0 2px 4px rgba(0,0,0,0.4)",
             overflow: "hidden",
+            transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+            transform: isActive ? "scale(1.08)" : "scale(1)",
           }}
         >
           <svg
-            width="42"
-            height="42"
+            width="40"
+            height="40"
             viewBox="0 0 42 42"
             style={{ position: "absolute", inset: 0 }}
           >
             <path
               d="M6 22 A15 15 0 0 1 36 22"
               fill="none"
-              stroke="rgba(148,163,184,0.25)"
+              stroke="rgba(168, 85, 247, 0.18)"
               strokeWidth="2"
               strokeLinecap="round"
               pathLength={100}
@@ -184,7 +175,7 @@ const DigitCircle = memo(
               d="M6 22 A15 15 0 0 1 36 22"
               fill="none"
               stroke={arcColor}
-              strokeWidth="2.4"
+              strokeWidth="2.5"
               strokeLinecap="round"
               pathLength={100}
               strokeDasharray={`${arcLength} 100`}
@@ -194,7 +185,7 @@ const DigitCircle = memo(
               }}
             />
           </svg>
-          {digit}
+          <span style={{ position: "relative", zIndex: 1 }}>{digit}</span>
         </div>
         <PercentageLabel percentage={percentage} />
       </div>
@@ -223,9 +214,7 @@ export default function LastDigitStatistics({
   const digits = useMemo(() => {
     return Array.from({ length: 10 }, (_, digit) => ({
       digit,
-
       percentage: percentages[digit],
-
       isActive: digit === lastDigit,
     }))
   }, [percentages, lastDigit])
@@ -234,10 +223,10 @@ export default function LastDigitStatistics({
     <div
       style={{
         margin: "0 8px 8px",
-        background: "linear-gradient(180deg, #052116 0%, #061C13 100%)",
-        border: "1px solid rgba(34,197,94,0.14)",
+        background: "linear-gradient(180deg, #120D22 0%, #0A0716 100%)",
+        border: "1px solid rgba(168, 85, 247, 0.2)",
         borderRadius: 12,
-        padding: "9px 10px 7px",
+        padding: "10px 12px 8px",
         overflowX: "auto",
         overflowY: "hidden",
       }}
@@ -246,8 +235,9 @@ export default function LastDigitStatistics({
         style={{
           display: "flex",
           justifyContent: "space-between",
+          alignItems: "center",
           gap: 6,
-          minWidth: 420,
+          minWidth: 380,
           flexWrap: "nowrap",
         }}
       >
@@ -263,3 +253,4 @@ export default function LastDigitStatistics({
     </div>
   )
 }
+
