@@ -505,6 +505,47 @@ export default function Layout({
               </button>
             )}
 
+            {hideSidebar && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  marginLeft: 2,
+                  cursor: "pointer",
+                }}
+                onClick={() => onNavigate("dashboard")}
+              >
+                <span
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 6,
+                    background: "linear-gradient(135deg, #7C3AED, #A855F7)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 800,
+                    fontSize: 11,
+                    color: "#FFFFFF",
+                  }}
+                >
+                  PB
+                </span>
+                <span
+                  style={{
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: "#FFFFFF",
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  pro<span style={{ color: "#C084FC" }}>binary</span>
+                </span>
+              </div>
+            )}
+
             {!isMobile && (
               <>
                 {!testBinarySystem && (
@@ -546,17 +587,6 @@ export default function Layout({
                   ariaLabel="Open learning center"
                 />
               </>
-            )}
-
-            {isMobile && (
-              <button
-                className="nav-feature-secondary"
-                onClick={() => setMobileActionsOpen((value) => !value)}
-                aria-label="Open quick actions"
-                style={{ padding: "5px 8px", borderRadius: 8, fontSize: 11 }}
-              >
-                Actions
-              </button>
             )}
           </div>
 

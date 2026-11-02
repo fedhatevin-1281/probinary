@@ -218,6 +218,14 @@ function LineChart({
   )
 }
 
+const CONTRACT_TABS = [
+  { id: "rise-fall", label: "Rise/Fall", contractType: "rise-fall" as const, defaultPrediction: "rise" as const },
+  { id: "even-odd", label: "Even/Odd", contractType: "even-odd" as const, defaultPrediction: "even" as const },
+  { id: "match-differ", label: "Matches", contractType: "match-differ" as const, defaultPrediction: "match" as const },
+  { id: "over-under", label: "Over/Under", contractType: "rise-fall" as const, defaultPrediction: "rise" as const },
+  { id: "higher-lower", label: "Higher/Lower", contractType: "rise-fall" as const, defaultPrediction: "rise" as const },
+] as const
+
 export default function Terminal() {
   const {
     marketList,
@@ -238,7 +246,13 @@ export default function Terminal() {
     testBinarySystem,
   } = useTrading()
 
-  const { activeAccount, setActiveAccount, balances, setDemoBalance, formatUsdValue, backendOnline } = useTopNav()
+  const { activeAccount, setActiveAccount, balances, setDemoBalance, formatUsdValue, backendOnline, setPanel } = useTopNav()
+
+  // Mobile specific navigation & dropdown states (matching clean mobile layout)
+  const [mobileNavTab, setMobileNavTab] = useState<"trade" | "positions">("trade")
+  const [marketDropdownOpen, setMarketDropdownOpen] = useState(false)
+  const [statsDropdownOpen, setStatsDropdownOpen] = useState(false)
+  const [accountDropdownOpen, setAccountDropdownOpen] = useState(false)
 
   // Navigation & Watchlist state
   const [tradingMode, setTradingMode] = useState<TradingPanelMode>("manual")
@@ -586,52 +600,709 @@ export default function Terminal() {
   return (
     <div className="flex flex-col w-full h-full bg-[#09090F] text-white select-none overflow-y-auto lg:overflow-hidden">
       
-      {/* 1. TOP MOBILE BALANCE BAR (VISIBLE ON MOBILE ONLY) */}
-      <div className="lg:hidden bg-[#120D26] border-b border-purple-500/20 px-3 py-2 flex items-center justify-between gap-2 flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          {/* Account Mode Toggle (Real / Demo) */}
-          <div className="flex items-center bg-[#0C0818] rounded-lg p-0.5 border border-purple-500/25">
+      {/* ======================================================== */}
+      {/* MOBILE VIEW (MATCHING SPURTRADE LAYOUT & SIMPLICITY)    */}
+      {/* ======================================================== */}
+      <div className="lg:hidden flex flex-col w-full min-h-full pb-20 px-3 pt-2 relative">
+        {/* 1. Horizontal Contract Type Selector */}
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 flex-shrink-0">
+          {CONTRACT_TABS.map((tab) => {
+            const isSelected =
+              tab.id === contractType ||
+              (tab.id === "higher-lower" && contractType === "rise-fall") ||
+              (tab.id === "over-under" && contractType === "rise-fall" && prediction === "rise")
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setContractType(tab.contractType as typeof contractType)
+                  setPrediction(tab.defaultPrediction as typeof prediction)
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                  isSelected
+                    ? "bg-purple-600/30 text-white border-2 border-purple-500 shadow-sm shadow-purple-900/50"
+                    : "bg-[#130E26] text-zinc-400 border border-purple-500/15 hover:text-white"
+                }`}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* 2. Chart Sub-header Bar (Dropdowns for Markets, Real/Demo, Stats) */}
+        <div className="flex items-center justify-between py-2 relative flex-shrink-0 z-20">
+          {/* Left: Market Dropdown Button */}
+          <div className="relative">
             <button
-              onClick={() => setActiveAccount("real")}
-              className={`px-2.5 py-1 text-[11px] font-bold rounded transition-all ${
-                activeAccount === "real"
-                  ? "bg-purple-600 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
+              onClick={() => {
+                setMarketDropdownOpen((v) => !v)
+                setStatsDropdownOpen(false)
+                setAccountDropdownOpen(false)
+              }}
+              className="flex items-center gap-1.5 bg-[#140E2A] hover:bg-[#1B1338] border border-purple-500/30 rounded-xl px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all"
             >
-              Real
-            </button>
-            <button
-              onClick={() => setActiveAccount("demo")}
-              className={`px-2.5 py-1 text-[11px] font-bold rounded transition-all ${
-                activeAccount === "demo"
-                  ? "bg-purple-600 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Demo
+              <span className="text-purple-400 text-xs">◆</span>
+              <span>{selectedMarket.symbol}</span>
+              <span className="text-zinc-400 text-[10px]">⌄</span>
             </button>
           </div>
 
-          {/* Balance Display */}
-          <div className="text-left font-mono">
-            <div className="text-[9px] text-zinc-400 uppercase font-semibold leading-none">Balance</div>
-            <div className="text-base font-bold text-white tracking-tight">
-              {formatUsdValue(activeAccount === "real" ? balances.real : balances.demo)}
+          {/* Right: Stats & Real/Demo Dropdowns */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setStatsDropdownOpen((v) => !v)
+                setMarketDropdownOpen(false)
+                setAccountDropdownOpen(false)
+              }}
+              className="flex items-center gap-1 bg-[#140E2A] hover:bg-[#1B1338] border border-purple-500/30 rounded-xl px-2.5 py-1.5 text-xs font-bold text-zinc-300 shadow-sm transition-all"
+            >
+              <span className="text-purple-400 text-[11px] font-mono">{timeframe}</span>
+              <span className="text-zinc-500 text-[10px]">⌄</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setAccountDropdownOpen((v) => !v)
+                setMarketDropdownOpen(false)
+                setStatsDropdownOpen(false)
+              }}
+              className="flex items-center gap-1.5 bg-[#140E2A] hover:bg-[#1B1338] border border-purple-500/30 rounded-xl px-3 py-1.5 text-xs font-bold shadow-sm transition-all"
+            >
+              <span className={`w-2 h-2 rounded-full ${activeAccount === "real" ? "bg-emerald-400" : "bg-purple-400"} animate-pulse`} />
+              <span className={activeAccount === "real" ? "text-emerald-400" : "text-purple-300"}>
+                {activeAccount === "real" ? "Real" : "Demo"}
+              </span>
+              <span className="text-zinc-500 text-[10px]">⌄</span>
+            </button>
+          </div>
+        </div>
+
+        {/* DROPDOWN 1: Market Selector Modal / Popover */}
+        {marketDropdownOpen && (
+          <div className="absolute top-20 left-2.5 right-2.5 z-40 bg-[#120D26] border-2 border-purple-500/40 rounded-2xl p-3 shadow-2xl shadow-purple-950/80">
+            <div className="flex items-center justify-between pb-2 border-b border-purple-500/20">
+              <div className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                <span>◆</span> Select Market
+              </div>
+              <button
+                onClick={() => setMarketDropdownOpen(false)}
+                className="text-zinc-400 hover:text-white text-xs px-2 py-0.5 rounded bg-white/5"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="pt-2 space-y-2">
+              <input
+                type="text"
+                placeholder="Search markets..."
+                value={watchlistSearch}
+                onChange={(e) => setWatchlistSearch(e.target.value)}
+                className="w-full bg-[#1A1233] border border-purple-500/30 rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 outline-none focus:border-purple-400 font-mono"
+              />
+              <div className="flex gap-1 overflow-x-auto pb-1 text-[10px]">
+                {["all", "volatility", "boom", "crash"].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setWatchlistCategory(cat)}
+                    className={`px-2.5 py-1 rounded-lg capitalize font-bold transition-all ${
+                      watchlistCategory === cat
+                        ? "bg-purple-600 text-white"
+                        : "bg-purple-900/20 text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="max-h-56 overflow-y-auto divide-y divide-purple-500/10 mt-1">
+              {filteredMarkets.map((m) => {
+                const live = markets[m.symbol] ?? m
+                const isSelected = selectedMarket.symbol === m.symbol
+                const isUp = (live.changePct ?? 0) >= 0
+
+                return (
+                  <div
+                    key={m.symbol}
+                    onClick={() => {
+                      selectMarket(m.symbol)
+                      setMarketDropdownOpen(false)
+                    }}
+                    className={`p-2.5 cursor-pointer rounded-xl transition-all flex items-center justify-between ${
+                      isSelected ? "bg-purple-600/30 border border-purple-500" : "hover:bg-purple-900/20"
+                    }`}
+                  >
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <span>{m.symbol}</span>
+                        <span className="text-[10px] text-zinc-400 font-normal">· {m.name}</span>
+                      </div>
+                      <div className="text-[10px] text-purple-400 font-mono">Vol: {m.volatilityLabel}</div>
+                    </div>
+                    <div className="text-right font-mono">
+                      <div className="text-xs font-bold text-white">{live.price.toFixed(2)}</div>
+                      <div className={`text-[10px] font-bold ${isUp ? "text-emerald-400" : "text-rose-400"}`}>
+                        {isUp ? "+" : ""}{(live.changePct ?? 0).toFixed(2)}%
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-2 pt-2 border-t border-purple-500/20 grid grid-cols-4 gap-1 text-center font-mono text-[10px] text-zinc-400 bg-[#0E0A1E] rounded-xl p-2">
+              <div>O: <span className="text-white font-bold">{sessionOpen.toFixed(1)}</span></div>
+              <div>H: <span className="text-white font-bold">{sessionHigh.toFixed(1)}</span></div>
+              <div>L: <span className="text-white font-bold">{sessionLow.toFixed(1)}</span></div>
+              <div>VOL: <span className="text-purple-400 font-bold">{liveMarket.volatilityLabel}</span></div>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-900/30 border border-purple-500/30 text-[10px] font-bold text-purple-300">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-            <span>{backendOnline ? "LIVE FEED" : "SIMULATED"}</span>
+        {/* DROPDOWN 2: Stats & Timeframe Popover */}
+        {statsDropdownOpen && (
+          <div className="absolute top-20 right-2.5 left-2.5 z-40 bg-[#120D26] border-2 border-purple-500/40 rounded-2xl p-3 shadow-2xl shadow-purple-950/80">
+            <div className="flex items-center justify-between pb-2 border-b border-purple-500/20">
+              <div className="text-xs font-bold text-purple-300 uppercase tracking-wider">
+                Statistics & Timeframe
+              </div>
+              <button
+                onClick={() => setStatsDropdownOpen(false)}
+                className="text-zinc-400 hover:text-white text-xs px-2 py-0.5 rounded bg-white/5"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="pt-2">
+              <div className="text-[10px] text-zinc-400 uppercase font-bold mb-1">Timeframe</div>
+              <div className="flex items-center gap-1.5 bg-[#0E0A1E] p-1 rounded-xl border border-purple-500/20">
+                {(["1m", "5m", "15m", "1h"] as TimeFrame[]).map((tf) => (
+                  <button
+                    key={tf}
+                    onClick={() => {
+                      setTimeframe(tf)
+                      setStatsDropdownOpen(false)
+                    }}
+                    className={`flex-1 py-1.5 text-xs font-mono font-bold rounded-lg transition-all ${
+                      timeframe === tf
+                        ? "bg-purple-600 text-white shadow-sm shadow-purple-900/60"
+                        : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    {tf}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-purple-500/15 text-xs font-mono">
+              <div className="bg-[#160F2E] p-2 rounded-xl border border-purple-500/15 flex justify-between">
+                <span className="text-zinc-400">Open</span>
+                <span className="text-white font-bold">{sessionOpen.toFixed(2)}</span>
+              </div>
+              <div className="bg-[#160F2E] p-2 rounded-xl border border-purple-500/15 flex justify-between">
+                <span className="text-zinc-400">High</span>
+                <span className="text-emerald-400 font-bold">{sessionHigh.toFixed(2)}</span>
+              </div>
+              <div className="bg-[#160F2E] p-2 rounded-xl border border-purple-500/15 flex justify-between">
+                <span className="text-zinc-400">Low</span>
+                <span className="text-rose-400 font-bold">{sessionLow.toFixed(2)}</span>
+              </div>
+              <div className="bg-[#160F2E] p-2 rounded-xl border border-purple-500/15 flex justify-between">
+                <span className="text-zinc-400">RSI(14)</span>
+                <span className="text-purple-300 font-bold">{rsiValue.toFixed(1)}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-purple-500/15 text-xs">
+              <div className="flex items-center gap-1.5 text-zinc-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                <span className="font-semibold text-purple-300">
+                  {backendOnline ? "LIVE FEED" : "SIMULATED"}
+                </span>
+              </div>
+              <div className="font-mono font-bold text-xs">
+                Signal: <span className={rsiSignal.includes("BUY") ? "text-emerald-400" : rsiSignal.includes("SELL") ? "text-rose-400" : "text-amber-400"}>{rsiSignal}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* DROPDOWN 3: Account Selector Popover */}
+        {accountDropdownOpen && (
+          <div className="absolute top-20 right-2.5 z-40 w-64 bg-[#120D26] border-2 border-purple-500/40 rounded-2xl p-3 shadow-2xl shadow-purple-950/80">
+            <div className="flex items-center justify-between pb-2 border-b border-purple-500/20">
+              <div className="text-xs font-bold text-purple-300 uppercase tracking-wider">
+                Account Type
+              </div>
+              <button
+                onClick={() => setAccountDropdownOpen(false)}
+                className="text-zinc-400 hover:text-white text-xs px-2 py-0.5 rounded bg-white/5"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="pt-2 space-y-2">
+              <button
+                onClick={() => {
+                  setActiveAccount("real")
+                  setAccountDropdownOpen(false)
+                }}
+                className={`w-full p-2.5 rounded-xl border flex items-center justify-between transition-all ${
+                  activeAccount === "real"
+                    ? "bg-purple-600/30 border-purple-500 text-white font-bold"
+                    : "bg-[#160F2E] border-purple-500/15 text-zinc-300 hover:bg-purple-900/20"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span>Real Account</span>
+                </div>
+                <span className="font-mono font-bold">{formatUsdValue(balances.real)}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveAccount("demo")
+                  setAccountDropdownOpen(false)
+                }}
+                className={`w-full p-2.5 rounded-xl border flex items-center justify-between transition-all ${
+                  activeAccount === "demo"
+                    ? "bg-purple-600/30 border-purple-500 text-white font-bold"
+                    : "bg-[#160F2E] border-purple-500/15 text-zinc-300 hover:bg-purple-900/20"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-purple-400" />
+                  <span>Demo Account</span>
+                </div>
+                <span className="font-mono font-bold">{formatUsdValue(balances.demo)}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 3. The Clean Line Chart (with pinned right price badge & floating zoom controls) */}
+        <div
+          className="w-full relative bg-[#070512] rounded-2xl border border-purple-500/20 overflow-hidden my-1 shadow-lg shadow-purple-950/20 flex-shrink-0"
+          style={{ height: "260px", minHeight: "240px" }}
+        >
+          <LineChart history={safeHistory} livePrice={livePrice} zoomFactor={zoomFactor} />
+
+          {/* Floating stacked zoom controls (matching SpurTrade screenshot) */}
+          <div className="absolute right-2.5 bottom-3.5 flex flex-col gap-1 z-10">
+            <button
+              onClick={() => setZoomFactor((z) => Math.max(0.5, z - 0.2))}
+              title="Zoom In"
+              className="w-8 h-8 rounded-lg bg-[#140E2A]/85 backdrop-blur-md border border-purple-500/30 text-white font-bold flex items-center justify-center text-sm shadow-md hover:bg-purple-600/40 active:scale-95 transition-all"
+            >
+              +
+            </button>
+            <button
+              onClick={() => setZoomFactor((z) => Math.min(2.0, z + 0.2))}
+              title="Zoom Out"
+              className="w-8 h-8 rounded-lg bg-[#140E2A]/85 backdrop-blur-md border border-purple-500/30 text-white font-bold flex items-center justify-center text-sm shadow-md hover:bg-purple-600/40 active:scale-95 transition-all"
+            >
+              −
+            </button>
           </div>
         </div>
+
+        {/* 4. Last Digit Statistics (Digit Tracker with Arrow) */}
+        <div className="w-full flex-shrink-0 my-1">
+          <LastDigitStatistics lastDigit={currentDigit} tickValue={livePrice} maxTicks={1000} />
+        </div>
+
+        {/* 5. Trading Mode Segmented Control: [ Manual ] [ Bot ] */}
+        <div className="grid grid-cols-2 bg-[#0C0818] p-1 rounded-xl border border-purple-500/20 my-1 flex-shrink-0">
+          <button
+            onClick={() => setTradingMode("manual")}
+            className={`py-2 text-xs font-bold rounded-lg transition-all font-display ${
+              tradingMode === "manual"
+                ? "bg-[#181136] text-white border border-purple-500/40 shadow-sm"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            Manual
+          </button>
+          <button
+            onClick={() => setTradingMode("bot")}
+            className={`py-2 text-xs font-bold rounded-lg transition-all font-display ${
+              tradingMode === "bot"
+                ? "bg-[#251806] text-amber-400 border border-amber-500/40 shadow-sm"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            Bot
+          </button>
+        </div>
+
+        {/* 6. Trading Controls & Action Buttons */}
+        {mobileNavTab === "trade" && (
+          tradingMode === "manual" ? (
+            <div className="space-y-2 flex-shrink-0 pt-0.5">
+              {/* Base Stake Stepper */}
+              <div className="bg-[#100B22] border border-purple-500/20 rounded-xl p-2.5 flex items-center justify-between shadow-sm">
+                <button
+                  onClick={() => stepStake(-1)}
+                  className="w-10 h-10 rounded-lg bg-[#181136] border border-purple-500/30 flex items-center justify-center text-lg font-bold text-zinc-300 hover:text-white active:scale-95 transition-transform"
+                >
+                  −
+                </button>
+                <div className="text-center">
+                  <div className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">Base Stake</div>
+                  <div className="font-mono text-xl font-bold text-white tracking-tight flex items-center justify-center gap-1">
+                    <span className="text-purple-400 text-sm font-semibold">$</span>
+                    <input
+                      type="number"
+                      value={stake}
+                      onChange={(e) => setStake(e.target.value)}
+                      className="w-20 bg-transparent text-center font-mono font-bold text-white text-xl outline-none"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={() => stepStake(1)}
+                  className="w-10 h-10 rounded-lg bg-[#181136] border border-purple-500/30 flex items-center justify-center text-lg font-bold text-zinc-300 hover:text-white active:scale-95 transition-transform"
+                >
+                  +
+                </button>
+              </div>
+
+              {/* Target Profit & Stop Loss (2 columns) */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-[#100B22] border border-emerald-500/25 rounded-xl p-2.5 flex flex-col justify-center">
+                  <div className="text-[10px] text-zinc-400 uppercase font-semibold">Target Profit</div>
+                  <div className="font-mono text-base font-bold text-emerald-400 flex items-center gap-1 mt-0.5">
+                    <span className="text-emerald-500 text-xs">$</span>
+                    <input
+                      type="number"
+                      value={targetProfit}
+                      onChange={(e) => setTargetProfit(e.target.value)}
+                      className="w-full bg-transparent font-mono font-bold text-emerald-400 outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="bg-[#100B22] border border-rose-500/25 rounded-xl p-2.5 flex flex-col justify-center">
+                  <div className="text-[10px] text-zinc-400 uppercase font-semibold">Stop Loss</div>
+                  <div className="font-mono text-base font-bold text-rose-400 flex items-center gap-1 mt-0.5">
+                    <span className="text-rose-500 text-xs">$</span>
+                    <input
+                      type="number"
+                      value={stopLoss}
+                      onChange={(e) => setStopLoss(e.target.value)}
+                      className="w-full bg-transparent font-mono font-bold text-rose-400 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Martingale Card with Switch */}
+              <div className="bg-[#100B22] border border-purple-500/20 rounded-xl p-3 flex items-center justify-between shadow-sm">
+                <div>
+                  <div className="text-xs font-bold text-zinc-200 uppercase tracking-wider">Martingale</div>
+                  <div className="text-[11px] text-zinc-500">Multiply stake after loss</div>
+                </div>
+                <button
+                  onClick={() => setMartingaleEnabled((v) => !v)}
+                  className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ${
+                    martingaleEnabled ? "bg-purple-600 justify-end" : "bg-zinc-700 justify-start"
+                  }`}
+                >
+                  <div className="w-4 h-4 rounded-full bg-white shadow-md transform transition-transform" />
+                </button>
+              </div>
+
+              {/* Big Execution Action Buttons (Rise / Fall) */}
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                <button
+                  onClick={() => placeManualTrade(contractType === "even-odd" ? "even" : contractType === "match-differ" ? "match" : "rise")}
+                  className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 active:scale-98 text-white font-black text-base shadow-lg shadow-emerald-950/40 transition-all font-display"
+                >
+                  {contractType === "even-odd" ? "Even" : contractType === "match-differ" ? "Matches" : "Rise"}
+                </button>
+                <button
+                  onClick={() => placeManualTrade(contractType === "even-odd" ? "odd" : contractType === "match-differ" ? "differ" : "fall")}
+                  className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 active:scale-98 text-white font-black text-base shadow-lg shadow-rose-950/40 transition-all font-display"
+                >
+                  {contractType === "even-odd" ? "Odd" : contractType === "match-differ" ? "Differs" : "Fall"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2 flex-shrink-0 pt-0.5">
+              {/* Bot Strategy Selector */}
+              <div className="bg-[#100B22] border border-amber-500/25 rounded-xl p-2.5">
+                <div className="text-[10px] text-zinc-400 uppercase font-semibold mb-1">Bot Strategy</div>
+                <select
+                  value={botStrategy}
+                  onChange={(e) => setBotStrategy(e.target.value as typeof botStrategy)}
+                  className="w-full bg-[#181136] border border-purple-500/30 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white outline-none cursor-pointer"
+                >
+                  <option value="rsi">RSI Extremes (Buy &lt;30, Sell &gt;70)</option>
+                  <option value="even-odd">Digit Parity Run (Even/Odd)</option>
+                  <option value="momentum">Price Momentum Trend</option>
+                  <option value="match-differ">Digit Hunter (Differ Prediction)</option>
+                </select>
+              </div>
+
+              {/* Base Stake Stepper */}
+              <div className="bg-[#100B22] border border-purple-500/20 rounded-xl p-2.5 flex items-center justify-between shadow-sm">
+                <button
+                  onClick={() => stepBotStake(-0.5)}
+                  className="w-10 h-10 rounded-lg bg-[#181136] border border-purple-500/30 flex items-center justify-center text-lg font-bold text-zinc-300 hover:text-white active:scale-95 transition-transform"
+                >
+                  −
+                </button>
+                <div className="text-center">
+                  <div className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">Bot Base Stake</div>
+                  <div className="font-mono text-xl font-bold text-white tracking-tight flex items-center justify-center gap-1">
+                    <span className="text-amber-400 text-sm font-semibold">$</span>
+                    <input
+                      type="number"
+                      value={botBaseStake}
+                      onChange={(e) => setBotBaseStake(e.target.value)}
+                      className="w-20 bg-transparent text-center font-mono font-bold text-white text-xl outline-none"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={() => stepBotStake(0.5)}
+                  className="w-10 h-10 rounded-lg bg-[#181136] border border-purple-500/30 flex items-center justify-center text-lg font-bold text-zinc-300 hover:text-white active:scale-95 transition-transform"
+                >
+                  +
+                </button>
+              </div>
+
+              {/* Live Metrics Row */}
+              <div className="grid grid-cols-4 gap-1.5 text-center text-xs font-mono bg-[#140E2A] p-2 rounded-xl border border-purple-500/20">
+                <div>
+                  <div className="text-[9px] text-zinc-500 uppercase">Trades</div>
+                  <div className="font-bold text-white">{botTradesCount}</div>
+                </div>
+                <div>
+                  <div className="text-[9px] text-zinc-500 uppercase">Wins</div>
+                  <div className="font-bold text-emerald-400">{botWins}</div>
+                </div>
+                <div>
+                  <div className="text-[9px] text-zinc-500 uppercase">Losses</div>
+                  <div className="font-bold text-rose-400">{botLosses}</div>
+                </div>
+                <div>
+                  <div className="text-[9px] text-zinc-500 uppercase">Profit</div>
+                  <div className={`font-bold ${botSessionProfit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                    {botSessionProfit >= 0 ? "+" : ""}${botSessionProfit.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Start / Stop Bot Button */}
+              <div className="pt-1">
+                <button
+                  onClick={() => {
+                    if (botRunning) {
+                      setBotRunning(false)
+                      setBotStatus("stopped")
+                    } else {
+                      setBotRunning(true)
+                      setBotStatus("scanning")
+                      setBotCurrentStake(parseFloat(botBaseStake) || 1.0)
+                    }
+                  }}
+                  className={`w-full py-3.5 px-4 rounded-2xl font-black text-base shadow-lg transition-all font-display active:scale-98 ${
+                    botRunning
+                      ? "bg-gradient-to-r from-rose-600 to-rose-700 text-white shadow-rose-950/50 hover:from-rose-500 hover:to-rose-600"
+                      : "bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-amber-950/50 hover:from-amber-400 hover:to-amber-500"
+                  }`}
+                >
+                  {botRunning ? "🛑 Stop Automated Bot" : "🚀 Start Automated Bot"}
+                </button>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* 7. Positions Screen (When positions tab is active) */}
+        {mobileNavTab === "positions" && (
+          <div className="flex-1 flex flex-col pt-1 space-y-3">
+            <div className="flex items-center justify-between pb-1 border-b border-purple-500/20">
+              <div className="text-xs font-bold text-purple-300 uppercase tracking-wider">
+                Positions & Recent Trades
+              </div>
+              <button
+                onClick={() => setMobileNavTab("trade")}
+                className="text-[11px] text-purple-400 font-bold px-2 py-0.5 rounded bg-purple-900/30"
+              >
+                ← Return to Chart
+              </button>
+            </div>
+
+            <div>
+              <div className="text-[10px] text-zinc-400 uppercase font-semibold mb-1">
+                Open Contracts ({openTrades.length})
+              </div>
+              {openTrades.length === 0 ? (
+                <div className="p-4 bg-[#100B22] rounded-xl border border-purple-500/20 text-center text-xs text-zinc-500">
+                  No open positions. Select Rise or Fall to enter a trade.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {openTrades.map((t) => {
+                    const remaining = Math.max(0, Math.ceil((t.expiryAt - Date.now()) / 1000))
+
+                    return (
+                      <div
+                        key={t.id}
+                        className="bg-[#120D26] border border-purple-500/25 rounded-xl p-3 flex items-center justify-between"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white text-xs">{t.symbol}</span>
+                            <span className="px-1.5 py-0.5 rounded bg-purple-900/40 text-purple-300 text-[10px] font-bold">
+                              {t.direction.toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-zinc-400 font-mono mt-0.5">
+                            Stake: <span className="text-white">${t.stake.toFixed(2)}</span> · Entry: {t.entryPrice.toFixed(2)}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs font-mono font-bold text-amber-400">{remaining}s left</div>
+                          <button
+                            onClick={() => forceCloseTrade(t.id)}
+                            className="mt-1 px-2.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500 hover:text-white"
+                          >
+                            Close
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="text-[10px] text-zinc-400 uppercase font-semibold mb-1">
+                Recent History ({recentTrades.length})
+              </div>
+              {recentTrades.length === 0 ? (
+                <div className="p-4 bg-[#100B22] rounded-xl border border-purple-500/20 text-center text-xs text-zinc-500">
+                  No trade history recorded in this session.
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                  {recentTrades.slice(0, 10).map((t) => {
+                    const isWin = t.result === "won"
+                    return (
+                      <div
+                        key={t.id}
+                        className="bg-[#100B22] border border-purple-500/15 rounded-xl p-2.5 flex items-center justify-between text-xs font-mono"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              isWin ? "bg-emerald-500/20 text-emerald-300" : "bg-rose-500/20 text-rose-300"
+                            }`}
+                          >
+                            {t.result?.toUpperCase()}
+                          </span>
+                          <span className="font-bold text-white">{t.symbol}</span>
+                        </div>
+                        <div
+                          className={`font-bold ${
+                            (t.profit ?? 0) >= 0 ? "text-emerald-400" : "text-rose-400"
+                          }`}
+                        >
+                          {(t.profit ?? 0) >= 0 ? "+" : ""}${((t.profit ?? 0)).toFixed(2)}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 8. Fixed Bottom Navigation Bar */}
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-[#0C0818]/95 backdrop-blur-md border-t border-purple-500/20 px-4 py-2 flex items-center justify-around">
+          <button
+            onClick={() => setMobileNavTab("trade")}
+            className={`flex flex-col items-center gap-1 transition-colors relative py-1 px-3 ${
+              mobileNavTab === "trade" && tradingMode === "manual" ? "text-purple-400 font-bold" : "text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            {mobileNavTab === "trade" && tradingMode === "manual" && (
+              <span className="absolute -top-2 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-purple-400 rounded-full" />
+            )}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M3 3v18h18M18 9l-5 5-4-4-3 3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="text-[10px]">Trade</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setMobileNavTab("trade")
+              setTradingMode("bot")
+            }}
+            className={`flex flex-col items-center gap-1 transition-colors relative py-1 px-3 ${
+              mobileNavTab === "trade" && tradingMode === "bot" ? "text-amber-400 font-bold" : "text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            {mobileNavTab === "trade" && tradingMode === "bot" && (
+              <span className="absolute -top-2 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-500 to-amber-400 rounded-full" />
+            )}
+            <div className="w-5 h-5 rounded bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 text-[10px]">
+              ★
+            </div>
+            <span className="text-[10px]">Scanner</span>
+          </button>
+
+          <button
+            onClick={() => setMobileNavTab("positions")}
+            className={`flex flex-col items-center gap-1 transition-colors relative py-1 px-3 ${
+              mobileNavTab === "positions" ? "text-purple-400 font-bold" : "text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            {mobileNavTab === "positions" && (
+              <span className="absolute -top-2 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-purple-400 rounded-full" />
+            )}
+            <div className="relative">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {openTrades.length > 0 && (
+                <span className="absolute -top-1 -right-2 bg-purple-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {openTrades.length}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px]">Positions</span>
+          </button>
+        </div>
+
+        {/* Floating Live Chat FAB */}
+        <button
+          onClick={() => setPanel("chat")}
+          className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-indigo-500 text-white shadow-xl shadow-purple-900/60 flex items-center justify-center fixed bottom-18 right-4 z-40 active:scale-95 transition-transform"
+          title="Live Chat"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       </div>
 
-      {/* 2. MAIN WORKSPACE AREA */}
-      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden relative min-h-0">
+      {/* ======================================================== */}
+      {/* DESKTOP VIEW (FULL DUAL-COLUMN WORKSPACE) */}
+      {/* ======================================================== */}
+      <div className="hidden lg:flex flex-row flex-1 overflow-hidden min-h-0 relative">
 
         {/* WATCHLIST DRAWER/PANEL (COLLAPSIBLE) */}
         {showWatchlist && (

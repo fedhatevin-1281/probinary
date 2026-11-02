@@ -188,6 +188,13 @@ const DigitCircle = memo(
           <span style={{ position: "relative", zIndex: 1 }}>{digit}</span>
         </div>
         <PercentageLabel percentage={percentage} />
+        <div style={{ height: 8, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1 }}>
+          {isActive && (
+            <span style={{ fontSize: 8, color: "#C084FC", lineHeight: 1, filter: "drop-shadow(0 0 4px #A855F7)" }}>
+              ▲
+            </span>
+          )}
+        </div>
       </div>
     )
   },
