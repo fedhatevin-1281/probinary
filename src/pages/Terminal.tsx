@@ -1,7 +1,19 @@
 import { useEffect, useState, useMemo, useRef, useCallback, useId } from "react"
-import { useTrading, type ContractType, type TradeDirection } from "../state/trading"
+import {
+  useTrading,
+  type ContractType,
+  type TradeDirection,
+  type BinaryTrade,
+  calculateUnrealizedPnl,
+  isBuyDirection,
+} from "../state/trading"
 import { useTopNav } from "../state/topNav"
 import LastDigitStatistics from "../components/LastDigitStatistics"
+import TradeResultModal from "../components/TradeResultModal"
+import {
+  StopTradeConfirmModal,
+  ForceStopAllConfirmModal,
+} from "../components/TradeConfirmModals"
 
 type TimeFrame = "1m" | "5m" | "15m" | "1h"
 type TradingPanelMode = "manual" | "bot"
@@ -255,10 +267,14 @@ export default function Terminal() {
     selectMarket,
     openTrades,
     recentTrades,
+    closedTrades,
     placeTrade,
+    stopTrade,
+    closeAllTrades,
     forceCloseTrade,
     lastError,
     lastAction,
+    balance,
     role,
     simulationMode,
     capabilities,
@@ -308,8 +324,43 @@ export default function Terminal() {
   const [martingaleEnabled, setMartingaleEnabled] = useState(false)
   const [martingaleMultiplier, setMartingaleMultiplier] = useState(2.0)
   const [targetProfit, setTargetProfit] = useState("20")
+  const [takeProfitEnabled, setTakeProfitEnabled] = useState(true)
   const [stopLoss, setStopLoss] = useState("15")
+  const [stopLossEnabled, setStopLossEnabled] = useState(true)
   const [maxTrades, setMaxTrades] = useState(10)
+  const [validationError, setValidationError] = useState<string | null>(null)
+
+  // Modals & confirmation state
+  const [resultModalTrade, setResultModalTrade] = useState<BinaryTrade | null>(null)
+  const [confirmStopTrade, setConfirmStopTrade] = useState<BinaryTrade | null>(null)
+  const [confirmForceStopAll, setConfirmForceStopAll] = useState(false)
+  const [isStoppingTrade, setIsStoppingTrade] = useState(false)
+  const [isStoppingAll, setIsStoppingAll] = useState(false)
+  const [historyFilter, setHistoryFilter] = useState<"all" | "won" | "lost" | "break_even">("all")
+
+  // Avoid showing notifications for past trades on initial load/reload
+  const notifiedTradeIdsRef = useRef<Set<string>>(new Set())
+  const isInitialSyncRef = useRef(true)
+
+  useEffect(() => {
+    closedTrades.forEach((t) => notifiedTradeIdsRef.current.add(t.id))
+    const timer = setTimeout(() => {
+      isInitialSyncRef.current = false
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [])
+
+  // Watch for newly closed trades and trigger result popup
+  useEffect(() => {
+    if (isInitialSyncRef.current) return
+    for (const trade of closedTrades) {
+      if (!notifiedTradeIdsRef.current.has(trade.id)) {
+        notifiedTradeIdsRef.current.add(trade.id)
+        setResultModalTrade(trade)
+        break
+      }
+    }
+  }, [closedTrades])
 
   // Bot mode state
   const [botRunning, setBotRunning] = useState(false)
@@ -372,6 +423,70 @@ export default function Terminal() {
     setAdminPolicy(nextOutcome)
   }
 
+  // Implied trigger prices for BUY vs SELL
+  const numericStake = Math.max(0.1, parseFloat(stake) || 10)
+  const numericTP = parseFloat(targetProfit) || 20
+  const numericSL = parseFloat(stopLoss) || 10
+  const leverage = 250
+
+  const tpDelta = (numericTP / (numericStake * leverage)) * livePrice
+  const slDelta = (numericSL / (numericStake * leverage)) * livePrice
+
+  const buyTpPrice = Number((livePrice + tpDelta).toFixed(2))
+  const buySlPrice = Number(Math.max(0.01, livePrice - slDelta).toFixed(2))
+  const sellTpPrice = Number(Math.max(0.01, livePrice - tpDelta).toFixed(2))
+  const sellSlPrice = Number((livePrice + slDelta).toFixed(2))
+
+  const setSlPreset = (pct: number) => {
+    setStopLossEnabled(true)
+    const val = Math.max(1, (numericStake * pct) / 100)
+    setStopLoss(val.toFixed(2))
+  }
+
+  const setTpPreset = (pct: number) => {
+    setTakeProfitEnabled(true)
+    const val = Math.max(1, (numericStake * pct) / 100)
+    setTargetProfit(val.toFixed(2))
+  }
+
+  // Trade History Filter & Statistics
+  const historySource = closedTrades.length > 0 ? closedTrades : recentTrades
+  const filteredHistory = useMemo(() => {
+    if (historyFilter === "won") return historySource.filter((t) => t.result === "won")
+    if (historyFilter === "lost") return historySource.filter((t) => t.result === "lost")
+    if (historyFilter === "break_even") {
+      return historySource.filter((t) => t.result === "break_even" || t.status === "break_even")
+    }
+    return historySource
+  }, [historySource, historyFilter])
+
+  const historyStats = useMemo(() => {
+    const total = historySource.length
+    let totalProfit = 0
+    let totalLoss = 0
+    let wins = 0
+    let losses = 0
+    let breakEvens = 0
+
+    for (const t of historySource) {
+      const p = t.profit ?? 0
+      if (t.result === "won" || p > 0) {
+        wins++
+        totalProfit += p
+      } else if (t.result === "lost" || p < 0) {
+        losses++
+        totalLoss += Math.abs(p)
+      } else {
+        breakEvens++
+      }
+    }
+
+    const netPnl = totalProfit - totalLoss
+    const winRate = wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0
+
+    return { total, wins, losses, breakEvens, totalProfit, totalLoss, netPnl, winRate }
+  }, [historySource])
+
   // Quick Stake Helper
   const setQuickStake = (val: number) => {
     setStake(val.toFixed(2))
@@ -392,8 +507,31 @@ export default function Terminal() {
 
   // Manual Trade Placement
   const placeManualTrade = (directionOverride?: TradeDirection) => {
+    setValidationError(null)
     const tradeStake = parseFloat(stake)
-    if (isNaN(tradeStake) || tradeStake <= 0) return
+    if (isNaN(tradeStake) || tradeStake <= 0) {
+      setValidationError("Stake must be greater than zero")
+      return
+    }
+
+    const availableBal =
+      activeAccount === "real" ? balances.real : balances.demo
+    if (tradeStake > availableBal && !testBinarySystem) {
+      setValidationError(`Insufficient ${activeAccount} balance ($${availableBal.toFixed(2)})`)
+      return
+    }
+
+    const parsedSL = parseFloat(stopLoss)
+    if (stopLossEnabled && (isNaN(parsedSL) || parsedSL <= 0)) {
+      setValidationError("Please enter a valid Stop Loss amount (greater than $0)")
+      return
+    }
+
+    const parsedTP = parseFloat(targetProfit)
+    if (takeProfitEnabled && (isNaN(parsedTP) || parsedTP <= 0)) {
+      setValidationError("Please enter a valid Take Profit amount (greater than $0)")
+      return
+    }
 
     const tradeDirection = directionOverride ?? prediction
 
@@ -405,6 +543,10 @@ export default function Terminal() {
       expirySeconds: parseInt(expirySeconds || "30", 10),
       isDemo: !testBinarySystem && activeAccount === "demo",
       predictionDigit,
+      stopLoss: stopLossEnabled ? parsedSL : null,
+      stopLossEnabled,
+      takeProfit: takeProfitEnabled ? parsedTP : null,
+      takeProfitEnabled,
     })
 
     if (result.ok) {
@@ -412,7 +554,28 @@ export default function Terminal() {
         setDemoBalance((prev) => prev - tradeStake)
       }
       setBottomTab("positions")
+      setMobileNavTab("positions")
+    } else if (result.error) {
+      setValidationError(result.error)
     }
+  }
+
+  const handleConfirmStopTrade = () => {
+    if (!confirmStopTrade) return
+    setIsStoppingTrade(true)
+    const res = stopTrade(confirmStopTrade.id)
+    setIsStoppingTrade(false)
+    setConfirmStopTrade(null)
+    if (!res.ok && res.error) {
+      setValidationError(res.error)
+    }
+  }
+
+  const handleConfirmForceStopAll = () => {
+    setIsStoppingAll(true)
+    closeAllTrades()
+    setIsStoppingAll(false)
+    setConfirmForceStopAll(false)
   }
 
   // Bot Engine Implementation
@@ -1029,76 +1192,211 @@ export default function Terminal() {
                 </button>
               </div>
 
-              {/* Target Profit & Stop Loss (2 columns) */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-[#100B22] border border-emerald-500/25 rounded-xl p-2.5 flex flex-col justify-center">
-                  <div className="text-[10px] text-zinc-400 uppercase font-semibold">Target Profit</div>
-                  <div className="font-mono text-base font-bold text-emerald-400 flex items-center gap-1 mt-0.5">
-                    <span className="text-emerald-500 text-xs">$</span>
-                    <input
-                      type="number"
-                      value={targetProfit}
-                      onChange={(e) => setTargetProfit(e.target.value)}
-                      className="w-full bg-transparent font-mono font-bold text-emerald-400 outline-none"
-                    />
-                  </div>
+              {/* Quick Stake Buttons */}
+              <div className="grid grid-cols-5 gap-1 pt-0.5">
+                {[5, 10, 25, 50, 100].map((val) => (
+                  <button
+                    key={val}
+                    onClick={() => setQuickStake(val)}
+                    className={`py-1 text-xs font-mono font-bold rounded-lg border transition-all ${
+                      parseFloat(stake) === val
+                        ? "bg-purple-600 text-white border-purple-400 shadow-sm"
+                        : "bg-[#140E28] text-zinc-400 hover:text-white border-purple-500/20"
+                    }`}
+                  >
+                    ${val}
+                  </button>
+                ))}
+              </div>
+
+              {/* Trade Duration Selector */}
+              <div className="bg-[#100B22] border border-purple-500/20 rounded-xl p-2.5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] text-zinc-400 uppercase font-semibold">Trade Duration</span>
+                  <span className="text-xs font-mono font-bold text-purple-300">{expirySeconds}s</span>
                 </div>
-                <div className="bg-[#100B22] border border-rose-500/25 rounded-xl p-2.5 flex flex-col justify-center">
-                  <div className="text-[10px] text-zinc-400 uppercase font-semibold">Stop Loss</div>
-                  <div className="font-mono text-base font-bold text-rose-400 flex items-center gap-1 mt-0.5">
-                    <span className="text-rose-500 text-xs">$</span>
-                    <input
-                      type="number"
-                      value={stopLoss}
-                      onChange={(e) => setStopLoss(e.target.value)}
-                      className="w-full bg-transparent font-mono font-bold text-rose-400 outline-none"
-                    />
-                  </div>
+                <div className="grid grid-cols-5 gap-1 font-mono">
+                  {["10", "15", "30", "60", "120"].map((sec) => (
+                    <button
+                      key={sec}
+                      onClick={() => setExpirySeconds(sec)}
+                      className={`py-1 rounded-lg text-xs font-bold transition-all ${
+                        expirySeconds === sec
+                          ? "bg-purple-600 text-white border border-purple-400 shadow-sm"
+                          : "bg-[#181136] text-zinc-400 hover:text-white border border-purple-500/20"
+                      }`}
+                    >
+                      {sec === "120" ? "2m" : `${sec}s`}
+                    </button>
+                  ))}
                 </div>
               </div>
 
+              {/* Stop Loss & Take Profit Cards */}
+              <div className="space-y-2">
+                {/* Take Profit Card */}
+                <div className="bg-[#100B22] border border-emerald-500/25 rounded-xl p-2.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-emerald-400 text-xs">🎯</span>
+                      <span className="text-[11px] font-bold text-zinc-200 uppercase tracking-wider">Take Profit</span>
+                    </div>
+                    <button
+                      onClick={() => setTakeProfitEnabled((v) => !v)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                        takeProfitEnabled
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/35"
+                          : "bg-zinc-800 text-zinc-500 border border-zinc-700"
+                      }`}
+                    >
+                      {takeProfitEnabled ? "ENABLED" : "OFF"}
+                    </button>
+                  </div>
+
+                  {takeProfitEnabled ? (
+                    <div>
+                      <div className="flex items-center gap-1 font-mono mt-1">
+                        <span className="text-emerald-400 font-bold text-sm">$</span>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0.5"
+                          value={targetProfit}
+                          onChange={(e) => setTargetProfit(e.target.value)}
+                          className="w-full bg-transparent font-mono font-bold text-emerald-400 text-base outline-none"
+                          placeholder="20.00"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 gap-1 mt-1.5">
+                        {[50, 100, 150, 200].map((pct) => (
+                          <button
+                            key={pct}
+                            onClick={() => setTpPreset(pct)}
+                            className="py-0.5 text-[10px] font-mono font-bold rounded bg-emerald-950/40 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-900/50"
+                          >
+                            +{pct}%
+                          </button>
+                        ))}
+                      </div>
+                      <div className="text-[10px] text-zinc-400 font-mono mt-1.5 flex items-center justify-between">
+                        <span>Target: <span className="text-emerald-400">+${numericTP.toFixed(2)}</span></span>
+                        <span>Price: ~{buyTpPrice}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-zinc-500 py-1">
+                      Disabled (Position closes at duration expiry)
+                    </div>
+                  )}
+                </div>
+
+                {/* Stop Loss Card */}
+                <div className="bg-[#100B22] border border-rose-500/25 rounded-xl p-2.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-rose-400 text-xs">🛡️</span>
+                      <span className="text-[11px] font-bold text-zinc-200 uppercase tracking-wider">Stop Loss</span>
+                    </div>
+                    <button
+                      onClick={() => setStopLossEnabled((v) => !v)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                        stopLossEnabled
+                          ? "bg-rose-500/20 text-rose-300 border border-rose-500/35"
+                          : "bg-zinc-800 text-zinc-500 border border-zinc-700"
+                      }`}
+                    >
+                      {stopLossEnabled ? "ENABLED" : "OFF"}
+                    </button>
+                  </div>
+
+                  {stopLossEnabled ? (
+                    <div>
+                      <div className="flex items-center gap-1 font-mono mt-1">
+                        <span className="text-rose-400 font-bold text-sm">$</span>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0.5"
+                          value={stopLoss}
+                          onChange={(e) => setStopLoss(e.target.value)}
+                          className="w-full bg-transparent font-mono font-bold text-rose-400 text-base outline-none"
+                          placeholder="10.00"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 gap-1 mt-1.5">
+                        {[25, 50, 75, 100].map((pct) => (
+                          <button
+                            key={pct}
+                            onClick={() => setSlPreset(pct)}
+                            className="py-0.5 text-[10px] font-mono font-bold rounded bg-rose-950/40 text-rose-300 border border-rose-500/20 hover:bg-rose-900/50"
+                          >
+                            -{pct}%
+                          </button>
+                        ))}
+                      </div>
+                      <div className="text-[10px] text-zinc-400 font-mono mt-1.5 flex items-center justify-between">
+                        <span>Max Loss: <span className="text-rose-400">-${numericSL.toFixed(2)}</span></span>
+                        <span>Price: ~{buySlPrice}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-zinc-500 py-1">
+                      Disabled (100% stake at risk until expiry)
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Validation Error Alert Banner */}
+              {validationError && (
+                <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/35 text-rose-300 text-xs flex items-center gap-2 font-mono">
+                  <span>⚠️</span>
+                  <span>{validationError}</span>
+                </div>
+              )}
+
               {/* Martingale Card with Switch */}
-              <div className="bg-[#100B22] border border-purple-500/20 rounded-xl p-3 flex items-center justify-between shadow-sm">
+              <div className="bg-[#100B22] border border-purple-500/20 rounded-xl p-2.5 flex items-center justify-between shadow-sm">
                 <div>
                   <div className="text-xs font-bold text-zinc-200 uppercase tracking-wider">Martingale</div>
-                  <div className="text-[11px] text-zinc-500">Multiply stake after loss</div>
+                  <div className="text-[10px] text-zinc-500">Multiply stake after loss</div>
                 </div>
                 <button
                   onClick={() => setMartingaleEnabled((v) => !v)}
-                  className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ${
+                  className={`w-11 h-6 flex items-center rounded-full p-0.5 transition-colors duration-200 ${
                     martingaleEnabled ? "bg-purple-600 justify-end" : "bg-zinc-700 justify-start"
                   }`}
                 >
-                  <div className="w-4 h-4 rounded-full bg-white shadow-md transform transition-transform" />
+                  <div className="w-5 h-5 rounded-full bg-white shadow-md transform transition-transform" />
                 </button>
               </div>
 
-              {/* Big Execution Action Buttons for Every Trade Type */}
+              {/* Big Execution Action Buttons */}
               {contractType === "rise-fall" && (
                 <div className="grid grid-cols-2 gap-2.5 pt-1">
                   <button
                     onClick={() => placeManualTrade("rise")}
-                    className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 active:scale-98 text-white font-black text-base shadow-lg shadow-emerald-950/40 transition-all font-display flex flex-col items-center justify-center gap-0.5"
+                    className="py-3 px-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 active:scale-98 text-white font-black text-sm shadow-lg shadow-emerald-950/40 transition-all font-display flex flex-col items-center justify-center gap-0.5"
                   >
                     <div className="flex items-center gap-1.5">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                         <path d="M12 19V5M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
-                      <span>Rise</span>
+                      <span>BUY / RISE</span>
                     </div>
-                    <span className="text-[10px] font-mono text-emerald-100/90 font-semibold">+82% Payout</span>
+                    <span className="text-[10px] font-mono text-emerald-100 font-semibold">+82% Payout</span>
                   </button>
                   <button
                     onClick={() => placeManualTrade("fall")}
-                    className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 active:scale-98 text-white font-black text-base shadow-lg shadow-rose-950/40 transition-all font-display flex flex-col items-center justify-center gap-0.5"
+                    className="py-3 px-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 active:scale-98 text-white font-black text-sm shadow-lg shadow-rose-950/40 transition-all font-display flex flex-col items-center justify-center gap-0.5"
                   >
                     <div className="flex items-center gap-1.5">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                         <path d="M12 5v14M5 12l7 7 7-7" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
-                      <span>Fall</span>
+                      <span>SELL / FALL</span>
                     </div>
-                    <span className="text-[10px] font-mono text-rose-100/90 font-semibold">+82% Payout</span>
+                    <span className="text-[10px] font-mono text-rose-100 font-semibold">+82% Payout</span>
                   </button>
                 </div>
               )}
@@ -1354,55 +1652,139 @@ export default function Terminal() {
 
         {/* 7. Positions Screen (When positions tab is active) */}
         {mobileNavTab === "positions" && (
-          <div className="flex-1 flex flex-col pt-1 space-y-3">
-            <div className="flex items-center justify-between pb-1 border-b border-purple-500/20">
-              <div className="text-xs font-bold text-purple-300 uppercase tracking-wider">
-                Positions & Recent Trades
+          <div className="flex-1 flex flex-col pt-1 space-y-3 pb-20">
+            <div className="flex items-center justify-between pb-1.5 border-b border-purple-500/20">
+              <div className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Trade Management</span>
               </div>
-              <button
-                onClick={() => setMobileNavTab("trade")}
-                className="text-[11px] text-purple-400 font-bold px-2 py-0.5 rounded bg-purple-900/30"
-              >
-                ← Return to Chart
-              </button>
+              <div className="flex items-center gap-2">
+                {openTrades.length > 0 && (
+                  <button
+                    onClick={() => setConfirmForceStopAll(true)}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/35 hover:bg-rose-500 hover:text-white transition-all flex items-center gap-1"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="6" width="12" height="12" rx="1.5" />
+                    </svg>
+                    <span>Force Stop All ({openTrades.length})</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setMobileNavTab("trade")}
+                  className="text-[11px] text-purple-400 font-bold px-2 py-0.5 rounded bg-purple-900/30"
+                >
+                  ← Return to Chart
+                </button>
+              </div>
             </div>
 
+            {/* ACTIVE TRADES LIST */}
             <div>
-              <div className="text-[10px] text-zinc-400 uppercase font-semibold mb-1">
-                Open Contracts ({openTrades.length})
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="text-[10px] text-zinc-400 uppercase font-semibold">
+                  Active Trades ({openTrades.length})
+                </div>
+                {openTrades.length > 0 && (
+                  <span className="text-[10px] text-emerald-400 font-mono font-bold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    Live Monitoring
+                  </span>
+                )}
               </div>
+
               {openTrades.length === 0 ? (
                 <div className="p-4 bg-[#100B22] rounded-xl border border-purple-500/20 text-center text-xs text-zinc-500">
-                  No open positions. Select Rise or Fall to enter a trade.
+                  No active trades. Place a BUY or SELL order to start.
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {openTrades.map((t) => {
+                    const market = markets[t.symbol] ?? selectedMarket
+                    const currentPrice = market?.price ?? t.entryPrice
                     const remaining = Math.max(0, Math.ceil((t.expiryAt - Date.now()) / 1000))
+                    const elapsed = Math.max(0, Math.floor((Date.now() - t.createdAt) / 1000))
+                    const isBuy = isBuyDirection(t.direction)
+                    const pnl = t.unrealizedPnl ?? calculateUnrealizedPnl(t, currentPrice)
+                    const isPositive = pnl > 0
 
                     return (
                       <div
                         key={t.id}
-                        className="bg-[#120D26] border border-purple-500/25 rounded-xl p-3 flex items-center justify-between"
+                        className="bg-[#120D26] border border-purple-500/30 rounded-2xl p-3 space-y-2.5 shadow-lg shadow-purple-950/40"
                       >
-                        <div>
+                        {/* Header: Symbol, Direction, Status */}
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-white text-xs">{t.symbol}</span>
-                            <span className="px-1.5 py-0.5 rounded bg-purple-900/40 text-purple-300 text-[10px] font-bold">
-                              {t.direction.toUpperCase()}
+                            <span className="font-bold text-white text-sm">{t.symbol}</span>
+                            <span
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 ${
+                                isBuy
+                                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                  : "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                              }`}
+                            >
+                              <span>{isBuy ? "▲" : "▼"}</span>
+                              <span>{isBuy ? "BUY" : "SELL"}</span>
                             </span>
+                            <span className="text-[10px] font-mono text-zinc-500">#{t.id.slice(-6)}</span>
                           </div>
-                          <div className="text-[11px] text-zinc-400 font-mono mt-0.5">
-                            Stake: <span className="text-white">${t.stake.toFixed(2)}</span> · Entry: {t.entryPrice.toFixed(2)}
+
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-[9px] font-mono font-bold text-emerald-400 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            ACTIVE
+                          </span>
+                        </div>
+
+                        {/* Trade Details Grid */}
+                        <div className="grid grid-cols-2 gap-2 bg-[#0A0616] p-2.5 rounded-xl border border-purple-500/15 font-mono text-[11px]">
+                          <div>
+                            <div className="text-[9px] text-zinc-500 uppercase">Stake / Value</div>
+                            <div className="font-bold text-white">${t.stake.toFixed(2)}</div>
+                          </div>
+                          <div>
+                            <div className="text-[9px] text-zinc-500 uppercase">Unrealized P&L</div>
+                            <div className={`font-bold ${isPositive ? "text-emerald-400" : "text-rose-400"}`}>
+                              {isPositive ? "+" : ""}${pnl.toFixed(2)} (
+                              {((pnl / (t.stake || 1)) * 100).toFixed(1)}%)
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[9px] text-zinc-500 uppercase">Entry Price</div>
+                            <div className="text-zinc-300">{t.entryPrice.toFixed(2)}</div>
+                          </div>
+                          <div>
+                            <div className="text-[9px] text-zinc-500 uppercase">Current Price</div>
+                            <div className="text-white font-bold">{currentPrice.toFixed(2)}</div>
+                          </div>
+                          <div>
+                            <div className="text-[9px] text-zinc-500 uppercase">Stop Loss</div>
+                            <div className={t.stopLoss ? "text-rose-400 font-bold" : "text-zinc-500"}>
+                              {t.stopLoss ? `-$${t.stopLoss.toFixed(2)}` : "Off"}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[9px] text-zinc-500 uppercase">Take Profit</div>
+                            <div className={t.takeProfit ? "text-emerald-400 font-bold" : "text-zinc-500"}>
+                              {t.takeProfit ? `+$${t.takeProfit.toFixed(2)}` : "Off"}
+                            </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-xs font-mono font-bold text-amber-400">{remaining}s left</div>
+
+                        {/* Timing and Prominent Stop Trade Button */}
+                        <div className="flex items-center justify-between pt-0.5">
+                          <div className="text-[10px] font-mono text-zinc-400">
+                            <span className="text-amber-400 font-bold">{remaining}s left</span> · {elapsed}s elapsed
+                          </div>
+
                           <button
-                            onClick={() => forceCloseTrade(t.id)}
-                            className="mt-1 px-2.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500 hover:text-white"
+                            onClick={() => setConfirmStopTrade(t)}
+                            className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500/20 to-rose-500/20 hover:from-amber-500 hover:to-rose-500 text-amber-200 hover:text-white border border-amber-500/40 active:scale-95 transition-all shadow-md flex items-center gap-1.5"
                           >
-                            Close
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                              <rect x="6" y="6" width="12" height="12" rx="1.5" />
+                            </svg>
+                            <span>STOP TRADE</span>
                           </button>
                         </div>
                       </div>
@@ -1412,39 +1794,111 @@ export default function Terminal() {
               )}
             </div>
 
-            <div>
-              <div className="text-[10px] text-zinc-400 uppercase font-semibold mb-1">
-                Recent History ({recentTrades.length})
+            {/* TRADE HISTORY SECTION WITH FILTERS & PERFORMANCE */}
+            <div className="pt-2">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[10px] text-zinc-400 uppercase font-semibold">
+                  Trade History ({historyStats.total})
+                </div>
+                <div className="text-[10px] font-mono text-purple-300">
+                  Win Rate: <span className="font-bold text-white">{historyStats.winRate}%</span>
+                </div>
               </div>
-              {recentTrades.length === 0 ? (
+
+              {/* Stats Summary Bar */}
+              <div className="grid grid-cols-3 gap-1.5 bg-[#0C081A] p-2 rounded-xl border border-purple-500/20 text-center font-mono text-[10px] mb-2">
+                <div>
+                  <div className="text-zinc-500">Won</div>
+                  <div className="font-bold text-emerald-400">+${historyStats.totalProfit.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-zinc-500">Lost</div>
+                  <div className="font-bold text-rose-400">-${historyStats.totalLoss.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-zinc-500">Net P&L</div>
+                  <div
+                    className={`font-bold ${
+                      historyStats.netPnl >= 0 ? "text-emerald-400" : "text-rose-400"
+                    }`}
+                  >
+                    {historyStats.netPnl >= 0 ? "+" : ""}${historyStats.netPnl.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              {/* History Filter Tabs */}
+              <div className="flex items-center gap-1 bg-[#100B22] p-1 rounded-xl border border-purple-500/20 mb-2">
+                {[
+                  { id: "all", label: `All (${historyStats.total})` },
+                  { id: "won", label: `Won (${historyStats.wins})` },
+                  { id: "lost", label: `Lost (${historyStats.losses})` },
+                  { id: "break_even", label: `BE (${historyStats.breakEvens})` },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setHistoryFilter(f.id as typeof historyFilter)}
+                    className={`flex-1 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                      historyFilter === f.id
+                        ? "bg-purple-600 text-white shadow-sm"
+                        : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {filteredHistory.length === 0 ? (
                 <div className="p-4 bg-[#100B22] rounded-xl border border-purple-500/20 text-center text-xs text-zinc-500">
-                  No trade history recorded in this session.
+                  No trade history for selected filter.
                 </div>
               ) : (
-                <div className="space-y-1.5 max-h-60 overflow-y-auto">
-                  {recentTrades.slice(0, 10).map((t) => {
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-0.5">
+                  {filteredHistory.map((t) => {
                     const isWin = t.result === "won"
+                    const isLoss = t.result === "lost"
+                    const isBuy = isBuyDirection(t.direction)
+                    const profitVal = t.profit ?? 0
+
                     return (
                       <div
                         key={t.id}
-                        className="bg-[#100B22] border border-purple-500/15 rounded-xl p-2.5 flex items-center justify-between text-xs font-mono"
+                        className="bg-[#100B22] border border-purple-500/20 rounded-xl p-2.5 font-mono text-xs space-y-1.5"
                       >
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                              isWin ? "bg-emerald-500/20 text-emerald-300" : "bg-rose-500/20 text-rose-300"
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                isWin
+                                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                  : isLoss
+                                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                                  : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                              }`}
+                            >
+                              {t.result ? t.result.toUpperCase() : "CLOSED"}
+                            </span>
+                            <span className="font-bold text-white">{t.symbol}</span>
+                            <span className="text-[10px] text-zinc-400">({isBuy ? "BUY" : "SELL"})</span>
+                          </div>
+
+                          <div
+                            className={`font-bold ${
+                              profitVal >= 0 ? "text-emerald-400" : "text-rose-400"
                             }`}
                           >
-                            {t.result?.toUpperCase()}
-                          </span>
-                          <span className="font-bold text-white">{t.symbol}</span>
+                            {profitVal >= 0 ? "+" : ""}${profitVal.toFixed(2)}
+                          </div>
                         </div>
-                        <div
-                          className={`font-bold ${
-                            (t.profit ?? 0) >= 0 ? "text-emerald-400" : "text-rose-400"
-                          }`}
-                        >
-                          {(t.profit ?? 0) >= 0 ? "+" : ""}${((t.profit ?? 0)).toFixed(2)}
+
+                        <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-0.5 border-t border-purple-500/10">
+                          <div>
+                            Entry: {t.entryPrice.toFixed(2)} → Exit: {(t.exitPrice ?? t.entryPrice).toFixed(2)}
+                          </div>
+                          <div>
+                            Reason: <span className="text-purple-300">{t.closureReason || "Expired"}</span>
+                          </div>
                         </div>
                       </div>
                     )
@@ -1862,73 +2316,161 @@ export default function Terminal() {
 
           {/* 7. BOTTOM TABS: OPEN, ORDERS, HISTORY, LOGS */}
           <div className="bg-[#100B20] border-t border-purple-500/15 flex flex-col flex-shrink-0 mt-1">
-            <div className="flex items-center border-b border-purple-500/15 px-2 bg-[#0E0A1E]">
-              {[
-                { id: "positions", label: `Open (${openTrades.length})` },
-                { id: "orders", label: "Orders" },
-                { id: "history", label: `History (${recentTrades.length})` },
-                { id: "logs", label: "Logs" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setBottomTab(tab.id as typeof bottomTab)}
-                  className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 font-display ${
-                    bottomTab === tab.id
-                      ? "border-purple-500 text-purple-300 bg-purple-600/10"
-                      : "border-transparent text-zinc-400 hover:text-white"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            <div className="flex items-center justify-between border-b border-purple-500/15 px-2 bg-[#0E0A1E]">
+              <div className="flex items-center">
+                {[
+                  { id: "positions", label: `Active Trades (${openTrades.length})` },
+                  { id: "orders", label: "Orders" },
+                  { id: "history", label: `Trade History (${historyStats.total})` },
+                  { id: "logs", label: "Logs" },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setBottomTab(tab.id as typeof bottomTab)}
+                    className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 font-display ${
+                      bottomTab === tab.id
+                        ? "border-purple-500 text-purple-300 bg-purple-600/10"
+                        : "border-transparent text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Action buttons on header right */}
+              <div className="flex items-center gap-2 pr-2">
+                {bottomTab === "positions" && openTrades.length > 0 && (
+                  <button
+                    onClick={() => setConfirmForceStopAll(true)}
+                    className="px-3 py-1 text-[11px] font-bold rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/35 hover:bg-rose-500 hover:text-white transition-all shadow-sm flex items-center gap-1.5 active:scale-95"
+                    title="Close all open positions immediately"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="6" width="12" height="12" rx="1.5" />
+                    </svg>
+                    <span>Force Stop All ({openTrades.length})</span>
+                  </button>
+                )}
+
+                {bottomTab === "history" && (
+                  <div className="flex items-center gap-1">
+                    {[
+                      { id: "all", label: `All (${historyStats.total})` },
+                      { id: "won", label: `Won (${historyStats.wins})` },
+                      { id: "lost", label: `Lost (${historyStats.losses})` },
+                      { id: "break_even", label: `BE (${historyStats.breakEvens})` },
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => setHistoryFilter(f.id as typeof historyFilter)}
+                        className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all ${
+                          historyFilter === f.id
+                            ? "bg-purple-600 text-white shadow-sm"
+                            : "bg-[#140E26] text-zinc-400 hover:text-white border border-purple-500/15"
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="h-44 overflow-y-auto">
+            <div className="min-h-48 max-h-72 overflow-y-auto">
               {bottomTab === "positions" && (
                 openTrades.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-zinc-500 text-xs">
-                    No open positions. Select a trade direction in the panel to execute.
+                  <div className="flex items-center justify-center h-44 text-zinc-500 text-xs">
+                    No active trades. Select BUY or SELL in the panel to execute.
                   </div>
                 ) : (
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="border-b border-purple-500/15 text-[10px] text-zinc-500 uppercase tracking-wider bg-[#0C0818]">
-                        <th className="py-2 px-3">ID</th>
-                        <th className="py-2 px-3">Market</th>
-                        <th className="py-2 px-3">Contract</th>
-                        <th className="py-2 px-3">Stake</th>
-                        <th className="py-2 px-3">Entry</th>
-                        <th className="py-2 px-3">Current</th>
-                        <th className="py-2 px-3">Expiry</th>
-                        <th className="py-2 px-3">Payout</th>
-                        <th className="py-2 px-3 text-right">Action</th>
+                      <tr className="border-b border-purple-500/15 text-[10px] text-zinc-500 uppercase tracking-wider bg-[#0C0818] sticky top-0 z-10">
+                        <th className="py-2.5 px-3">ID</th>
+                        <th className="py-2.5 px-3">Asset</th>
+                        <th className="py-2.5 px-3">Direction</th>
+                        <th className="py-2.5 px-3">Stake</th>
+                        <th className="py-2.5 px-3">Entry Price</th>
+                        <th className="py-2.5 px-3">Market Price</th>
+                        <th className="py-2.5 px-3">Unrealized P&L</th>
+                        <th className="py-2.5 px-3">Stop Loss</th>
+                        <th className="py-2.5 px-3">Take Profit</th>
+                        <th className="py-2.5 px-3">Time</th>
+                        <th className="py-2.5 px-3">Status</th>
+                        <th className="py-2.5 px-3 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-purple-500/10 font-mono">
                       {openTrades.map((t) => {
                         const market = markets[t.symbol] ?? selectedMarket
+                        const currentPrice = market?.price ?? t.entryPrice
                         const remaining = Math.max(0, Math.ceil((t.expiryAt - Date.now()) / 1000))
+                        const elapsed = Math.max(0, Math.floor((Date.now() - t.createdAt) / 1000))
+                        const isBuy = isBuyDirection(t.direction)
+                        const pnl = t.unrealizedPnl ?? calculateUnrealizedPnl(t, currentPrice)
+                        const isPositive = pnl > 0
 
                         return (
-                          <tr key={t.id} className="hover:bg-purple-900/10">
-                            <td className="py-2 px-3 text-zinc-500">{t.id}</td>
-                            <td className="py-2 px-3 font-bold text-white">{t.symbol}</td>
-                            <td className="py-2 px-3">
-                              <span className="px-1.5 py-0.5 rounded bg-purple-900/40 text-purple-300 text-[10px] font-bold">
-                                {t.direction.toUpperCase()}
+                          <tr key={t.id} className="hover:bg-purple-900/10 transition-colors">
+                            <td className="py-2.5 px-3 text-zinc-500 font-mono">#{t.id.slice(-6)}</td>
+                            <td className="py-2.5 px-3 font-bold text-white">{t.symbol}</td>
+                            <td className="py-2.5 px-3">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 w-fit ${
+                                  isBuy
+                                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                    : "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                                }`}
+                              >
+                                <span>{isBuy ? "▲" : "▼"}</span>
+                                <span>{isBuy ? "BUY" : "SELL"}</span>
                               </span>
                             </td>
-                            <td className="py-2 px-3 text-zinc-300">${t.stake.toFixed(2)}</td>
-                            <td className="py-2 px-3 text-zinc-400">{t.entryPrice.toFixed(2)}</td>
-                            <td className="py-2 px-3 text-white font-bold">{market.price.toFixed(2)}</td>
-                            <td className="py-2 px-3 text-amber-400">{remaining}s</td>
-                            <td className="py-2 px-3 text-emerald-400">${(t.stake * t.payoutMultiplier).toFixed(2)}</td>
-                            <td className="py-2 px-3 text-right">
+                            <td className="py-2.5 px-3 text-zinc-200 font-bold">${t.stake.toFixed(2)}</td>
+                            <td className="py-2.5 px-3 text-zinc-400">{t.entryPrice.toFixed(2)}</td>
+                            <td className="py-2.5 px-3 text-white font-bold">{currentPrice.toFixed(2)}</td>
+                            <td className="py-2.5 px-3 font-bold">
+                              <span className={isPositive ? "text-emerald-400" : "text-rose-400"}>
+                                {isPositive ? "+" : ""}${pnl.toFixed(2)}
+                              </span>
+                              <span className="text-[10px] text-zinc-500 ml-1">
+                                ({((pnl / (t.stake || 1)) * 100).toFixed(1)}%)
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              {t.stopLoss ? (
+                                <span className="text-rose-400 font-bold">-${t.stopLoss.toFixed(2)}</span>
+                              ) : (
+                                <span className="text-zinc-500">Off</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              {t.takeProfit ? (
+                                <span className="text-emerald-400 font-bold">+${t.takeProfit.toFixed(2)}</span>
+                              ) : (
+                                <span className="text-zinc-500">Off</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-zinc-400 text-[11px]">
+                              <span className="text-amber-400 font-bold">{remaining}s</span> ({elapsed}s)
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-[9px] font-bold text-emerald-400 flex items-center gap-1 w-fit">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                ACTIVE
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
                               <button
-                                onClick={() => forceCloseTrade(t.id)}
-                                className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500 hover:text-white transition-colors"
+                                onClick={() => setConfirmStopTrade(t)}
+                                className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-gradient-to-r from-amber-500/20 to-rose-500/20 hover:from-amber-500 hover:to-rose-500 text-amber-200 hover:text-white border border-amber-500/40 transition-all flex items-center gap-1 ml-auto shadow-sm active:scale-95"
                               >
-                                Close
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                                  <rect x="6" y="6" width="12" height="12" rx="1.5" />
+                                </svg>
+                                <span>STOP TRADE</span>
                               </button>
                             </td>
                           </tr>
@@ -1940,58 +2482,123 @@ export default function Terminal() {
               )}
 
               {bottomTab === "history" && (
-                recentTrades.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-zinc-500 text-xs">
-                    No closed trades recorded in this session.
+                <div className="flex flex-col">
+                  {/* Summary Bar */}
+                  <div className="grid grid-cols-5 gap-2 p-2.5 bg-[#0C081A] border-b border-purple-500/15 text-center font-mono text-xs">
+                    <div>
+                      <div className="text-[10px] text-zinc-500 uppercase">Total Trades</div>
+                      <div className="font-bold text-white">{historyStats.total}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-zinc-500 uppercase">Win Rate</div>
+                      <div className="font-bold text-purple-300">{historyStats.winRate}%</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-zinc-500 uppercase">Total Profit</div>
+                      <div className="font-bold text-emerald-400">+${historyStats.totalProfit.toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-zinc-500 uppercase">Total Loss</div>
+                      <div className="font-bold text-rose-400">-${historyStats.totalLoss.toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-zinc-500 uppercase">Net P&L</div>
+                      <div
+                        className={`font-bold ${
+                          historyStats.netPnl >= 0 ? "text-emerald-400" : "text-rose-400"
+                        }`}
+                      >
+                        {historyStats.netPnl >= 0 ? "+" : ""}${historyStats.netPnl.toFixed(2)}
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-purple-500/15 text-[10px] text-zinc-500 uppercase tracking-wider bg-[#0C0818]">
-                        <th className="py-2 px-3">ID</th>
-                        <th className="py-2 px-3">Market</th>
-                        <th className="py-2 px-3">Result</th>
-                        <th className="py-2 px-3">Stake</th>
-                        <th className="py-2 px-3">Entry</th>
-                        <th className="py-2 px-3">Exit</th>
-                        <th className="py-2 px-3 text-right">Profit/Loss</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-purple-500/10 font-mono">
-                      {recentTrades.map((t) => {
-                        const isWin = t.result === "won"
-                        return (
-                          <tr key={t.id} className="hover:bg-purple-900/10">
-                            <td className="py-2 px-3 text-zinc-500">{t.id}</td>
-                            <td className="py-2 px-3 font-bold text-white">{t.symbol}</td>
-                            <td className="py-2 px-3">
-                              <span
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  isWin
-                                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                                    : "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+
+                  {filteredHistory.length === 0 ? (
+                    <div className="flex items-center justify-center h-36 text-zinc-500 text-xs">
+                      No closed trades found matching "{historyFilter}".
+                    </div>
+                  ) : (
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-purple-500/15 text-[10px] text-zinc-500 uppercase tracking-wider bg-[#0C0818] sticky top-0 z-10">
+                          <th className="py-2.5 px-3">ID</th>
+                          <th className="py-2.5 px-3">Closed At</th>
+                          <th className="py-2.5 px-3">Asset</th>
+                          <th className="py-2.5 px-3">Direction</th>
+                          <th className="py-2.5 px-3">Stake</th>
+                          <th className="py-2.5 px-3">Entry</th>
+                          <th className="py-2.5 px-3">Exit</th>
+                          <th className="py-2.5 px-3">SL / TP Config</th>
+                          <th className="py-2.5 px-3">Closure Reason</th>
+                          <th className="py-2.5 px-3 text-right">Profit / Loss</th>
+                          <th className="py-2.5 px-3 text-center">Result</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-purple-500/10 font-mono">
+                        {filteredHistory.map((t) => {
+                          const isWin = t.result === "won"
+                          const isLoss = t.result === "lost"
+                          const isBuy = isBuyDirection(t.direction)
+                          const profitVal = t.profit ?? 0
+                          const timeStr = t.settledAt
+                            ? new Date(t.settledAt).toLocaleTimeString()
+                            : new Date(t.createdAt).toLocaleTimeString()
+
+                          return (
+                            <tr key={t.id} className="hover:bg-purple-900/10 transition-colors">
+                              <td className="py-2 px-3 text-zinc-500 font-mono">#{t.id.slice(-6)}</td>
+                              <td className="py-2 px-3 text-zinc-400 text-[11px]">{timeStr}</td>
+                              <td className="py-2 px-3 font-bold text-white">{t.symbol}</td>
+                              <td className="py-2 px-3">
+                                <span
+                                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                    isBuy ? "text-emerald-300" : "text-rose-300"
+                                  }`}
+                                >
+                                  {isBuy ? "BUY" : "SELL"}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 text-zinc-300">${t.stake.toFixed(2)}</td>
+                              <td className="py-2 px-3 text-zinc-400">{t.entryPrice.toFixed(2)}</td>
+                              <td className="py-2 px-3 text-white">{(t.exitPrice ?? t.entryPrice).toFixed(2)}</td>
+                              <td className="py-2 px-3 text-[11px] text-zinc-400">
+                                <span>SL: {t.stopLoss ? `-$${t.stopLoss.toFixed(2)}` : "None"}</span>
+                                <span className="mx-1">·</span>
+                                <span>TP: {t.takeProfit ? `+$${t.takeProfit.toFixed(2)}` : "None"}</span>
+                              </td>
+                              <td className="py-2 px-3">
+                                <span className="px-2 py-0.5 rounded bg-purple-950/60 border border-purple-500/20 text-purple-300 text-[10px]">
+                                  {t.closureReason || (isWin ? "Take Profit" : "Stop Loss")}
+                                </span>
+                              </td>
+                              <td
+                                className={`py-2 px-3 text-right font-bold ${
+                                  profitVal >= 0 ? "text-emerald-400" : "text-rose-400"
                                 }`}
                               >
-                                {t.result?.toUpperCase()}
-                              </span>
-                            </td>
-                            <td className="py-2 px-3 text-zinc-300">${t.stake.toFixed(2)}</td>
-                            <td className="py-2 px-3 text-zinc-400">{t.entryPrice.toFixed(2)}</td>
-                            <td className="py-2 px-3 text-white">{(t.exitPrice ?? t.entryPrice).toFixed(2)}</td>
-                            <td
-                              className={`py-2 px-3 text-right font-bold ${
-                                (t.profit ?? 0) >= 0 ? "text-emerald-400" : "text-rose-400"
-                              }`}
-                            >
-                              {(t.profit ?? 0) >= 0 ? "+" : ""}
-                              ${(t.profit ?? 0).toFixed(2)}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                )
+                                {profitVal >= 0 ? "+" : ""}
+                                ${profitVal.toFixed(2)}
+                              </td>
+                              <td className="py-2 px-3 text-center">
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    isWin
+                                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                      : isLoss
+                                      ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                                      : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                  }`}
+                                >
+                                  {t.result?.toUpperCase()}
+                                </span>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
               )}
 
               {bottomTab === "orders" && (
@@ -2229,50 +2836,128 @@ export default function Terminal() {
                 </div>
               </div>
 
-              {/* TARGET PROFIT & STOP LOSS */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-[#160F2E] border border-purple-500/20 rounded-xl p-2.5">
-                  <div className="text-[10px] text-zinc-400 uppercase font-semibold">Target Profit</div>
-                  <div className="flex items-center gap-1 mt-1 font-mono">
-                    <span className="text-emerald-400 font-bold">$</span>
-                    <input
-                      type="number"
-                      value={targetProfit}
-                      onChange={(e) => setTargetProfit(e.target.value)}
-                      className="bg-transparent text-sm font-bold text-white w-full outline-none font-mono"
-                    />
+              {/* ADVANCED STOP LOSS & TAKE PROFIT CONFIGURATION */}
+              <div className="space-y-2">
+                {/* Take Profit Card */}
+                <div className="bg-[#140E2A] border border-emerald-500/25 rounded-xl p-2.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-emerald-400 text-xs">🎯</span>
+                      <span className="text-[11px] font-bold text-zinc-200 uppercase tracking-wider">Take Profit</span>
+                    </div>
+                    <button
+                      onClick={() => setTakeProfitEnabled((v) => !v)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                        takeProfitEnabled
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/35"
+                          : "bg-zinc-800 text-zinc-500 border border-zinc-700"
+                      }`}
+                    >
+                      {takeProfitEnabled ? "ENABLED" : "OFF"}
+                    </button>
                   </div>
+
+                  {takeProfitEnabled ? (
+                    <div>
+                      <div className="flex items-center gap-1 font-mono mt-1">
+                        <span className="text-emerald-400 font-bold text-sm">$</span>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0.5"
+                          value={targetProfit}
+                          onChange={(e) => setTargetProfit(e.target.value)}
+                          className="w-full bg-transparent font-mono font-bold text-emerald-400 text-sm outline-none"
+                          placeholder="20.00"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 gap-1 mt-1.5">
+                        {[50, 100, 150, 200].map((pct) => (
+                          <button
+                            key={pct}
+                            onClick={() => setTpPreset(pct)}
+                            className="py-0.5 text-[10px] font-mono font-bold rounded bg-emerald-950/40 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-900/50"
+                          >
+                            +{pct}%
+                          </button>
+                        ))}
+                      </div>
+                      <div className="text-[10px] text-zinc-400 font-mono mt-1.5 flex items-center justify-between">
+                        <span>Target: <span className="text-emerald-400">+${numericTP.toFixed(2)}</span></span>
+                        <span>Price: ~{buyTpPrice}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-zinc-500 py-0.5">
+                      Disabled (Runs until expiry or manual stop)
+                    </div>
+                  )}
                 </div>
 
-                <div className="bg-[#160F2E] border border-purple-500/20 rounded-xl p-2.5">
-                  <div className="text-[10px] text-zinc-400 uppercase font-semibold">Stop Loss</div>
-                  <div className="flex items-center gap-1 mt-1 font-mono">
-                    <span className="text-rose-400 font-bold">$</span>
-                    <input
-                      type="number"
-                      value={stopLoss}
-                      onChange={(e) => setStopLoss(e.target.value)}
-                      className="bg-transparent text-sm font-bold text-white w-full outline-none font-mono"
-                    />
+                {/* Stop Loss Card */}
+                <div className="bg-[#140E2A] border border-rose-500/25 rounded-xl p-2.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-rose-400 text-xs">🛡️</span>
+                      <span className="text-[11px] font-bold text-zinc-200 uppercase tracking-wider">Stop Loss</span>
+                    </div>
+                    <button
+                      onClick={() => setStopLossEnabled((v) => !v)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                        stopLossEnabled
+                          ? "bg-rose-500/20 text-rose-300 border border-rose-500/35"
+                          : "bg-zinc-800 text-zinc-500 border border-zinc-700"
+                      }`}
+                    >
+                      {stopLossEnabled ? "ENABLED" : "OFF"}
+                    </button>
                   </div>
+
+                  {stopLossEnabled ? (
+                    <div>
+                      <div className="flex items-center gap-1 font-mono mt-1">
+                        <span className="text-rose-400 font-bold text-sm">$</span>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0.5"
+                          value={stopLoss}
+                          onChange={(e) => setStopLoss(e.target.value)}
+                          className="w-full bg-transparent font-mono font-bold text-rose-400 text-sm outline-none"
+                          placeholder="10.00"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 gap-1 mt-1.5">
+                        {[25, 50, 75, 100].map((pct) => (
+                          <button
+                            key={pct}
+                            onClick={() => setSlPreset(pct)}
+                            className="py-0.5 text-[10px] font-mono font-bold rounded bg-rose-950/40 text-rose-300 border border-rose-500/20 hover:bg-rose-900/50"
+                          >
+                            -{pct}%
+                          </button>
+                        ))}
+                      </div>
+                      <div className="text-[10px] text-zinc-400 font-mono mt-1.5 flex items-center justify-between">
+                        <span>Max Loss: <span className="text-rose-400">-${numericSL.toFixed(2)}</span></span>
+                        <span>Price: ~{buySlPrice}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-zinc-500 py-0.5">
+                      Disabled (100% stake at risk until expiry)
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* MAX TRADES / SESSION */}
-              <div className="bg-[#160F2E] border border-purple-500/20 rounded-xl p-2.5 space-y-1.5">
-                <div className="flex justify-between text-xs">
-                  <span className="text-zinc-400">Max Trades / Session</span>
-                  <span className="font-mono font-bold text-purple-300">{maxTrades}</span>
+              {/* Validation Error Alert Banner */}
+              {validationError && (
+                <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/35 text-rose-300 text-xs flex items-center gap-2 font-mono">
+                  <span>⚠️</span>
+                  <span>{validationError}</span>
                 </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="50"
-                  value={maxTrades}
-                  onChange={(e) => setMaxTrades(parseInt(e.target.value, 10))}
-                  className="w-full accent-purple-500 cursor-pointer"
-                />
-              </div>
+              )}
 
               {/* DIRECTION TRADE BUTTONS */}
               <div className="space-y-2 pt-1">
@@ -2286,7 +2971,7 @@ export default function Terminal() {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                           <path d="M12 19V5M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                        <span>RISE</span>
+                        <span>BUY / RISE</span>
                       </div>
                       <span className="text-[11px] font-mono text-emerald-200 font-semibold">+82% Payout</span>
                     </button>
@@ -2299,7 +2984,7 @@ export default function Terminal() {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                           <path d="M12 5v14M5 12l7 7 7-7" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                        <span>FALL</span>
+                        <span>SELL / FALL</span>
                       </div>
                       <span className="text-[11px] font-mono text-rose-200 font-semibold">+82% Payout</span>
                     </button>
@@ -2715,6 +3400,39 @@ export default function Terminal() {
           )}
         </div>
       </div>
+
+      {/* 9. TRADE RESULT MODAL WITH WIN CONFETTI & DETAILS */}
+      <TradeResultModal
+        trade={resultModalTrade}
+        onClose={() => setResultModalTrade(null)}
+        onViewHistory={() => {
+          setResultModalTrade(null)
+          setBottomTab("history")
+          setMobileNavTab("positions")
+        }}
+      />
+
+      {/* 10. CONFIRM STOP TRADE MODAL */}
+      <StopTradeConfirmModal
+        trade={confirmStopTrade}
+        currentPrice={
+          confirmStopTrade
+            ? (markets[confirmStopTrade.symbol]?.price ?? confirmStopTrade.currentPrice ?? confirmStopTrade.entryPrice)
+            : undefined
+        }
+        onConfirm={handleConfirmStopTrade}
+        onCancel={() => setConfirmStopTrade(null)}
+        isStopping={isStoppingTrade}
+      />
+
+      {/* 11. CONFIRM FORCE STOP ALL MODAL */}
+      <ForceStopAllConfirmModal
+        isOpen={confirmForceStopAll}
+        count={openTrades.length}
+        onConfirm={handleConfirmForceStopAll}
+        onCancel={() => setConfirmForceStopAll(false)}
+        isStopping={isStoppingAll}
+      />
     </div>
   )
 }

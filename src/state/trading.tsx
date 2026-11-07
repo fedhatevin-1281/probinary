@@ -31,7 +31,7 @@ export type TradeDirection =
   | "higher"
   | "lower"
 
-export type TradeStatus = "open" | "won" | "lost"
+export type TradeStatus = "open" | "won" | "lost" | "break_even"
 
 export type UserRole = "user" | "admin" | "super_admin"
 
@@ -124,9 +124,25 @@ export interface BinaryTrade {
 
   profit?: number
 
-  result?: "won" | "lost"
+  result?: "won" | "lost" | "break_even"
 
   isDemo?: boolean
+
+  stopLoss?: number | null
+
+  stopLossEnabled?: boolean
+
+  takeProfit?: number | null
+
+  takeProfitEnabled?: boolean
+
+  closureReason?: string | null
+
+  closedBy?: string | null
+
+  unrealizedPnl?: number
+
+  currentPrice?: number
 }
 
 interface TradingState {
@@ -147,7 +163,7 @@ interface TradingState {
   lastAction: string | null
 }
 
-interface TradeInput {
+export interface TradeInput {
   symbol: string
 
   contractType: ContractType
@@ -161,6 +177,14 @@ interface TradeInput {
   isDemo?: boolean
 
   predictionDigit?: number
+
+  stopLoss?: number | null
+
+  stopLossEnabled?: boolean
+
+  takeProfit?: number | null
+
+  takeProfitEnabled?: boolean
 }
 
 interface TradingContextValue {
@@ -213,6 +237,10 @@ interface TradingContextValue {
   placeTrade: (
     input: TradeInput,
   ) => { ok: boolean; tradeId?: string; error?: string }
+
+  stopTrade: (tradeId: string) => { ok: boolean; error?: string }
+
+  closeAllTrades: () => { ok: boolean; error?: string }
 
   forceCloseTrade: (tradeId: string) => { ok: boolean; error?: string }
 
@@ -716,6 +744,12 @@ export function TradingProvider({
                 createdAt: new Date(r.created_at).getTime(),
                 settledAt: r.settled_at ? new Date(r.settled_at).getTime() : Date.now(),
                 isDemo: Boolean(r.is_demo),
+                stopLoss: r.stop_loss !== null && r.stop_loss !== undefined ? Number(r.stop_loss) : null,
+                stopLossEnabled: r.stop_loss !== null && r.stop_loss !== undefined,
+                takeProfit: r.take_profit !== null && r.take_profit !== undefined ? Number(r.take_profit) : null,
+                takeProfitEnabled: r.take_profit !== null && r.take_profit !== undefined,
+                closureReason: r.closure_reason || null,
+                closedBy: r.closed_by || null,
               }))
 
             if (newTrades.length === 0) return prev
@@ -1023,6 +1057,18 @@ export function TradingProvider({
 
     const expirySeconds = Math.max(10, Math.round(input.expirySeconds || 30))
 
+    const stopLossEnabled = input.stopLossEnabled === true
+    const stopLoss =
+      stopLossEnabled && Number(input.stopLoss) > 0
+        ? round2(Number(input.stopLoss))
+        : null
+
+    const takeProfitEnabled = input.takeProfitEnabled === true
+    const takeProfit =
+      takeProfitEnabled && Number(input.takeProfit) > 0
+        ? round2(Number(input.takeProfit))
+        : null
+
     const trade: BinaryTrade = {
       id: `TRD-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 90 + 10)}`,
 
@@ -1037,6 +1083,8 @@ export function TradingProvider({
       stake,
 
       entryPrice: market.price,
+
+      currentPrice: market.price,
 
       entryDigit: lastDigit(market.price),
 
@@ -1053,6 +1101,20 @@ export function TradingProvider({
       createdAt: Date.now(),
 
       isDemo: input.isDemo,
+
+      stopLoss,
+
+      stopLossEnabled,
+
+      takeProfit,
+
+      takeProfitEnabled,
+
+      closureReason: null,
+
+      closedBy: null,
+
+      unrealizedPnl: 0,
     }
 
     setState((prev) => ({
@@ -1070,6 +1132,57 @@ export function TradingProvider({
     }))
 
     return { ok: true, tradeId: trade.id }
+  }
+
+  const stopTrade = (tradeId: string) => {
+    const socket = socketRef.current
+
+    if (connectionMode === "server" && socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "STOP_TRADE", tradeId }))
+
+      setState((prev) => ({
+        ...prev,
+        lastAction: `Stopping trade ${tradeId}`,
+        lastError: null,
+      }))
+
+      return { ok: true }
+    }
+
+    const current = stateRef.current
+    const trade = current.openTrades.find((item) => item.id === tradeId)
+    if (!trade) {
+      const error = "Trade not found"
+      setState((prev) => ({ ...prev, lastError: error }))
+      return { ok: false, error }
+    }
+
+    const market = current.markets[trade.symbol] || { price: trade.entryPrice }
+    setState((prev) => settleTradeManual(prev, trade.id, market.price, Date.now()))
+    return { ok: true }
+  }
+
+  const closeAllTrades = () => {
+    const socket = socketRef.current
+
+    if (connectionMode === "server" && socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "CLOSE_ALL_TRADES" }))
+
+      setState((prev) => ({
+        ...prev,
+        lastAction: "Stopping all active trades",
+        lastError: null,
+      }))
+
+      return { ok: true }
+    }
+
+    const current = stateRef.current
+    for (const trade of current.openTrades) {
+      const market = current.markets[trade.symbol] || { price: trade.entryPrice }
+      setState((prev) => settleTradeManual(prev, trade.id, market.price, Date.now()))
+    }
+    return { ok: true }
   }
 
   const forceCloseTrade = (tradeId: string) => {
@@ -1323,6 +1436,10 @@ export function TradingProvider({
 
         placeTrade,
 
+        stopTrade,
+
+        closeAllTrades,
+
         forceCloseTrade,
 
         adjustBalance,
@@ -1457,6 +1574,37 @@ function createHistory(basePrice: number, volatility: number, drift: number) {
   return history.map(round2)
 }
 
+export function isBuyDirection(direction: TradeDirection | string): boolean {
+  const d = String(direction || "").toLowerCase()
+  return (
+    d === "rise" ||
+    d === "buy" ||
+    d === "higher" ||
+    d === "even" ||
+    d === "match" ||
+    d === "over"
+  )
+}
+
+export function calculateUnrealizedPnl(
+  trade: Pick<BinaryTrade, "direction" | "entryPrice" | "stake">,
+  currentPrice: number,
+): number {
+  const isBuy = isBuyDirection(trade.direction)
+  const entryPrice = Number(trade.entryPrice) || currentPrice
+  const priceDelta = isBuy ? (currentPrice - entryPrice) : (entryPrice - currentPrice)
+  const priceDeltaRatio = entryPrice > 0 ? (priceDelta / entryPrice) : 0
+
+  const leverage = 250
+  let rawPnl = trade.stake * priceDeltaRatio * leverage
+
+  if (rawPnl < -trade.stake) {
+    rawPnl = -trade.stake
+  }
+
+  return round2(rawPnl)
+}
+
 function advanceState(prev: TradingState, now: number): TradingState {
   const markets: Record<string, MarketSnapshot> = {}
 
@@ -1494,15 +1642,69 @@ function advanceState(prev: TradingState, now: number): TradingState {
   const closedTrades = [...prev.closedTrades]
 
   for (const trade of prev.openTrades) {
-    if (trade.expiryAt > now) {
-      openTrades.push(trade)
+    const market = markets[trade.symbol] ?? prev.markets[trade.symbol] ?? { price: trade.entryPrice }
+    const currentPrice = market.price
+    const pnl = calculateUnrealizedPnl(trade, currentPrice)
+    trade.currentPrice = round2(currentPrice)
+    trade.unrealizedPnl = pnl
 
+    const hasTakeProfit = Boolean(
+      trade.takeProfitEnabled && trade.takeProfit && trade.takeProfit > 0,
+    )
+    const hasStopLoss = Boolean(
+      trade.stopLossEnabled && trade.stopLoss && trade.stopLoss > 0,
+    )
+
+    let isTriggered = false
+    let closureReason = null
+    let closedBy = null
+    let triggerResult: "won" | "lost" | "break_even" = "lost"
+    let finalProfit = 0
+    let finalPayout = 0
+
+    if (hasTakeProfit && pnl >= trade.takeProfit!) {
+      isTriggered = true
+      closureReason = "Take Profit"
+      closedBy = "take_profit"
+      triggerResult = "won"
+      finalProfit = pnl
+      finalPayout = round2(trade.stake + finalProfit)
+    } else if (hasStopLoss && pnl <= -trade.stopLoss!) {
+      isTriggered = true
+      closureReason = "Stop Loss"
+      closedBy = "stop_loss"
+      triggerResult = "lost"
+      finalProfit = Math.max(-trade.stake, pnl)
+      finalPayout = Math.max(0, round2(trade.stake + finalProfit))
+    } else if (trade.expiryAt <= now) {
+      isTriggered = true
+      closureReason = "Expired"
+      closedBy = "expiry"
+      const settled = resolveTrade(trade, currentPrice, now)
+      triggerResult = settled.result || "lost"
+      finalProfit = settled.profit || 0
+      finalPayout = settled.payout || 0
+    }
+
+    if (!isTriggered) {
+      openTrades.push(trade)
       continue
     }
 
-    const market = markets[trade.symbol] ?? prev.markets[trade.symbol]
-
-    const settled = resolveTrade(trade, market?.price ?? trade.entryPrice, now)
+    const settled: BinaryTrade = {
+      ...trade,
+      status: triggerResult,
+      result: triggerResult,
+      exitPrice: round2(currentPrice),
+      exitDigit: lastDigit(currentPrice),
+      settledAt: now,
+      closureReason,
+      closedBy,
+      payout: round2(finalPayout),
+      profit: round2(finalProfit),
+      unrealizedPnl: round2(finalProfit),
+      currentPrice: round2(currentPrice),
+    }
 
     balance = trade.isDemo ? balance : round2(balance + (settled.payout ?? 0))
 
@@ -1538,7 +1740,11 @@ function settleTrade(
     return prev
   }
 
-  const settled = resolveTrade(trade, exitPrice, settledAt)
+  const settled = {
+    ...resolveTrade(trade, exitPrice, settledAt),
+    closureReason: "Admin Force Close",
+    closedBy: "admin",
+  }
 
   return {
     ...prev,
@@ -1557,6 +1763,48 @@ function settleTrade(
   }
 }
 
+function settleTradeManual(
+  prev: TradingState,
+  tradeId: string,
+  exitPrice: number,
+  settledAt: number,
+): TradingState {
+  const trade = prev.openTrades.find((item) => item.id === tradeId)
+  if (!trade) return prev
+
+  const pnl = calculateUnrealizedPnl(trade, exitPrice)
+  const isWin = pnl > 0
+  const isBreakEven = pnl === 0
+  const result: "won" | "lost" | "break_even" = isWin ? "won" : isBreakEven ? "break_even" : "lost"
+  const payout = Math.max(0, round2(trade.stake + pnl))
+  const profit = round2(pnl)
+
+  const settled: BinaryTrade = {
+    ...trade,
+    status: result,
+    result,
+    exitPrice: round2(exitPrice),
+    exitDigit: lastDigit(exitPrice),
+    settledAt,
+    closureReason: "Manual Stop",
+    closedBy: "manual",
+    payout,
+    profit,
+    unrealizedPnl: profit,
+    currentPrice: round2(exitPrice),
+  }
+
+  return {
+    ...prev,
+    balance: trade.isDemo ? prev.balance : round2(prev.balance + payout),
+    realizedPnl: trade.isDemo ? prev.realizedPnl : round2(prev.realizedPnl + profit),
+    openTrades: prev.openTrades.filter((item) => item.id !== tradeId),
+    closedTrades: [settled, ...prev.closedTrades].slice(0, 40),
+    lastAction: `Stopped ${trade.symbol}`,
+    lastError: null,
+  }
+}
+
 function resolveTrade(
   trade: BinaryTrade,
   exitPrice: number,
@@ -1565,17 +1813,29 @@ function resolveTrade(
   const exitDigit = lastDigit(exitPrice)
 
   const won = isWinningTrade(trade, exitPrice, exitDigit)
+  const isBreakEven =
+    !won &&
+    exitPrice === trade.entryPrice &&
+    (trade.contractType === "rise-fall" || trade.contractType === "higher-lower")
 
-  const payout = won ? round2(trade.stake * trade.payoutMultiplier) : 0
-
-  const profit = won ? round2(payout - trade.stake) : round2(-trade.stake)
+  const result: "won" | "lost" | "break_even" = won ? "won" : isBreakEven ? "break_even" : "lost"
+  const payout = won
+    ? round2(trade.stake * trade.payoutMultiplier)
+    : isBreakEven
+      ? trade.stake
+      : 0
+  const profit = won
+    ? round2(payout - trade.stake)
+    : isBreakEven
+      ? 0
+      : round2(-trade.stake)
 
   return {
     ...trade,
 
-    status: won ? "won" : "lost",
+    status: result,
 
-    result: won ? "won" : "lost",
+    result,
 
     exitPrice: round2(exitPrice),
 
@@ -1583,9 +1843,17 @@ function resolveTrade(
 
     settledAt,
 
+    closureReason: trade.closureReason || "Expired",
+
+    closedBy: trade.closedBy || "expiry",
+
     payout,
 
     profit,
+
+    unrealizedPnl: profit,
+
+    currentPrice: round2(exitPrice),
   }
 }
 
@@ -1735,5 +2003,21 @@ function makeSampleTrade(
     profit,
 
     result,
+
+    stopLoss: null,
+
+    stopLossEnabled: false,
+
+    takeProfit: null,
+
+    takeProfitEnabled: false,
+
+    closureReason: result === "won" ? "Take Profit" : "Stop Loss",
+
+    closedBy: result === "won" ? "take_profit" : "stop_loss",
+
+    unrealizedPnl: profit,
+
+    currentPrice: exitPrice,
   }
 }

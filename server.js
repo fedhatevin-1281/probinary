@@ -8,6 +8,11 @@ import fs from "node:fs"
 
 import path from "node:path"
 
+import dns from "node:dns"
+
+// Force IPv4 DNS resolution for Supabase on Windows
+dns.setDefaultResultOrder("ipv4first")
+
 // Load environment variables manually
 
 function loadEnv() {
@@ -435,6 +440,63 @@ wss.on("connection", (socket) => {
             ok: true,
             action: state.lastAction,
             tradeId: result.trade.id,
+            trade: result.trade,
+          }),
+        )
+
+        return
+      }
+
+      if (
+        (message.type === "STOP_TRADE" || message.type === "CLOSE_TRADE") &&
+        typeof message.tradeId === "string"
+      ) {
+        const result = await manualStopTrade(state, message.tradeId, session)
+
+        if (result.error) {
+          socket.send(
+            JSON.stringify({ type: "ACK", ok: false, error: result.error }),
+          )
+
+          state.lastError = result.error
+
+          broadcastState()
+
+          return
+        }
+
+        state.lastAction = `Stopped trade ${message.tradeId} (${result.trade.result?.toUpperCase() || 'CLOSED'})`
+
+        broadcastState()
+
+        socket.send(
+          JSON.stringify({
+            type: "ACK",
+            ok: true,
+            action: state.lastAction,
+            trade: result.trade,
+          }),
+        )
+
+        return
+      }
+
+      if (
+        message.type === "CLOSE_ALL_TRADES" ||
+        message.type === "FORCE_STOP_ALL"
+      ) {
+        const result = await manualStopAllTrades(state, session)
+
+        state.lastAction = `Closed all active trades (${result.trades.length} positions settled)`
+
+        broadcastState()
+
+        socket.send(
+          JSON.stringify({
+            type: "ACK",
+            ok: true,
+            action: state.lastAction,
+            trades: result.trades,
           }),
         )
 
@@ -834,14 +896,7 @@ async function createSessionAsync(token) {
 
 async function syncUserSession(socket, token) {
   const session = await createSessionAsync(token)
-
-  sessions.set(socket, session)
-
   const accountState = getAccountState(session)
-
-  sendAuthState(socket)
-
-  sendPolicyState(socket)
 
   if (
     session.userId &&
@@ -849,7 +904,7 @@ async function syncUserSession(socket, token) {
     process.env.SUPABASE_URL
   ) {
     try {
-      const walletUrl = `${process.env.SUPABASE_URL}/rest/v1/wallets?user_id=eq.${session.userId}`
+      const walletUrl = `${process.env.SUPABASE_URL}/rest/v1/wallets?user_id=eq.${encodeURIComponent(String(session.userId))}&order=last_updated.desc,created_at.desc`
 
       const headers = {
         apikey: process.env.SUPABASE_SECRET_KEY,
@@ -883,7 +938,7 @@ async function syncUserSession(socket, token) {
             const records = await tradesRes.json()
             if (Array.isArray(records) && records.length > 0) {
               accountState.closedTrades = records
-                .filter((r) => r.status === "won" || r.status === "lost")
+                .filter((r) => r.status === "won" || r.status === "lost" || r.status === "break_even")
                 .map((r) => ({
                   id: r.trade_id,
                   symbol: r.symbol,
@@ -905,7 +960,51 @@ async function syncUserSession(socket, token) {
                   createdAt: new Date(r.created_at).getTime(),
                   settledAt: r.settled_at ? new Date(r.settled_at).getTime() : Date.now(),
                   isDemo: Boolean(r.is_demo),
+                  stopLoss: r.stop_loss !== null && r.stop_loss !== undefined ? Number(r.stop_loss) : null,
+                  stopLossEnabled: r.stop_loss !== null && r.stop_loss !== undefined,
+                  takeProfit: r.take_profit !== null && r.take_profit !== undefined ? Number(r.take_profit) : null,
+                  takeProfitEnabled: r.take_profit !== null && r.take_profit !== undefined,
+                  closureReason: r.closure_reason || null,
+                  closedBy: r.closed_by || null,
                 }))
+
+              // Recover active unexpired open trades if not already in memory
+              const now = Date.now()
+              const openRecords = records.filter(
+                (r) => r.status === "open" && new Date(r.expiry_at).getTime() > now,
+              )
+              for (const or of openRecords) {
+                if (!accountState.openTrades.some((t) => t.id === or.trade_id)) {
+                  const market = marketState.markets[or.symbol] || { price: Number(or.entry_price) }
+                  const trade = {
+                    id: or.trade_id,
+                    symbol: or.symbol,
+                    marketName: or.market_name || or.symbol,
+                    contractType: or.contract_type,
+                    direction: or.direction,
+                    stake: Number(or.stake),
+                    entryPrice: Number(or.entry_price),
+                    entryDigit: Number(or.entry_digit),
+                    currentPrice: market.price,
+                    expiryAt: new Date(or.expiry_at).getTime(),
+                    expirySeconds: Number(or.expiry_seconds || 30),
+                    payoutMultiplier: Number(or.payout_multiplier || 1.82),
+                    status: "open",
+                    createdAt: new Date(or.created_at).getTime(),
+                    isDemo: Boolean(or.is_demo),
+                    userId: String(session.userId),
+                    stopLoss: or.stop_loss !== null && or.stop_loss !== undefined ? Number(or.stop_loss) : null,
+                    stopLossEnabled: or.stop_loss !== null && or.stop_loss !== undefined,
+                    takeProfit: or.take_profit !== null && or.take_profit !== undefined ? Number(or.take_profit) : null,
+                    takeProfitEnabled: or.take_profit !== null && or.take_profit !== undefined,
+                    closureReason: null,
+                    closedBy: null,
+                    unrealizedPnl: 0,
+                  }
+                  trade.unrealizedPnl = calculateUnrealizedPnl(trade, market.price)
+                  accountState.openTrades.push(trade)
+                }
+              }
             }
           }
         } catch (tradesErr) {
@@ -916,6 +1015,10 @@ async function syncUserSession(socket, token) {
       console.error("[WS AUTH] Failed to fetch user wallet balance:", e)
     }
   }
+
+  sessions.set(socket, session)
+  sendAuthState(socket)
+  sendPolicyState(socket)
 
   socket.send(
     JSON.stringify({
@@ -963,7 +1066,7 @@ async function syncAccountBalance(session) {
         // Query database wallet to establish baseline
         try {
           if (process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY) {
-            const walletUrl = `${process.env.SUPABASE_URL}/rest/v1/wallets?user_id=eq.${encodeURIComponent(session.userId)}`
+            const walletUrl = `${process.env.SUPABASE_URL}/rest/v1/wallets?user_id=eq.${encodeURIComponent(session.userId)}&order=last_updated.desc,created_at.desc`
             const headers = {
               apikey: process.env.SUPABASE_SECRET_KEY,
               Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
@@ -994,6 +1097,10 @@ async function syncAccountBalance(session) {
       }
 
       const balanceAtStart = accountState.balance
+      if (balanceAtStart === 0 && previousBalance > 0 && accountState.openTrades.length === 0) {
+        accountState.balance = previousBalance
+        return
+      }
       const delta = round2(balanceAtStart - previousBalance)
 
       if (delta === 0) return
@@ -1090,7 +1197,7 @@ async function refreshUserBalance(socket, session) {
     throw new Error("Wallet storage is not configured")
   }
 
-  const walletUrl = `${process.env.SUPABASE_URL}/rest/v1/wallets?user_id=eq.${encodeURIComponent(session.userId)}`
+  const walletUrl = `${process.env.SUPABASE_URL}/rest/v1/wallets?user_id=eq.${encodeURIComponent(session.userId)}&order=last_updated.desc,created_at.desc`
   const headers = {
     apikey: process.env.SUPABASE_SECRET_KEY,
     Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
@@ -1329,21 +1436,106 @@ function advanceMarkets(markets) {
   return nextMarkets
 }
 
+function isBuyDirection(direction) {
+  const d = String(direction || "").toLowerCase()
+  return (
+    d === "rise" ||
+    d === "buy" ||
+    d === "higher" ||
+    d === "even" ||
+    d === "match" ||
+    d === "over"
+  )
+}
+
+function calculateUnrealizedPnl(trade, currentPrice) {
+  const isBuy = isBuyDirection(trade.direction)
+  const entryPrice = Number(trade.entryPrice) || currentPrice
+  const priceDelta = isBuy ? (currentPrice - entryPrice) : (entryPrice - currentPrice)
+  const priceDeltaRatio = entryPrice > 0 ? (priceDelta / entryPrice) : 0
+
+  // Synthetic / binary contract leverage factor (250x)
+  // 0.2% price move in favorable direction = +50% of stake
+  // 0.4% price move in favorable direction = +100% of stake
+  const leverage = 250
+  let rawPnl = trade.stake * priceDeltaRatio * leverage
+
+  // Maximum loss cannot exceed trade stake
+  if (rawPnl < -trade.stake) {
+    rawPnl = -trade.stake
+  }
+
+  return round2(rawPnl)
+}
+
 function settleExpiredTrades(state) {
   const now = Date.now()
 
   const remaining = []
 
   for (const trade of state.openTrades) {
-    if (trade.expiryAt > now) {
-      remaining.push(trade)
+    const market = state.markets[trade.symbol] || { price: trade.entryPrice }
+    const currentPrice = market.price
+    trade.currentPrice = round2(currentPrice)
+    trade.unrealizedPnl = calculateUnrealizedPnl(trade, currentPrice)
 
+    const hasTakeProfit = Boolean(
+      trade.takeProfitEnabled && trade.takeProfit && trade.takeProfit > 0,
+    )
+    const hasStopLoss = Boolean(
+      trade.stopLossEnabled && trade.stopLoss && trade.stopLoss > 0,
+    )
+
+    let isTriggered = false
+    let closureReason = null
+    let closedBy = null
+    let triggerResult = null
+    let finalProfit = 0
+    let finalPayout = 0
+
+    if (hasTakeProfit && trade.unrealizedPnl >= trade.takeProfit) {
+      isTriggered = true
+      closureReason = "Take Profit"
+      closedBy = "take_profit"
+      triggerResult = "won"
+      finalProfit = trade.unrealizedPnl
+      finalPayout = round2(trade.stake + finalProfit)
+    } else if (hasStopLoss && trade.unrealizedPnl <= -trade.stopLoss) {
+      isTriggered = true
+      closureReason = "Stop Loss"
+      closedBy = "stop_loss"
+      triggerResult = "lost"
+      finalProfit = Math.max(-trade.stake, trade.unrealizedPnl)
+      finalPayout = Math.max(0, round2(trade.stake + finalProfit))
+    } else if (trade.expiryAt <= now) {
+      isTriggered = true
+      closureReason = "Expired"
+      closedBy = "expiry"
+      const settled = resolveTrade(trade, currentPrice, now)
+      triggerResult = settled.result
+      finalProfit = settled.profit
+      finalPayout = settled.payout
+    }
+
+    if (!isTriggered) {
+      remaining.push(trade)
       continue
     }
 
-    const market = state.markets[trade.symbol]
-
-    const settled = resolveTrade(trade, market.price, now)
+    const settled = {
+      ...trade,
+      status: triggerResult,
+      result: triggerResult,
+      exitPrice: round2(currentPrice),
+      exitDigit: lastDigit(currentPrice),
+      settledAt: now,
+      closureReason,
+      closedBy,
+      payout: round2(finalPayout),
+      profit: round2(finalProfit),
+      unrealizedPnl: round2(finalProfit),
+      currentPrice: round2(currentPrice),
+    }
 
     state.balance = round2(state.balance + (settled.payout || 0))
 
@@ -1436,13 +1628,26 @@ async function persistOpenTradeRecord(userId, trade) {
       profit: 0,
       created_at: new Date(trade.createdAt).toISOString(),
       settled_at: null,
+      stop_loss:
+        trade.stopLoss !== undefined && trade.stopLoss !== null
+          ? Number(trade.stopLoss)
+          : null,
+      take_profit:
+        trade.takeProfit !== undefined && trade.takeProfit !== null
+          ? Number(trade.takeProfit)
+          : null,
+      closure_reason: null,
+      closed_by: null,
     }
 
-    await fetch(`${url}/binary_trade_records`, {
+    const postRes = await fetch(`${url}/binary_trade_records`, {
       method: "POST",
       headers,
       body: JSON.stringify(tradeRecord),
     })
+    if (!postRes.ok) {
+      console.warn("[WS TRADE] Notice: Could not insert open trade record:", await postRes.text())
+    }
   } catch (e) {
     console.warn("[WS TRADE] Notice: Could not insert open trade record:", e.message)
   }
@@ -1482,6 +1687,16 @@ async function persistSettledTradeRecord(userId, settledTrade) {
       profit: settledTrade.profit || 0,
       created_at: new Date(settledTrade.createdAt).toISOString(),
       settled_at: new Date(settledTrade.settledAt || Date.now()).toISOString(),
+      stop_loss:
+        settledTrade.stopLoss !== undefined && settledTrade.stopLoss !== null
+          ? Number(settledTrade.stopLoss)
+          : null,
+      take_profit:
+        settledTrade.takeProfit !== undefined && settledTrade.takeProfit !== null
+          ? Number(settledTrade.takeProfit)
+          : null,
+      closure_reason: settledTrade.closureReason || null,
+      closed_by: settledTrade.closedBy || null,
     }
 
     const checkRes = await fetch(
@@ -1491,7 +1706,7 @@ async function persistSettledTradeRecord(userId, settledTrade) {
     const existing = await checkRes.json()
 
     if (existing && existing.length > 0) {
-      await fetch(
+      const patchRes = await fetch(
         `${url}/binary_trade_records?user_id=eq.${encodeURIComponent(String(userId))}&trade_id=eq.${encodeURIComponent(settledTrade.id)}`,
         {
           method: "PATCH",
@@ -1499,12 +1714,18 @@ async function persistSettledTradeRecord(userId, settledTrade) {
           body: JSON.stringify(tradeRecord),
         }
       )
+      if (!patchRes.ok) {
+        console.error("[WS TRADE] Error patching settled trade record:", await patchRes.text())
+      }
     } else {
-      await fetch(`${url}/binary_trade_records`, {
+      const postRes = await fetch(`${url}/binary_trade_records`, {
         method: "POST",
         headers,
         body: JSON.stringify(tradeRecord),
       })
+      if (!postRes.ok) {
+        console.error("[WS TRADE] Error posting settled trade record:", await postRes.text())
+      }
     }
 
     if (!settledTrade.isDemo) {
@@ -1519,7 +1740,7 @@ async function persistSettledTradeRecord(userId, settledTrade) {
             currency: "USD",
             status: "completed",
             payment_reference: settledTrade.id.slice(0, 100),
-            description: `Trade ${settledTrade.result.toUpperCase()}: ${settledTrade.symbol} (${(settledTrade.profit || 0) >= 0 ? "+" : ""}${settledTrade.profit})`,
+            description: `Trade ${settledTrade.result.toUpperCase()} (${settledTrade.closureReason || "Closed"}): ${settledTrade.symbol} (${(settledTrade.profit || 0) >= 0 ? "+" : ""}${settledTrade.profit})`,
             metadata_json: {
               tradeId: settledTrade.id,
               symbol: settledTrade.symbol,
@@ -1527,6 +1748,10 @@ async function persistSettledTradeRecord(userId, settledTrade) {
               payout: settledTrade.payout,
               profit: settledTrade.profit,
               result: settledTrade.result,
+              stopLoss: settledTrade.stopLoss,
+              takeProfit: settledTrade.takeProfit,
+              closureReason: settledTrade.closureReason,
+              closedBy: settledTrade.closedBy,
             },
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -1563,6 +1788,26 @@ function placeTrade(currentState, input, session) {
     Math.round(Number(input.expirySeconds || 30)),
   )
 
+  const stopLossEnabled = input.stopLossEnabled === true
+  const stopLoss =
+    stopLossEnabled && Number(input.stopLoss) > 0
+      ? round2(Number(input.stopLoss))
+      : null
+
+  const takeProfitEnabled = input.takeProfitEnabled === true
+  const takeProfit =
+    takeProfitEnabled && Number(input.takeProfit) > 0
+      ? round2(Number(input.takeProfit))
+      : null
+
+  if (stopLossEnabled && (!stopLoss || stopLoss <= 0)) {
+    return { error: "Stop loss must be greater than zero" }
+  }
+
+  if (takeProfitEnabled && (!takeProfit || takeProfit <= 0)) {
+    return { error: "Take profit must be greater than zero" }
+  }
+
   const trade = {
     id: `TRD-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 90 + 10)}`,
 
@@ -1580,6 +1825,8 @@ function placeTrade(currentState, input, session) {
 
     entryPrice: market.price,
 
+    currentPrice: market.price,
+
     entryDigit: lastDigit(market.price),
 
     expiryAt: Date.now() + expirySeconds * 1000,
@@ -1596,6 +1843,20 @@ function placeTrade(currentState, input, session) {
 
     testBinaryWinRate: getTestBinaryPolicy(session)?.winRate,
 
+    stopLoss,
+
+    stopLossEnabled,
+
+    takeProfit,
+
+    takeProfitEnabled,
+
+    closureReason: null,
+
+    closedBy: null,
+
+    unrealizedPnl: 0,
+
     status: "open",
 
     createdAt: Date.now(),
@@ -1610,6 +1871,95 @@ function placeTrade(currentState, input, session) {
   currentState.lastError = null
 
   return { trade }
+}
+
+async function manualStopTrade(currentState, tradeId, session) {
+  let targetState = currentState
+  let index = targetState.openTrades.findIndex((item) => item.id === tradeId)
+
+  if (index === -1) {
+    for (const [key, s] of accountStates.entries()) {
+      const idx = s.openTrades.findIndex((item) => item.id === tradeId)
+      if (idx !== -1) {
+        targetState = s
+        index = idx
+        break
+      }
+    }
+  }
+
+  if (index === -1) {
+    return { error: "Active trade not found or already closed" }
+  }
+
+  const trade = targetState.openTrades[index]
+
+  // Verify ownership (unless session has admin canForceClose)
+  if (
+    session?.userId &&
+    trade.userId &&
+    String(trade.userId) !== String(session.userId) &&
+    !session.capabilities?.canForceClose
+  ) {
+    return { error: "You are not authorized to stop this trade" }
+  }
+
+  const market = targetState.markets[trade.symbol] || { price: trade.entryPrice }
+  const currentPrice = market.price
+  const pnl = calculateUnrealizedPnl(trade, currentPrice)
+  const result = pnl > 0 ? "won" : pnl === 0 ? "break_even" : "lost"
+  const payout = Math.max(0, round2(trade.stake + pnl))
+  const profit = round2(pnl)
+
+  const settled = {
+    ...trade,
+    status: result,
+    result,
+    exitPrice: round2(currentPrice),
+    exitDigit: lastDigit(currentPrice),
+    settledAt: Date.now(),
+    closureReason: "Manual Stop",
+    closedBy: "manual",
+    payout,
+    profit,
+    unrealizedPnl: profit,
+    currentPrice: round2(currentPrice),
+  }
+
+  targetState.balance = round2(targetState.balance + payout)
+  targetState.realizedPnl = round2(targetState.realizedPnl + profit)
+  targetState.closedTrades.unshift(settled)
+  targetState.openTrades.splice(index, 1)
+
+  if (trade.userId && !trade.isDemo) {
+    try {
+      await persistSettledTradeRecord(trade.userId, settled)
+    } catch (err) {
+      console.error("[WS TRADE] Error persisting manually stopped trade:", err)
+    }
+    if (settled.payout > 0) {
+      try {
+        await applyWalletDeltaDirect(trade.userId, settled.payout)
+      } catch (err) {
+        console.error("[WS TRADE] Error applying manual stop payout to wallet in DB:", err)
+      }
+    }
+    persistedBalances.set(`user:${trade.userId}`, targetState.balance)
+  }
+
+  return { trade: settled }
+}
+
+async function manualStopAllTrades(currentState, session) {
+  const settledTrades = []
+  const tradeIds = currentState.openTrades.map((t) => t.id)
+  for (const id of tradeIds) {
+    const res = await manualStopTrade(currentState, id, session)
+    if (res.trade) {
+      settledTrades.push(res.trade)
+    }
+  }
+  return { trades: settledTrades }
 }
 
 function forceCloseTrade(currentState, tradeId) {
@@ -1633,9 +1983,13 @@ function forceCloseTrade(currentState, tradeId) {
 
   const trade = targetState.openTrades[index]
 
-  const market = targetState.markets[trade.symbol]
+  const market = targetState.markets[trade.symbol] || { price: trade.entryPrice }
 
-  const settled = resolveTrade(trade, market.price, Date.now())
+  const settled = {
+    ...resolveTrade(trade, market.price, Date.now()),
+    closureReason: "Admin Force Close",
+    closedBy: "admin",
+  }
 
   targetState.balance = round2(targetState.balance + (settled.payout || 0))
 
@@ -1699,26 +2053,36 @@ function resolveTrade(trade, exitPrice, settledAt) {
         ? isWinningTrade(trade, exitPrice, exitDigit)
         : forcedOutcome === "won"
 
-  const payout = won ? round2(trade.stake * trade.payoutMultiplier) : 0
+  const isBreakEven =
+    !won &&
+    exitPrice === trade.entryPrice &&
+    (trade.contractType === "rise-fall" || trade.contractType === "higher-lower")
 
-  const profit = won ? round2(payout - trade.stake) : round2(-trade.stake)
+  const result = won ? "won" : isBreakEven ? "break_even" : "lost"
+  const payout = won
+    ? round2(trade.stake * trade.payoutMultiplier)
+    : isBreakEven
+      ? trade.stake
+      : 0
+  const profit = won
+    ? round2(payout - trade.stake)
+    : isBreakEven
+      ? 0
+      : round2(-trade.stake)
 
   return {
     ...trade,
-
-    status: won ? "won" : "lost",
-
-    result: won ? "won" : "lost",
-
+    status: result,
+    result,
     exitPrice: round2(exitPrice),
-
     exitDigit,
-
     settledAt,
-
+    closureReason: trade.closureReason || "Expired",
+    closedBy: trade.closedBy || "expiry",
     payout,
-
     profit,
+    unrealizedPnl: profit,
+    currentPrice: round2(exitPrice),
   }
 }
 
@@ -1862,6 +2226,22 @@ function sampleTrade(
     profit,
 
     result,
+
+    stopLoss: null,
+
+    stopLossEnabled: false,
+
+    takeProfit: null,
+
+    takeProfitEnabled: false,
+
+    closureReason: result === "won" ? "Take Profit" : "Stop Loss",
+
+    closedBy: result === "won" ? "take_profit" : "stop_loss",
+
+    unrealizedPnl: profit,
+
+    currentPrice: exitPrice,
   }
 }
 

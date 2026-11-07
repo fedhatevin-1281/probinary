@@ -12,13 +12,12 @@ import bcrypt from "bcryptjs"
 
 import jwt from "jsonwebtoken"
 
-import createNowPaymentsPayment from "./api/payments/nowpayments/create-payment.js"
-
-import getNowPaymentsCurrencies from "./api/payments/nowpayments/currencies.js"
-
-import getNowPaymentsStatus from "./api/payments/nowpayments/status.js"
-
-import handleNowPaymentsWebhook from "./api/payments/nowpayments/webhook.js"
+import {
+  createPayment as createNowPaymentsPayment,
+  getCurrencies as getNowPaymentsCurrencies,
+  getStatus as getNowPaymentsStatus,
+  handleWebhook as handleNowPaymentsWebhook,
+} from "./api/payments/nowpayments/[action].js"
 
 // Force DNS lookup of localhost to prefer IPv4 first
 
@@ -1168,6 +1167,16 @@ app.post("/auth/trading/record-trade", async (req, res) => {
       profit: profit,
       created_at: trade.createdAt ? new Date(trade.createdAt).toISOString() : now,
       settled_at: trade.settledAt ? new Date(trade.settledAt).toISOString() : now,
+      stop_loss:
+        trade.stopLoss !== undefined && trade.stopLoss !== null
+          ? Number(trade.stopLoss)
+          : null,
+      take_profit:
+        trade.takeProfit !== undefined && trade.takeProfit !== null
+          ? Number(trade.takeProfit)
+          : null,
+      closure_reason: trade.closureReason || null,
+      closed_by: trade.closedBy || null,
     }
 
     if (existingTrades && existingTrades.length > 0) {

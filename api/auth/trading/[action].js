@@ -133,6 +133,16 @@ export async function recordTrade(req, res) {
       profit: profit,
       created_at: trade.createdAt ? new Date(trade.createdAt).toISOString() : now,
       settled_at: trade.settledAt ? new Date(trade.settledAt).toISOString() : now,
+      stop_loss:
+        trade.stopLoss !== undefined && trade.stopLoss !== null
+          ? Number(trade.stopLoss)
+          : null,
+      take_profit:
+        trade.takeProfit !== undefined && trade.takeProfit !== null
+          ? Number(trade.takeProfit)
+          : null,
+      closure_reason: trade.closureReason || null,
+      closed_by: trade.closedBy || null,
     }
 
     if (existingTrades && existingTrades.length > 0) {
