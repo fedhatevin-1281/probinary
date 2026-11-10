@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>404 — Page Not Found | ProBinary</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(120% 70% at 18% 0%, #3d1a6d 0%, #191131 30%, #110b22 60%, #090514 100%);
+      color: #f5f0ff;
+      font-family: 'Public Sans', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+    }
+    .card {
+      background: #191131;
+      border: 1px solid rgba(224, 204, 255, 0.14);
+      border-radius: 16px;
+      padding: 40px 32px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 20px 50px rgba(9, 5, 20, 0.7);
+    }
+    .code {
+      font-family: 'Fraunces', serif;
+      font-size: 80px;
+      font-weight: 700;
+      line-height: 1;
+      background: linear-gradient(135deg, #e0ccff, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-family: 'Fraunces', serif;
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #f5f0ff;
+    }
+    p {
+      color: #9d8ec2;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+    .btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #e0ccff, #a855f7);
+      color: #090514;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 12px 24px;
+      border-radius: 10px;
+      text-decoration: none;
+      box-shadow: 0 0 24px rgba(168, 85, 247, 0.35);
+      transition: all 0.2s;
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 32px rgba(168, 85, 247, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="code">404</div>
+    <h1>Page Not Found</h1>
+    <p>The page or resource you are looking for does not exist on the ProBinary desk.</p>
+    <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+      <a href="/dashboard/trade.html" class="btn">Open Trading Desk →</a>
+      <a href="/index.html" class="btn" style="background:transparent; border:1px solid rgba(224,204,255,0.25); color:#f5f0ff; box-shadow:none;">Back to Home</a>
+    </div>
+  </div>
+</body>
+</html>

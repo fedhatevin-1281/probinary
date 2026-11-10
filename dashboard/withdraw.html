@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+  <title>ProBinary — Withdraw Funds</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg-main: #090514;
+      --bg-header: #0d081c;
+      --bg-card: #191131;
+      --bg-card-alt: #130c27;
+      --bg-input: #090514;
+      --border-card: rgba(224, 204, 255, 0.12);
+      --border-card-alt: rgba(224, 204, 255, 0.18);
+      --border-accent: rgba(168, 85, 247, 0.35);
+      --accent-purple: #a855f7;
+      --accent-purple-hover: #c084fc;
+      --accent-purple-dim: rgba(168, 85, 247, 0.16);
+      --accent-lavender: #e0ccff;
+      --accent-gradient: linear-gradient(135deg, #e0ccff, #a855f7);
+      --accent-green: #10b981;
+      --accent-green-dim: rgba(16, 185, 129, 0.15);
+      --accent-red: #ef4444;
+      --accent-red-hover: #f87171;
+      --accent-gold: #fbbf24;
+      --text-white: #f5f0ff;
+      --text-gray: #9d8ec2;
+      --text-dim: #6b5b95;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100vh;
+      max-height: 100vh;
+      overflow: hidden;
+      background: var(--bg-main);
+      color: var(--text-white);
+      font-family: 'Public Sans', system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+    }
+
+    .mono { font-family: 'IBM Plex Mono', monospace; }
+
+    /* Custom Sleek Purple Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3d236b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #583399; }
+
+    /* Top Navigation */
+    .top-nav {
+      height: 44px;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    /* Layout Grid */
+    .app-layout {
+      height: calc(100vh - 44px);
+      max-height: calc(100vh - 44px);
+      display: grid;
+      grid-template-columns: 195px 1fr;
+      gap: 12px;
+      padding: 10px 14px;
+      overflow: hidden;
+    }
+
+    /* Cards */
+    .card-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+    }
+
+    /* Buttons & Pills */
+    .pill-btn {
+      border: 1px solid var(--border-card-alt);
+      background: var(--bg-card-alt);
+      color: var(--text-gray);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .pill-btn:hover {
+      border-color: var(--accent-purple);
+      color: var(--text-white);
+    }
+    .pill-btn.active {
+      background: var(--accent-gradient);
+      border-color: var(--accent-purple);
+      color: #090514;
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(168, 85, 247, 0.35);
+    }
+
+    .purple-btn {
+      background: var(--accent-gradient);
+      color: #090514;
+      font-weight: 700;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.35);
+    }
+    .purple-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+    }
+
+    .red-btn {
+      background: var(--accent-red);
+      color: #ffffff;
+      font-weight: 700;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      box-shadow: 0 0 16px rgba(239, 68, 68, 0.35);
+    }
+    .red-btn:hover { background: var(--accent-red-hover); }
+
+    .nav-svg {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      color: inherit;
+    }
+
+    /* Sidebar Navigation Links */
+    .nav-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--text-gray);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+    .nav-btn:hover {
+      color: var(--text-white);
+      background: rgba(224, 204, 255, 0.05);
+    }
+    .nav-btn.active {
+      background: var(--accent-purple-dim);
+      border: 1px solid var(--accent-purple);
+      color: var(--accent-lavender);
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+    }
+
+    /* Payout Method Card */
+    .payout-method-card {
+      background: #130c27;
+      border: 1px solid rgba(224, 204, 255, 0.12);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .payout-method-card:hover {
+      border-color: var(--accent-purple);
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.25);
+      transform: translateY(-1px);
+    }
+
+    .method-icon-box {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .q-with-chip {
+      background: var(--bg-input);
+      border: 1px solid var(--border-card-alt);
+      color: var(--text-gray);
+      border-radius: 6px;
+      padding: 6px 0;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+    .q-with-chip:hover { border-color: var(--accent-purple); color: #fff; }
+    .q-with-chip.active {
+      background: var(--accent-gradient);
+      border-color: var(--accent-purple);
+      color: #090514;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.35);
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 5, 20, 0.88);
+      backdrop-filter: blur(5px);
+      z-index: 999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    /* Mobile Drawer */
+    .mobile-menu-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .mobile-drawer-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+    }
+    .mobile-drawer {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 250px;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border-card);
+      z-index: 1001;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease-out;
+    }
+    .mobile-drawer.open {
+      transform: translateX(0);
+    }
+
+    @media (max-width: 900px) {
+      html, body {
+        height: auto;
+        max-height: none;
+        overflow-y: auto;
+      }
+      .mobile-menu-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .app-layout {
+        height: auto;
+        max-height: none;
+        grid-template-columns: 1fr;
+        padding: 10px;
+        overflow: visible;
+      }
+      aside.desktop-sidebar {
+        display: none !important;
+      }
+      #topTickerBar {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP HEADER NAV -->
+  <header class="top-nav">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileDrawer()" aria-label="Open menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <a href="/dashboard/trade.html" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
+        <div style="width: 26px; height: 26px; border-radius: 6px; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; box-shadow: 0 0 12px rgba(168,85,247,0.4);">P</div>
+        <span style="font-size: 16px; font-weight: 700; letter-spacing: -0.02em; color: #fff;">Pro<span style="color:var(--accent-lavender)">Binary</span></span>
+      </a>
+    </div>
+
+    <div id="topTickerBar" style="display: flex; align-items: center; gap: 16px; font-size: 11px;">
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">EUR/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_EUR_USD">1.0842</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">GBP/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_GBP_USD">1.2915</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">USD/JPY</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_USD_JPY">154.20</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">BTC/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_BTC_USD">91,420</span></div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div class="pill-btn" style="padding: 4px 10px; cursor: default;">
+        <span style="color: var(--accent-purple);">●</span>
+        <span class="mono" id="headerBalanceText" style="font-weight: 700; color: #fff;">$10,000.00</span>
+      </div>
+      <a href="/dashboard/deposit.html" class="purple-btn" style="padding: 5px 14px; font-size: 11px; text-decoration: none;">
+        + Deposit
+      </a>
+      <a href="/dashboard/profile.html" id="headerAvatarBtn" style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; cursor: pointer; text-decoration: none; box-shadow: 0 0 10px rgba(168,85,247,0.4);">
+        T
+      </a>
+    </div>
+  </header>
+
+  <!-- MOBILE DRAWER -->
+  <div class="mobile-drawer-backdrop" id="drawerBackdrop" onclick="toggleMobileDrawer()"></div>
+  <div class="mobile-drawer" id="mobileDrawer">
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 24px; height: 24px; border-radius: 6px; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;">P</div>
+          <span style="font-size: 15px; font-weight: 700; color: #fff;">Pro<span style="color:var(--accent-lavender)">Binary</span></span>
+        </div>
+        <button onclick="toggleMobileDrawer()" style="background:none; border:none; color:var(--text-gray); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:4px;" aria-label="Close menu">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <nav style="display: flex; flex-direction: column; gap: 6px;">
+        <a href="/dashboard/trade.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg></span> Trade
+        </a>
+        <a href="/dashboard/bot.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> Bot
+        </a>
+        <a href="/dashboard/deposit.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
+        </a>
+        <a href="/dashboard/withdraw.html" class="nav-btn active">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
+        </a>
+        <a href="/dashboard/history.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
+        </a>
+        <a href="/dashboard/profile.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile
+        </a>
+      </nav>
+    </div>
+
+    <div style="padding-top: 12px; border-top: 1px solid var(--border-card);">
+      <button onclick="signOut()" class="nav-btn" style="color: var(--accent-red);">
+        <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Sign out
+      </button>
+    </div>
+  </div>
+
+  <!-- APP LAYOUT -->
+  <div class="app-layout">
+    <!-- LEFT SIDEBAR -->
+    <aside class="desktop-sidebar" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+      <div>
+        <div class="card-panel" style="padding: 12px; margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">Live Balance</span>
+            <div style="display: flex; gap: 4px;">
+              <span id="tabLive" onclick="setMode(false)" class="pill-btn active" style="padding: 2px 6px; font-size: 10px;">Live</span>
+              <span id="tabDemo" onclick="setMode(true)" class="pill-btn" style="padding: 2px 6px; font-size: 10px;">Demo</span>
+            </div>
+          </div>
+          <div id="sidebarBalanceAmount" class="mono" style="font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px;">$10,000.00</div>
+          <a href="/dashboard/deposit.html" class="purple-btn" style="width: 100%; padding: 6px 0; font-size: 11px; text-decoration: none;">
+            + Deposit
+          </a>
+        </div>
+
+        <nav style="display: flex; flex-direction: column; gap: 4px;">
+          <a href="/dashboard/trade.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg></span> Trade
+          </a>
+          <a href="/dashboard/bot.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> Bot
+          </a>
+          <a href="/dashboard/deposit.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
+          </a>
+          <a href="/dashboard/withdraw.html" class="nav-btn active">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
+          </a>
+          <a href="/dashboard/history.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
+          </a>
+          <a href="/dashboard/profile.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile
+          </a>
+        </nav>
+      </div>
+
+      <div style="padding-top: 10px; border-top: 1px solid var(--border-card);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <div id="sidebarAvatar" style="width: 26px; height: 26px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px;">T</div>
+          <div style="overflow: hidden; min-width: 0;">
+            <div id="sidebarUserName" style="font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Tevin fedha</div>
+            <div id="sidebarUserEmail" class="mono" style="font-size: 9px; color: var(--text-gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">fedhatevin@gmail.com</div>
+          </div>
+        </div>
+        <button onclick="signOut()" class="nav-btn" style="padding: 4px 6px; font-size: 11px; color: var(--text-gray);">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Sign out
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main style="display: flex; flex-direction: column; height: 100%; min-height: 0; overflow-y: auto; padding: 18px 10px;">
+      <div style="max-width: 620px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 14px;">
+        
+        <!-- TITLE -->
+        <div style="text-align: center; margin-bottom: 4px;">
+          <h1 style="font-size: 26px; font-weight: 800; color: #fff; letter-spacing: -0.02em; margin-bottom: 4px;">Withdraw Funds</h1>
+          <p style="font-size: 12px; color: var(--text-gray);">Select your payout rail for instant or bank settlement</p>
+        </div>
+
+        <!-- BALANCE CARD -->
+        <div class="card-panel" style="padding: 18px 22px; background: #130c27; border-color: rgba(224, 204, 255, 0.12); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 11px; color: var(--text-gray); font-weight: 600; margin-bottom: 2px;">Available Live Balance</div>
+            <div id="mainAvailableBal" class="mono" style="font-size: 30px; font-weight: 800; color: #fff;">$10,000.00</div>
+          </div>
+          <div style="text-align: right;">
+            <span style="font-size: 10px; font-weight: 700; background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 4px; padding: 3px 8px; text-transform: uppercase;">Withdrawable</span>
+            <div class="mono" style="font-size: 10px; color: var(--text-gray); margin-top: 4px;">0% Processing Fee</div>
+          </div>
+        </div>
+
+        <!-- PAYOUT METHODS -->
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          
+          <!-- 1. M-Pesa -->
+          <div class="payout-method-card" onclick="openWithdrawModal('mpesa')">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div class="method-icon-box" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--accent-green);">
+                M
+              </div>
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 15px; font-weight: 700; color: #fff;">M-Pesa Payout</span>
+                  <span style="background: rgba(16, 185, 129, 0.2); color: var(--accent-green); font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.05em;">INSTANT</span>
+                </div>
+                <p style="font-size: 11px; color: var(--text-gray); margin-top: 2px;">Direct Safaricom mobile money payout (KES) · 1 USD = 129.50 KES</p>
+              </div>
+            </div>
+            <span style="color: var(--accent-lavender); font-size: 18px; font-weight: 700;">→</span>
+          </div>
+
+          <!-- 2. Crypto USDT -->
+          <div class="payout-method-card" onclick="openWithdrawModal('crypto')">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div class="method-icon-box" style="background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.3); color: var(--accent-lavender);">
+                T
+              </div>
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 15px; font-weight: 700; color: #fff;">USDT / Crypto Payout</span>
+                  <span style="background: rgba(168, 85, 247, 0.2); color: var(--accent-lavender); font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.05em;">0% NETWORK FEE</span>
+                </div>
+                <p style="font-size: 11px; color: var(--text-gray); margin-top: 2px;">TRC20, ERC20, BTC, ETH · Settled on blockchain confirmation</p>
+              </div>
+            </div>
+            <span style="color: var(--accent-lavender); font-size: 18px; font-weight: 700;">→</span>
+          </div>
+
+          <!-- 3. Bank Wire -->
+          <div class="payout-method-card" onclick="openWithdrawModal('bank')">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div class="method-icon-box" style="background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.3); color: var(--accent-gold);">
+                B
+              </div>
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 15px; font-weight: 700; color: #fff;">Bank Wire Transfer</span>
+                  <span style="background: rgba(251, 191, 36, 0.2); color: var(--accent-gold); font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.05em;">SWIFT / EFT</span>
+                </div>
+                <p style="font-size: 11px; color: var(--text-gray); margin-top: 2px;">Direct settlement to your local or international bank account</p>
+              </div>
+            </div>
+            <span style="color: var(--accent-lavender); font-size: 18px; font-weight: 700;">→</span>
+          </div>
+        </div>
+
+        <!-- RECENT PAYOUTS TABLE -->
+        <div class="card-panel" style="padding: 16px; margin-top: 4px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div style="font-size: 12px; font-weight: 700; color: #fff;">Recent Payout Activity</div>
+            <a href="/dashboard/history.html" style="font-size: 11px; color: var(--accent-lavender); text-decoration: none;">View Ledger →</a>
+          </div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: left;">
+            <thead>
+              <tr style="color: var(--text-gray); border-bottom: 1px solid var(--border-card);">
+                <th style="padding: 6px;">REF ID</th>
+                <th>METHOD</th>
+                <th>AMOUNT</th>
+                <th>STATUS</th>
+                <th>TIME</th>
+              </tr>
+            </thead>
+            <tbody id="withdrawRows">
+              <tr style="border-bottom: 1px solid rgba(224,204,255,0.06);">
+                <td style="padding: 8px 6px;" class="mono">#WD-8841</td>
+                <td>M-Pesa (0712***678)</td>
+                <td class="mono" style="color: #fff; font-weight: 700;">$50.00</td>
+                <td><span style="color: var(--accent-green); font-weight: 700;">COMPLETED</span></td>
+                <td style="color: var(--text-gray);">Today 10:24</td>
+              </tr>
+              <tr style="border-bottom: 1px solid rgba(224,204,255,0.06);">
+                <td style="padding: 8px 6px;" class="mono">#WD-8819</td>
+                <td>USDT TRC20 (TYD9***e9F2)</td>
+                <td class="mono" style="color: #fff; font-weight: 700;">$120.00</td>
+                <td><span style="color: var(--accent-green); font-weight: 700;">COMPLETED</span></td>
+                <td style="color: var(--text-gray);">Yesterday</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL: M-PESA WITHDRAWAL -->
+  <div id="mpesaWithdrawModal" class="modal-backdrop">
+    <div class="card-panel" style="max-width: 400px; width: 100%; padding: 22px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:24px; height:24px; border-radius:6px; background:rgba(16,185,129,0.2); color:var(--accent-green); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px;">M</div>
+          <h3 style="font-size: 16px; color:#fff;">Withdraw to M-Pesa</h3>
+        </div>
+        <span onclick="closeModal('mpesaWithdrawModal')" style="cursor:pointer; color:var(--text-gray); display:inline-flex; align-items:center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </span>
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 4px; font-weight: 700;">WITHDRAWAL AMOUNT (USD)</label>
+        <div style="display: flex; align-items: center; background: var(--bg-card-alt); border: 1px solid var(--border-card); border-radius: 8px; padding: 6px 12px;">
+          <span style="font-size: 16px; color: var(--accent-lavender); font-weight: 700; margin-right: 4px;">$</span>
+          <input id="mpesaWithUsd" type="number" value="50" min="5" max="2500" class="mono" style="width:100%; background:transparent; border:none; color:#fff; font-size:18px; font-weight: 700; outline:none;"/>
+        </div>
+        <div id="mpesaWithKesEst" class="mono" style="font-size:11px; color:var(--accent-lavender); margin-top:4px;">≈ KES 6,475.00 (Rate: 1 USD = 129.50 KES)</div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 14px;">
+        <button class="q-with-chip" onclick="setMpesaWithAmount(25)">$25</button>
+        <button class="q-with-chip active" onclick="setMpesaWithAmount(50)">$50</button>
+        <button class="q-with-chip" onclick="setMpesaWithAmount(100)">$100</button>
+        <button class="q-with-chip" onclick="setMpesaWithAmount(250)">$250</button>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 4px; font-weight: 700;">RECEIVING SAFARICOM PHONE</label>
+        <input id="mpesaWithPhone" type="tel" value="0712345678" class="mono" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:8px; padding:10px 12px; color:#fff; font-size:14px; outline:none;"/>
+      </div>
+
+      <button id="btnConfirmMpesaWith" onclick="executeMpesaWithdrawal()" class="purple-btn" style="width:100%; padding:11px 0; font-size:13px; font-weight: 800; border-radius: 8px;">
+        Confirm Payout Request →
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: CRYPTO WITHDRAWAL -->
+  <div id="cryptoWithdrawModal" class="modal-backdrop">
+    <div class="card-panel" style="max-width: 440px; width: 100%; padding: 22px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:24px; height:24px; border-radius:6px; background:rgba(168,85,247,0.2); color:var(--accent-lavender); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px;">T</div>
+          <h3 style="font-size: 16px; color:#fff;">USDT / Crypto Withdrawal</h3>
+        </div>
+        <span onclick="closeModal('cryptoWithdrawModal')" style="cursor:pointer; color:var(--text-gray); display:inline-flex; align-items:center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </span>
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 4px; font-weight: 700;">NETWORK / COIN</label>
+        <select id="cryptoWithCoin" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:8px; padding:10px 12px; color:#fff; font-size:13px; font-weight:600; outline:none;">
+          <option value="USDT-TRC20" selected>USDT — TRC20 (Tron Network · Instant, 0 Fee)</option>
+          <option value="USDT-ERC20">USDT — ERC20 (Ethereum)</option>
+          <option value="BTC">BTC — Bitcoin Network</option>
+          <option value="ETH">ETH — Ethereum Network</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 4px; font-weight: 700;">AMOUNT (USD)</label>
+        <div style="display: flex; align-items: center; background: var(--bg-card-alt); border: 1px solid var(--border-card); border-radius: 8px; padding: 6px 12px;">
+          <span style="font-size: 16px; color: var(--accent-lavender); font-weight: 700; margin-right: 4px;">$</span>
+          <input id="cryptoWithUsd" type="number" value="100" min="10" max="50000" class="mono" style="width:100%; background:transparent; border:none; color:#fff; font-size:18px; font-weight: 700; outline:none;"/>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 4px; font-weight: 700;">DESTINATION WALLET ADDRESS</label>
+        <input id="cryptoWithAddress" type="text" placeholder="Paste your wallet address" class="mono" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:8px; padding:10px 12px; color:#fff; font-size:12px; outline:none;"/>
+      </div>
+
+      <button id="btnConfirmCryptoWith" onclick="executeCryptoWithdrawal()" class="purple-btn" style="width:100%; padding:11px 0; font-size:13px; font-weight: 800; border-radius: 8px;">
+        Transfer to Wallet Address →
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: BANK WIRE -->
+  <div id="bankWithdrawModal" class="modal-backdrop">
+    <div class="card-panel" style="max-width: 440px; width: 100%; padding: 22px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:24px; height:24px; border-radius:6px; background:rgba(251,191,36,0.2); color:var(--accent-gold); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px;">B</div>
+          <h3 style="font-size: 16px; color:#fff;">Bank Wire Payout</h3>
+        </div>
+        <span onclick="closeModal('bankWithdrawModal')" style="cursor:pointer; color:var(--text-gray); display:inline-flex; align-items:center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </span>
+      </div>
+
+      <div style="margin-bottom: 10px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 3px; font-weight: 700;">AMOUNT (USD)</label>
+        <input id="bankWithUsd" type="number" value="250" min="50" class="mono" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:8px; padding:8px 12px; color:#fff; font-size:14px; outline:none;"/>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 3px; font-weight: 700;">BANK NAME</label>
+        <input id="bankName" type="text" value="Standard Chartered / Equity Bank" class="mono" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:8px; padding:8px 12px; color:#fff; font-size:12px; outline:none;"/>
+      </div>
+      <div style="margin-bottom: 14px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 3px; font-weight: 700;">ACCOUNT NUMBER / IBAN</label>
+        <input id="bankAccount" type="text" placeholder="010203040506" class="mono" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:8px; padding:8px 12px; color:#fff; font-size:13px; outline:none;"/>
+      </div>
+      <button onclick="executeBankWithdrawal()" class="purple-btn" style="width:100%; padding:11px 0; font-size:13px; font-weight: 800; border-radius: 8px;">
+        Submit Wire Instruction →
+      </button>
+    </div>
+  </div>
+
+  <!-- SCRIPT -->
+  <script>
+    (function() {
+      const USD_KES = 129.50;
+      let isDemo = false;
+
+      function getLiveBal() {
+        return parseFloat(localStorage.getItem('probinary_balance') || '10000.00');
+      }
+
+      function updateBalances() {
+        const bal = getLiveBal();
+        document.getElementById('headerBalanceText').textContent = '$' + bal.toFixed(2);
+        document.getElementById('sidebarBalanceAmount').textContent = '$' + bal.toFixed(2);
+        document.getElementById('mainAvailableBal').textContent = '$' + bal.toFixed(2);
+      }
+      updateBalances();
+
+      // User Profile Init
+      try {
+        const u = JSON.parse(localStorage.getItem('probinary_user') || '{}');
+        if (u.name) {
+          document.getElementById('sidebarUserName').textContent = u.name;
+          document.getElementById('headerAvatarBtn').textContent = u.name.charAt(0).toUpperCase();
+          document.getElementById('sidebarAvatar').textContent = u.name.charAt(0).toUpperCase();
+        }
+        if (u.email) document.getElementById('sidebarUserEmail').textContent = u.email;
+      } catch (e) {}
+
+      // M-Pesa Amount logic
+      const mpesaIn = document.getElementById('mpesaWithUsd');
+      const mpesaEst = document.getElementById('mpesaWithKesEst');
+      mpesaIn.addEventListener('input', () => {
+        const usd = parseFloat(mpesaIn.value) || 0;
+        mpesaEst.textContent = `≈ KES ${(usd * USD_KES).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} (Rate: 1 USD = 129.50 KES)`;
+      });
+
+      window.setMpesaWithAmount = function(val) {
+        mpesaIn.value = val;
+        mpesaEst.textContent = `≈ KES ${(val * USD_KES).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} (Rate: 1 USD = 129.50 KES)`;
+        document.querySelectorAll('.q-with-chip').forEach(c => c.classList.remove('active'));
+        if (event && event.target) event.target.classList.add('active');
+      };
+
+      // Modal openers
+      window.openWithdrawModal = function(type) {
+        if (type === 'mpesa') openModal('mpesaWithdrawModal');
+        else if (type === 'crypto') openModal('cryptoWithdrawModal');
+        else if (type === 'bank') openModal('bankWithdrawModal');
+      };
+
+      window.openModal = function(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'flex';
+      };
+      window.closeModal = function(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      };
+
+      window.toggleMobileDrawer = function() {
+        const d = document.getElementById('mobileDrawer');
+        const b = document.getElementById('drawerBackdrop');
+        if (d.classList.contains('open')) {
+          d.classList.remove('open');
+          b.style.display = 'none';
+        } else {
+          d.classList.add('open');
+          b.style.display = 'block';
+        }
+      };
+
+      // Payout executions
+      window.executeMpesaWithdrawal = async function() {
+        const amt = parseFloat(mpesaIn.value) || 0;
+        const phone = document.getElementById('mpesaWithPhone').value.trim();
+        const curBal = getLiveBal();
+
+        if (amt < 5) return alert('Minimum withdrawal amount is $5.00 USD.');
+        if (amt > curBal) return alert(`Insufficient live balance. You have $${curBal.toFixed(2)} available.`);
+        if (!phone) return alert('Please enter receiving Safaricom phone number.');
+
+        const btn = document.getElementById('btnConfirmMpesaWith');
+        btn.disabled = true;
+        btn.textContent = 'Processing Payout...';
+
+        try {
+          const res = await fetch('/api/wallet/withdraw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: amt, method: 'mpesa', phone })
+          }).catch(() => null);
+
+          const newBal = curBal - amt;
+          localStorage.setItem('probinary_balance', newBal.toFixed(2));
+          updateBalances();
+
+          // Add to ledger
+          addHistoryRecord({
+            id: 'WD-' + Math.floor(1000 + Math.random() * 9000),
+            asset: 'M-Pesa (' + phone + ')',
+            type: 'Withdrawal',
+            stake: amt,
+            outcome: 'PENDING APPROVAL',
+            profit: -amt,
+            time: 'Just now'
+          });
+
+          closeModal('mpesaWithdrawModal');
+          alert(`Withdrawal Request Submitted! KES ${(amt * USD_KES).toFixed(2)} ($${amt.toFixed(2)} USD) requested to M-Pesa (${phone}). Status: Pending Administrator Approval.`);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Confirm Payout Request →';
+        }
+      };
+
+      window.executeCryptoWithdrawal = async function() {
+        const amt = parseFloat(document.getElementById('cryptoWithUsd').value) || 0;
+        const addr = document.getElementById('cryptoWithAddress').value.trim();
+        const coin = document.getElementById('cryptoWithCoin').value;
+        const curBal = getLiveBal();
+
+        if (amt < 10) return alert('Minimum crypto payout is $10.00 USD.');
+        if (amt > curBal) return alert(`Insufficient live balance. Available: $${curBal.toFixed(2)}`);
+        if (!addr || addr.length < 15) return alert('Please provide a valid destination crypto wallet address.');
+
+        try {
+          await fetch('/api/wallet/withdraw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: amt, method: 'crypto', destination: addr, network: coin })
+          }).catch(() => null);
+
+          const newBal = curBal - amt;
+          localStorage.setItem('probinary_balance', newBal.toFixed(2));
+          updateBalances();
+
+          addHistoryRecord({
+            id: 'WD-' + Math.floor(1000 + Math.random() * 9000),
+            asset: coin + ' (' + addr.slice(0, 6) + '...' + addr.slice(-4) + ')',
+            type: 'Withdrawal',
+            stake: amt,
+            outcome: 'PENDING APPROVAL',
+            profit: -amt,
+            time: 'Just now'
+          });
+
+          closeModal('cryptoWithdrawModal');
+          alert(`Crypto Withdrawal Request Submitted! $${amt.toFixed(2)} ${coin} requested to ${addr}. Status: Pending Administrator Approval.`);
+        } catch(e) {
+          alert('Error submitting withdrawal request.');
+        }
+      };
+
+      window.executeBankWithdrawal = async function() {
+        const amt = parseFloat(document.getElementById('bankWithUsd').value) || 0;
+        const curBal = getLiveBal();
+        if (amt < 50) return alert('Minimum bank wire withdrawal is $50.00 USD.');
+        if (amt > curBal) return alert(`Insufficient live balance. Available: $${curBal.toFixed(2)}`);
+
+        try {
+          await fetch('/api/wallet/withdraw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: amt, method: 'bank', destination: 'Bank Account' })
+          }).catch(() => null);
+
+          const newBal = curBal - amt;
+          localStorage.setItem('probinary_balance', newBal.toFixed(2));
+          updateBalances();
+
+          addHistoryRecord({
+            id: 'WD-' + Math.floor(1000 + Math.random() * 9000),
+            asset: 'Wire Transfer',
+            type: 'Withdrawal',
+            stake: amt,
+            outcome: 'PENDING APPROVAL',
+            profit: -amt,
+            time: 'Just now'
+          });
+
+          closeModal('bankWithdrawModal');
+          alert(`Wire Transfer Request Submitted! $${amt.toFixed(2)} USD dispatched. Status: Pending Administrator Approval.`);
+        } catch(e) {
+          alert('Error submitting wire request.');
+        }
+      };
+
+      function addHistoryRecord(rec) {
+        const history = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
+        history.unshift(rec);
+        localStorage.setItem('probinary_trade_history', JSON.stringify(history.slice(0, 100)));
+      }
+
+      window.signOut = function() {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('probinary_user');
+        window.location.href = '/auth/login.html';
+      };
+    })();
+  </script>
+</body>
+</html>

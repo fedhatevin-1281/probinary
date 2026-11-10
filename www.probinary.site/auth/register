@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Open a Desk — ProBinary</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet"/>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(120% 70% at 18% 0%, #3d1a6d 0%, #191131 30%, #110b22 60%, #090514 100%);
+      background-attachment: fixed;
+      color: #f5f0ff;
+      font-family: 'Public Sans', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .auth-card {
+      background: #191131;
+      border: 1px solid rgba(224, 204, 255, 0.14);
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(9, 5, 20, 0.7);
+    }
+    .auth-input {
+      background: #090514;
+      border: 1px solid rgba(224, 204, 255, 0.14);
+      color: #f5f0ff;
+      font-family: 'IBM Plex Mono', monospace;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .auth-input:focus {
+      outline: none;
+      border-color: #a855f7;
+      box-shadow: 0 0 12px rgba(168, 85, 247, 0.35);
+    }
+    .btn-submit {
+      background: linear-gradient(135deg, #e0ccff, #a855f7);
+      color: #090514;
+      font-weight: 700;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 0 24px rgba(168, 85, 247, 0.35);
+      transition: all 0.2s;
+    }
+    .btn-submit:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 0 32px rgba(168, 85, 247, 0.5);
+    }
+    .btn-submit:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+    .w-full { width: 100%; }
+    .max-w-md { max-width: 440px; }
+    .min-h-screen { min-height: 100vh; }
+    .flex { display: flex; }
+    .inline-flex { display: inline-flex; }
+    .items-center { align-items: center; }
+    .justify-center { justify-content: center; }
+    .justify-between { justify-content: space-between; }
+    .relative { position: relative; }
+    .absolute { position: absolute; }
+    .inset-0 { inset: 0; }
+    .pointer-events-none { pointer-events: none; }
+    .z-10 { z-index: 10; }
+    .block { display: block; }
+    .text-center { text-align: center; }
+    .text-sm { font-size: 14px; }
+    .text-xs { font-size: 12px; }
+    .space-y-5 > * + * { margin-top: 18px; }
+    .p-7 { padding: 28px; }
+    .px-4 { padding-left: 16px; padding-right: 16px; }
+    .py-3 { padding-top: 12px; padding-bottom: 12px; }
+    .py-3\.5 { padding-top: 14px; padding-bottom: 14px; }
+    .pr-16 { padding-right: 64px; }
+    .mb-2 { margin-bottom: 8px; }
+    .mb-6 { margin-bottom: 24px; }
+    .mb-8 { margin-bottom: 32px; }
+    .mt-6 { margin-top: 24px; }
+    .mt-7 { margin-top: 28px; }
+    .pt-6 { padding-top: 24px; }
+    .gap-2 { gap: 8px; }
+    .gap-2\.5 { gap: 10px; }
+    .rounded { border-radius: 4px; }
+    .rounded-lg { border-radius: 8px; }
+    .rounded-xl { border-radius: 12px; }
+    .underline { text-decoration: underline; }
+    @media (min-width: 640px) { .sm\:p-8 { padding: 32px; } }
+  </style>
+</head>
+<body>
+
+  <div class="min-h-screen flex items-center justify-center px-4 w-full relative overflow-hidden" style="padding: 40px 16px;">
+    <!-- Background glows -->
+    <div class="absolute inset-0 pointer-events-none" style="background:radial-gradient(ellipse 60% 50% at 50% 0%, rgba(168,85,247,0.18) 0%, transparent 65%)"></div>
+    <div class="absolute inset-0 opacity-[0.05] pointer-events-none" style="background-image:linear-gradient(rgba(224,204,255,0.12) 1px, transparent 1px),linear-gradient(90deg, rgba(224,204,255,0.12) 1px, transparent 1px);background-size:72px 72px"></div>
+
+    <div class="relative z-10 w-full max-w-md">
+      <!-- Brand Header -->
+      <div class="text-center mb-8">
+        <a class="inline-flex items-center gap-2.5 mb-5 text-decoration-none" href="/index.html">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg, #e0ccff, #a855f7);color:#090514;font-family:'Fraunces', serif;font-weight:700;font-size:18px;box-shadow:0 0 20px rgba(168,85,247,0.40)">P</span>
+          <span style="font-family:'Fraunces', serif;font-weight:600;font-size:24px;color:#f5f0ff;letter-spacing:-0.01em">Pro<span style="color:#e0ccff">Binary</span></span>
+        </a>
+        <h1 class="mb-2" style="font-family:'Fraunces', serif;font-weight:600;font-size:30px;color:#f5f0ff;letter-spacing:-0.02em">Open your desk.</h1>
+        <p class="text-sm" style="color:#9d8ec2">Register in under sixty seconds</p>
+      </div>
+
+      <!-- Card -->
+      <div class="auth-card p-7 sm:p-8">
+        <form id="registerForm" class="space-y-4">
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider mb-1.5" style="color:#9d8ec2">Full Name</label>
+            <input id="fullNameInput" type="text" placeholder="Jane Doe" required class="auth-input w-full px-4 py-3 text-sm"/>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider mb-1.5" style="color:#9d8ec2">Email Address</label>
+            <input id="emailInput" type="email" placeholder="you@example.com" required class="auth-input w-full px-4 py-3 text-sm"/>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider mb-1.5" style="color:#9d8ec2">Phone (M-Pesa)</label>
+            <input id="phoneInput" type="tel" placeholder="0712345678" required class="auth-input w-full px-4 py-3 text-sm"/>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider mb-1.5" style="color:#9d8ec2">Password</label>
+            <div class="relative">
+              <input id="passwordInput" type="password" placeholder="Min. 6 characters" required class="auth-input w-full px-4 py-3 pr-16 text-sm"/>
+              <button type="button" id="togglePasswordBtn" class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded" style="color:#e0ccff;background:rgba(224,204,255,0.08);border:none;cursor:pointer;">Show</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider mb-1.5" style="color:#9d8ec2">Confirm Password</label>
+            <input id="confirmPasswordInput" type="password" placeholder="Repeat password" required class="auth-input w-full px-4 py-3 text-sm"/>
+          </div>
+
+          <div class="flex items-start gap-3 p-4 rounded-lg" style="background:#090514;border:1px solid rgba(224,204,255,0.12)">
+            <span style="display:inline-flex; align-items:center; justify-content:center; color:#e0ccff; flex-shrink:0; margin-top:2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg></span>
+            <p class="text-xs" style="color:#9d8ec2;line-height:1.5;">
+              Every new desk opens with a <span style="color:#e0ccff;font-weight:700">$1,000 sandbox balance</span> — practice on live conditions with zero risk.
+            </p>
+          </div>
+
+          <button type="submit" id="submitBtn" class="btn-submit w-full py-3.5 text-sm mt-2">
+            Open a Desk →
+          </button>
+        </form>
+
+        <div class="mt-6 pt-5 text-center" style="border-top:1px solid rgba(224,204,255,0.12)">
+          <p class="text-sm" style="color:#9d8ec2">
+            Already have an account? <a class="font-bold" style="color:#e0ccff;text-decoration:none;" href="/auth/login.html">Sign in</a>
+          </p>
+        </div>
+      </div>
+
+      <p class="text-center text-[11px] mt-5" style="color:#9d8ec2;opacity:0.6">
+        By creating an account you agree to our Terms of Service and Privacy Policy
+      </p>
+    </div>
+  </div>
+
+  <div id="toastRoot" style="position:fixed;top:20px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:10px;pointer-events:none;"></div>
+
+  <script>
+    (function() {
+      const form = document.getElementById('registerForm');
+      const fullNameInput = document.getElementById('fullNameInput');
+      const emailInput = document.getElementById('emailInput');
+      const phoneInput = document.getElementById('phoneInput');
+      const passwordInput = document.getElementById('passwordInput');
+      const confirmPasswordInput = document.getElementById('confirmPasswordInput');
+      const toggleBtn = document.getElementById('togglePasswordBtn');
+      const submitBtn = document.getElementById('submitBtn');
+
+      toggleBtn.addEventListener('click', function() {
+        const isPwd = passwordInput.type === 'password';
+        passwordInput.type = isPwd ? 'text' : 'password';
+        confirmPasswordInput.type = isPwd ? 'text' : 'password';
+        toggleBtn.textContent = isPwd ? 'Hide' : 'Show';
+      });
+
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const fullName = fullNameInput.value.trim();
+        const email = emailInput.value.trim();
+        const phone = phoneInput.value.trim();
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+
+        if (!fullName || !email || !password) {
+          showToast('Please fill out all required fields', 'error');
+          return;
+        }
+
+        if (password.length < 6) {
+          showToast('Password must be at least 6 characters', 'error');
+          return;
+        }
+
+        if (password !== confirmPassword) {
+          showToast('Passwords do not match', 'error');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        const origText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border:2px solid rgba(9,5,20,0.3);border-top-color:#090514;border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block;"></span>Opening Desk...</span>';
+
+        try {
+          const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fullName, email, phone, password })
+          });
+          const data = await res.json().catch(() => ({}));
+
+          if (res.ok && data.token) {
+            localStorage.setItem('auth_token', data.token);
+            localStorage.setItem('probinary_user', JSON.stringify(data.user || { fullName, email }));
+            localStorage.setItem('probinary_balance', data.user?.balance || 1000.00);
+            showToast('Desk opened! Welcome to ProBinary!', 'success');
+            setTimeout(function() {
+              window.location.href = '/dashboard/trade.html';
+            }, 700);
+            return;
+          } else {
+            showToast(data.error || 'Registration failed', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = origText;
+          }
+        } catch (err) {
+          // Offline fallback
+          const user = {
+            id: 'usr_' + Date.now().toString(36),
+            name: fullName,
+            email: email,
+            role: 'trader',
+            balance: 1000.00
+          };
+          localStorage.setItem('auth_token', 'token_' + Date.now());
+          localStorage.setItem('probinary_user', JSON.stringify(user));
+          localStorage.setItem('probinary_balance', 1000.00);
+          showToast('Desk opened! Welcome to ProBinary!', 'success');
+          setTimeout(function() {
+            window.location.href = '/dashboard/trade.html';
+          }, 700);
+        }
+      });
+
+      function showToast(msg, type) {
+        const root = document.getElementById('toastRoot');
+        const toast = document.createElement('div');
+        toast.style.cssText = 'pointer-events:auto;min-width:260px;max-width:380px;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,0.5);transition:all 0.3s;';
+        if (type === 'error') {
+          toast.style.background = '#ef4444';
+          toast.style.color = '#ffffff';
+        } else {
+          toast.style.background = 'linear-gradient(135deg, #e0ccff, #a855f7)';
+          toast.style.color = '#090514';
+        }
+        toast.textContent = msg;
+        root.appendChild(toast);
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateY(-10px)';
+          setTimeout(() => toast.remove(), 300);
+        }, 3200);
+      }
+    })();
+  </script>
+
+  <style>
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .w-full { width: 100%; }
+    .max-w-md { max-width: 440px; }
+    .min-h-screen { min-height: 100vh; }
+    .flex { display: flex; }
+    .inline-flex { display: inline-flex; }
+    .items-center { align-items: center; }
+    .justify-center { justify-content: center; }
+    .justify-between { justify-content: space-between; }
+    .relative { position: relative; }
+    .absolute { position: absolute; }
+    .inset-0 { inset: 0; }
+    .pointer-events-none { pointer-events: none; }
+    .z-10 { z-index: 10; }
+    .block { display: block; }
+    .text-center { text-align: center; }
+    .text-sm { font-size: 14px; }
+    .text-xs { font-size: 12px; }
+    .space-y-5 > * + * { margin-top: 18px; }
+    .p-7 { padding: 28px; }
+    .px-4 { padding-left: 16px; padding-right: 16px; }
+    .py-3 { padding-top: 12px; padding-bottom: 12px; }
+    .py-3\.5 { padding-top: 14px; padding-bottom: 14px; }
+    .pr-16 { padding-right: 64px; }
+    .mb-2 { margin-bottom: 8px; }
+    .mb-6 { margin-bottom: 24px; }
+    .mb-8 { margin-bottom: 32px; }
+    .mt-6 { margin-top: 24px; }
+    .mt-7 { margin-top: 28px; }
+    .pt-6 { padding-top: 24px; }
+    .gap-2 { gap: 8px; }
+    .gap-2\.5 { gap: 10px; }
+    .rounded { border-radius: 4px; }
+    .rounded-lg { border-radius: 8px; }
+    .rounded-xl { border-radius: 12px; }
+    .underline { text-decoration: underline; }
+    @media (min-width: 640px) { .sm\:p-8 { padding: 32px; } }
+  </style>
+</body>
+</html>

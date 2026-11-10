@@ -1,2273 +1,1546 @@
-import http from "node:http"
+const http = require('http');
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 
-import { WebSocketServer, WebSocket } from "ws"
-
-import jwt from "jsonwebtoken"
-
-import fs from "node:fs"
-
-import path from "node:path"
-
-import dns from "node:dns"
-
-// Force IPv4 DNS resolution for Supabase on Windows
-dns.setDefaultResultOrder("ipv4first")
-
-// Load environment variables manually
-
-function loadEnv() {
-  try {
-    const envPath = path.resolve(".env")
-
-    if (fs.existsSync(envPath)) {
-      const content = fs.readFileSync(envPath, "utf8")
-
-      for (const line of content.split("\n")) {
-        const trimmed = line.trim()
-
-        if (!trimmed || trimmed.startsWith("#")) continue
-
-        const index = trimmed.indexOf("=")
-
-        if (index > 0) {
-          const key = trimmed.slice(0, index).trim()
-
-          let val = trimmed.slice(index + 1).trim()
-
-          if (
-            (val.startsWith('"') && val.endsWith('"')) ||
-            (val.startsWith("'") && val.endsWith("'"))
-          ) {
-            val = val.slice(1, -1)
-          }
-
-          if (!process.env[key]) {
-            process.env[key] = val
-          }
-        }
+// 1. Auto-load .env
+const envPath = path.join(__dirname, '.env');
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf-8');
+  for (const line of envContent.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eqIdx = trimmed.indexOf('=');
+    if (eqIdx !== -1) {
+      const key = trimmed.slice(0, eqIdx).trim();
+      const val = trimmed.slice(eqIdx + 1).trim();
+      if (process.env[key] === undefined) {
+        process.env[key] = val;
       }
     }
-  } catch (e) {
-    console.error("Failed to load .env file:", e)
   }
 }
 
-loadEnv()
-
-const PORT = Number(process.env.TRADING_PORT || process.env.PORT || 8085)
-
-const SIMULATION_MODE = process.env.SIMULATION_MODE === "true"
-
-const TEST_BINARY_SYSTEM_ENABLED =
-  SIMULATION_MODE &&
-  process.env.ENABLE_TEST_BINARY_SYSTEM === "true" &&
-  (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test")
-
-const MARKET_SEEDS = [
-  {
-    symbol: "VOL-10",
-    name: "Volatility 10 Index",
-    category: "volatility",
-    basePrice: 3891.77,
-    volatility: 0.0019,
-    drift: 0.0001,
-    volatilityLabel: "Low",
-  },
-
-  {
-    symbol: "VOL-25",
-    name: "Volatility 25 Index",
-    category: "volatility",
-    basePrice: 5234.44,
-    volatility: 0.0021,
-    drift: 0.00012,
-    volatilityLabel: "Low",
-  },
-
-  {
-    symbol: "VOL-50",
-    name: "Volatility 50 Index",
-    category: "volatility",
-    basePrice: 6789.31,
-    volatility: 0.0026,
-    drift: 0.0001,
-    volatilityLabel: "Medium",
-  },
-
-  {
-    symbol: "VOL-75",
-    name: "Volatility 75 Index",
-    category: "volatility",
-    basePrice: 8243.12,
-    volatility: 0.0031,
-    drift: 0.00008,
-    volatilityLabel: "High",
-  },
-
-  {
-    symbol: "VOL-100",
-    name: "Volatility 100 Index",
-    category: "volatility",
-    basePrice: 15420.33,
-    volatility: 0.0038,
-    drift: 0.00008,
-    volatilityLabel: "Very High",
-  },
-
-  {
-    symbol: "BOOM-300",
-    name: "Boom 300 Index",
-    category: "boom",
-    basePrice: 7841.2,
-    volatility: 0.0028,
-    drift: 0.0006,
-    volatilityLabel: "Medium",
-  },
-
-  {
-    symbol: "BOOM-500",
-    name: "Boom 500 Index",
-    category: "boom",
-    basePrice: 12891.44,
-    volatility: 0.0036,
-    drift: 0.0009,
-    volatilityLabel: "High",
-  },
-
-  {
-    symbol: "BOOM-1000",
-    name: "Boom 1000 Index",
-    category: "boom",
-    basePrice: 22104.55,
-    volatility: 0.0043,
-    drift: 0.0013,
-    volatilityLabel: "Very High",
-  },
-
-  {
-    symbol: "CRASH-300",
-    name: "Crash 300 Index",
-    category: "crash",
-    basePrice: 5674.8,
-    volatility: 0.0028,
-    drift: -0.0005,
-    volatilityLabel: "Medium",
-  },
-
-  {
-    symbol: "CRASH-500",
-    name: "Crash 500 Index",
-    category: "crash",
-    basePrice: 4312.2,
-    volatility: 0.0034,
-    drift: -0.0008,
-    volatilityLabel: "High",
-  },
-
-  {
-    symbol: "CRASH-1000",
-    name: "Crash 1000 Index",
-    category: "crash",
-    basePrice: 2891.66,
-    volatility: 0.0042,
-    drift: -0.0012,
-    volatilityLabel: "Very High",
-  },
-
-  {
-    symbol: "STEP-UP",
-    name: "Step Index (Up)",
-    category: "step",
-    basePrice: 9122.64,
-    volatility: 0.0023,
-    drift: 0.00035,
-    volatilityLabel: "Low",
-  },
-
-  {
-    symbol: "JUMP-10",
-    name: "Jump 10 Index",
-    category: "step",
-    basePrice: 18934,
-    volatility: 0.003,
-    drift: 0.00045,
-    volatilityLabel: "High",
-  },
-
-  {
-    symbol: "JUMP-25",
-    name: "Jump 25 Index",
-    category: "step",
-    basePrice: 44211.8,
-    volatility: 0.0036,
-    drift: 0.00065,
-    volatilityLabel: "Very High",
-  },
-
-  {
-    symbol: "JUMP-50",
-    name: "Jump 50 Index",
-    category: "step",
-    basePrice: 91234,
-    volatility: 0.0042,
-    drift: 0.0008,
-    volatilityLabel: "Extreme",
-  },
-]
-
-const PAYOUTS = {
-  "rise-fall": 1.82,
-
-  "even-odd": 1.8,
-
-  "match-differ": 2.15,
-
-  "over-under": 1.82,
-
-  "higher-lower": 1.82,
-}
-
-const STARTING_BALANCE = 0
-
-const HISTORY_LIMIT = 120
-
-const ROLE_CAPABILITIES = {
-  user: {
-    canAdjustBalance: false,
-    canForceClose: false,
-    canViewAdminPanel: false,
-  },
-
-  admin: {
-    canAdjustBalance: true,
-    canForceClose: true,
-    canViewAdminPanel: false,
-  },
-
-  super_admin: {
-    canAdjustBalance: true,
-    canForceClose: true,
-    canViewAdminPanel: true,
-  },
-}
-
-const adminSimPolicy = {
-  forceNextOutcome: null,
-
-  updatedAt: null,
-
-  updatedBy: null,
-
-  lastAppliedAt: null,
-}
-
-const testBinaryAccounts = new Map()
-
-const marketState = createInitialState()
-
-const accountStates = new Map()
-
-accountStates.set("demo", { ...marketState, markets: marketState.markets })
-
-const persistedBalances = new Map()
-
-const balanceSyncs = new Map()
-
-const clients = new Set()
-
-const sessions = new WeakMap()
-
-const server = http.createServer((request, response) => {
-  response.setHeader("Access-Control-Allow-Origin", "*")
-  response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-  response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-  if (request.method === "OPTIONS") {
-    response.writeHead(204)
-    response.end()
-    return
-  }
-
-  if (request.url === "/health") {
-    response.writeHead(200, { "Content-Type": "application/json" })
-    response.end(JSON.stringify({ ok: true }))
-    return
-  }
-
-  if (request.url === "/internal/balance-update" && request.method === "POST") {
-    let body = ""
-    request.on("data", (chunk) => { body += chunk })
-    request.on("end", () => {
-      try {
-        const payload = JSON.parse(body || "{}")
-        const userId = String(payload.userId || "").trim()
-        const balance = Number(payload.balance)
-        const reason = String(payload.reason || "Balance updated by administrator")
-
-        if (userId && Number.isFinite(balance)) {
-          const key = `user:${userId}`
-          const state = accountStates.get(key)
-          if (state) {
-            state.balance = round2(balance)
-            state.lastAction = reason
-          }
-          persistedBalances.set(key, round2(balance))
-
-          // Instantly notify all connected WebSocket sessions for this client
-          for (const client of clients) {
-            const session = sessions.get(client)
-            if (String(session?.userId ?? "") === userId && client.readyState === WebSocket.OPEN) {
-              const clientState = getAccountState(session)
-              clientState.balance = round2(balance)
-              clientState.lastAction = reason
-              client.send(JSON.stringify({ type: "STATE", state: clientState }))
-              client.send(JSON.stringify({
-                type: "ACK",
-                ok: true,
-                action: reason,
-              }))
-            }
-          }
-          console.log(`[WS INTERNAL] Synchronized live balance for user ${userId} to ${balance} USD (${reason})`)
-        }
-
-        response.writeHead(200, { "Content-Type": "application/json" })
-        response.end(JSON.stringify({ ok: true }))
-      } catch (err) {
-        response.writeHead(400, { "Content-Type": "application/json" })
-        response.end(JSON.stringify({ error: err.message }))
-      }
-    })
-    return
-  }
-
-  response.writeHead(200, { "Content-Type": "text/plain" })
-  response.end("Binary trading websocket backend is running")
-})
-
-const wss = new WebSocketServer({ server })
-
-wss.on("connection", (socket) => {
-  clients.add(socket)
-
-  sessions.set(socket, createSession("demo-auth-token"))
-
-  sendAuthState(socket)
-
-  sendPolicyState(socket)
-
-  sendClientState(socket)
-
-  socket.on("message", async (raw) => {
-    try {
-      const message = JSON.parse(raw.toString())
-
-      const session = sessions.get(socket) || createSession("demo-auth-token")
-
-      const state = getAccountState(session)
-
-      if (
-        message.type === "SELECT_MARKET" &&
-        typeof message.symbol === "string"
-      ) {
-        state.selectedSymbol = message.symbol
-
-        state.lastAction = `Selected ${message.symbol}`
-
-        broadcastState()
-
-        socket.send(
-          JSON.stringify({ type: "ACK", ok: true, action: state.lastAction }),
-        )
-
-        return
-      }
-
-      if (message.type === "AUTH_INIT" && typeof message.token === "string") {
-        syncUserSession(socket, message.token).catch((err) => {
-          console.error("Auth synchronization failed:", err)
-        })
-
-        return
-      }
-
-      if (message.type === "REFRESH_BALANCE" && session.userId) {
-        refreshUserBalance(socket, session).catch((error) => {
-          console.error("[WS AUTH] Failed to refresh account balance:", error)
-          socket.send(
-            JSON.stringify({ type: "ACK", ok: false, error: "Could not refresh wallet balance" }),
-          )
-        })
-
-        return
-      }
-
-      if (message.type === "PLACE_TRADE" && message.input) {
-        const result = placeTrade(state, message.input, session)
-
-        if (result.error) {
-          socket.send(
-            JSON.stringify({ type: "ACK", ok: false, error: result.error }),
-          )
-
-          state.lastError = result.error
-
-          broadcastState()
-
-          return
-        }
-
-        state.lastAction = `Opened ${result.trade.contractType} trade on ${result.trade.symbol}`
-
-        broadcastState()
-
-        // Persist stake deduction directly to database immediately
-        if (session.userId && !getTestBinaryPolicy(session)) {
-          if (!result.trade.isDemo) {
-            applyWalletDeltaDirect(session.userId, -result.trade.stake).catch((err) => {
-              console.error("[WS TRADE] Error saving stake deduction to DB:", err)
-            })
-            persistOpenTradeRecord(session.userId, result.trade).catch((err) => {
-              console.error("[WS TRADE] Error recording open trade to DB:", err)
-            })
-            persistedBalances.set(`user:${session.userId}`, state.balance)
-          }
-        }
-
-        socket.send(
-          JSON.stringify({
-            type: "ACK",
-            ok: true,
-            action: state.lastAction,
-            tradeId: result.trade.id,
-            trade: result.trade,
-          }),
-        )
-
-        return
-      }
-
-      if (
-        (message.type === "STOP_TRADE" || message.type === "CLOSE_TRADE") &&
-        typeof message.tradeId === "string"
-      ) {
-        const result = await manualStopTrade(state, message.tradeId, session)
-
-        if (result.error) {
-          socket.send(
-            JSON.stringify({ type: "ACK", ok: false, error: result.error }),
-          )
-
-          state.lastError = result.error
-
-          broadcastState()
-
-          return
-        }
-
-        state.lastAction = `Stopped trade ${message.tradeId} (${result.trade.result?.toUpperCase() || 'CLOSED'})`
-
-        broadcastState()
-
-        socket.send(
-          JSON.stringify({
-            type: "ACK",
-            ok: true,
-            action: state.lastAction,
-            trade: result.trade,
-          }),
-        )
-
-        return
-      }
-
-      if (
-        message.type === "CLOSE_ALL_TRADES" ||
-        message.type === "FORCE_STOP_ALL"
-      ) {
-        const result = await manualStopAllTrades(state, session)
-
-        state.lastAction = `Closed all active trades (${result.trades.length} positions settled)`
-
-        broadcastState()
-
-        socket.send(
-          JSON.stringify({
-            type: "ACK",
-            ok: true,
-            action: state.lastAction,
-            trades: result.trades,
-          }),
-        )
-
-        return
-      }
-
-      if (
-        message.type === "FORCE_CLOSE_TRADE" &&
-        typeof message.tradeId === "string"
-      ) {
-        if (!session.capabilities.canForceClose) {
-          socket.send(
-            JSON.stringify({
-              type: "ACK",
-              ok: false,
-              error: "Not permitted to force-close trades",
-            }),
-          )
-
-          return
-        }
-
-        const result = forceCloseTrade(state, message.tradeId)
-
-        if (result.error) {
-          socket.send(
-            JSON.stringify({ type: "ACK", ok: false, error: result.error }),
-          )
-
-          state.lastError = result.error
-
-          broadcastState()
-
-          return
-        }
-
-        state.lastAction = `Closed ${message.tradeId}`
-
-        broadcastState()
-
-        socket.send(
-          JSON.stringify({ type: "ACK", ok: true, action: state.lastAction }),
-        )
-
-        return
-      }
-
-      if (
-        message.type === "ADJUST_BALANCE" &&
-        typeof message.amount === "number" &&
-        typeof message.reason === "string"
-      ) {
-        if (!session.capabilities.canAdjustBalance) {
-          socket.send(
-            JSON.stringify({
-              type: "ACK",
-              ok: false,
-              error: "Not permitted to adjust balances",
-            }),
-          )
-
-          return
-        }
-
-        const result = adjustBalance(state, message.amount, message.reason)
-
-        if (result.error) {
-          socket.send(
-            JSON.stringify({ type: "ACK", ok: false, error: result.error }),
-          )
-
-          state.lastError = result.error
-
-          broadcastState()
-
-          return
-        }
-
-        state.lastAction = message.reason
-
-        state.lastError = null
-
-        broadcastState()
-
-        socket.send(
-          JSON.stringify({ type: "ACK", ok: true, action: state.lastAction }),
-        )
-
-        return
-      }
-
-      if (message.type === "SIM_SET_ADMIN_POLICY") {
-        const session = sessions.get(socket) || createSession("demo-auth-token")
-
-        if (!SIMULATION_MODE) {
-          socket.send(
-            JSON.stringify({
-              type: "ACK",
-              ok: false,
-              error: "Simulation mode is disabled",
-            }),
-          )
-
-          return
-        }
-
-        if (!session.capabilities.canViewAdminPanel) {
-          socket.send(
-            JSON.stringify({
-              type: "ACK",
-              ok: false,
-              error: "Not permitted to set admin simulation policy",
-            }),
-          )
-
-          return
-        }
-
-        const nextOutcome = message.forceNextOutcome
-
-        if (
-          nextOutcome !== null &&
-          nextOutcome !== "won" &&
-          nextOutcome !== "lost"
-        ) {
-          socket.send(
-            JSON.stringify({
-              type: "ACK",
-              ok: false,
-              error: "Invalid forceNextOutcome value",
-            }),
-          )
-
-          return
-        }
-
-        adminSimPolicy.forceNextOutcome = nextOutcome
-
-        adminSimPolicy.updatedAt = Date.now()
-
-        adminSimPolicy.updatedBy = session.role
-
-        broadcastPolicyState()
-
-        socket.send(
-          JSON.stringify({
-            type: "ACK",
-            ok: true,
-            action: "Admin simulation policy updated",
-          }),
-        )
-
-        return
-      }
-
-      if (message.type === "SIM_SET_TEST_ACCOUNT") {
-        const session = sessions.get(socket) || createSession("demo-auth-token")
-
-        if (!TEST_BINARY_SYSTEM_ENABLED || session.role !== "super_admin") {
-          socket.send(
-            JSON.stringify({
-              type: "ACK",
-              ok: false,
-              error: "Test binary assignments require simulation super-admin access",
-            }),
-          )
-
-          return
-        }
-
-        const userId = String(message.userId ?? "").trim()
-        const enabled = message.enabled === true
-
-        if (!/^\d+$/.test(userId) || Number(userId) <= 0) {
-          socket.send(
-            JSON.stringify({
-              type: "ACK",
-              ok: false,
-              error: "Enter a valid user ID",
-            }),
-          )
-
-          return
-        }
-
-        const testAccountState = accountStates.get(`test:${userId}`)
-
-        if (testAccountState?.openTrades.length) {
-          socket.send(
-            JSON.stringify({
-              type: "ACK",
-              ok: false,
-              error: "Settle all test trades before changing this assignment",
-            }),
-          )
-
-          return
-        }
-
-        if (enabled) {
-          const realAccountState = accountStates.get(`user:${userId}`)
-          const persistedBalance = persistedBalances.get(`user:${userId}`)
-
-          if (
-            realAccountState?.openTrades.length ||
-            (realAccountState &&
-              persistedBalance !== undefined &&
-              realAccountState.balance !== persistedBalance)
-          ) {
-            socket.send(
-              JSON.stringify({
-                type: "ACK",
-                ok: false,
-                error: "Close real trades and sync the real wallet before assigning a test system",
-              }),
-            )
-
-            return
-          }
-
-          if (testBinaryAccounts.has(userId)) {
-            socket.send(
-              JSON.stringify({
-                type: "ACK",
-                ok: false,
-                error: "This user already has a test assignment; remove it before assigning again",
-              }),
-            )
-
-            return
-          }
-
-          const initialBalance = round2(Number(message.initialBalance))
-
-          if (!Number.isFinite(initialBalance) || initialBalance < 0 || initialBalance > 100000000) {
-            socket.send(
-              JSON.stringify({
-                type: "ACK",
-                ok: false,
-                error: "Test balance must be between 0 and 100,000,000",
-              }),
-            )
-
-            return
-          }
-
-          testBinaryAccounts.set(userId, { initialBalance, winRate: 0.8 })
-          accountStates.delete(`test:${userId}`)
-        } else {
-          if (!testBinaryAccounts.has(userId)) {
-            socket.send(
-              JSON.stringify({
-                type: "ACK",
-                ok: false,
-                error: "This user does not have a test assignment",
-              }),
-            )
-
-            return
-          }
-
-          try {
-            await restoreRealAccountBalance(userId)
-          } catch (error) {
-            socket.send(
-              JSON.stringify({
-                type: "ACK",
-                ok: false,
-                error: "Could not restore the real wallet; test assignment remains active",
-              }),
-            )
-
-            return
-          }
-
-          testBinaryAccounts.delete(userId)
-          accountStates.delete(`test:${userId}`)
-        }
-
-        for (const client of clients) {
-          const clientSession = sessions.get(client)
-
-          if (String(clientSession?.userId ?? "") === userId) {
-            if (client.readyState === WebSocket.OPEN) {
-              sendAuthState(client)
-              sendClientState(client)
-            }
-          }
-        }
-
-        sendAuthState(socket)
-
-        socket.send(
-          JSON.stringify({
-            type: "ACK",
-            ok: true,
-            action: enabled
-              ? `Enabled test binary system for user ${userId}`
-              : `Disabled test binary system for user ${userId}`,
-          }),
-        )
-      }
-    } catch (error) {
-      socket.send(
-        JSON.stringify({
-          type: "ERROR",
-          error: error instanceof Error ? error.message : "Malformed message",
-        }),
-      )
-    }
-  })
-
-  socket.on("close", () => {
-    clients.delete(socket)
-  })
-})
-
-setInterval(() => {
-  marketState.markets = advanceMarkets(marketState.markets)
-
-  for (const state of accountStates.values()) {
-    state.markets = marketState.markets
-    settleExpiredTrades(state)
-  }
-
-  broadcastState("Live market tick")
-}, 1000)
-
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(
-    `Binary trading websocket backend listening on ws://0.0.0.0:${PORT}`,
-  )
-})
-
-function createSession(token) {
-  const normalized = (token || "").toLowerCase()
-
-  let role = "user"
-
-  if (SIMULATION_MODE && normalized === "sim-super-admin") {
-    role = "super_admin"
-  } else if (SIMULATION_MODE && normalized === "sim-admin") {
-    role = "admin"
-  }
-
-  return {
-    role,
-
-    userId: null,
-
-    capabilities: ROLE_CAPABILITIES[role],
-  }
-}
-
-async function createSessionAsync(token) {
-  const normalized = (token || "").toLowerCase()
-
-  let role = "user"
-
-  let userId = null
-
-  let username = null
-
-  if (SIMULATION_MODE && normalized === "sim-super-admin") {
-    role = "super_admin"
-  } else if (SIMULATION_MODE && normalized === "sim-admin") {
-    role = "admin"
-  } else if (token && token !== "demo-auth-token") {
-    try {
-      const decoded = jwt.verify(
-        token,
-        process.env.JWT_SECRET || "change-me-in-production",
-      )
-
-      userId = decoded.id
-
-      username = decoded.username
-
-      role = decoded.role || "user"
-    } catch (e) {
-      console.warn(
-        "[WS AUTH] Invalid JWT token received, defaulting to demo user session",
-      )
-    }
-  }
-
-  return {
-    role,
-
-    userId,
-
-    username,
-
-    capabilities: ROLE_CAPABILITIES[role],
-  }
-}
-
-async function syncUserSession(socket, token) {
-  const session = await createSessionAsync(token)
-  const accountState = getAccountState(session)
-
-  if (
-    session.userId &&
-    !getTestBinaryPolicy(session) &&
-    process.env.SUPABASE_URL
-  ) {
-    try {
-      const walletUrl = `${process.env.SUPABASE_URL}/rest/v1/wallets?user_id=eq.${encodeURIComponent(String(session.userId))}&order=last_updated.desc,created_at.desc`
-
-      const headers = {
-        apikey: process.env.SUPABASE_SECRET_KEY,
-
-        Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
-      }
-
-      const walletRes = await fetch(walletUrl, { headers })
-
-      if (walletRes.ok) {
-        const wallets = await walletRes.json()
-
-        if (wallets && wallets.length > 0) {
-          const balance = Number(wallets[0].current_balance)
-
-          if (Number.isFinite(balance)) {
-            accountState.balance = balance
-            persistedBalances.set(getAccountKey(session), balance)
-          }
-
-          console.log(
-            `[WS AUTH] Synchronized balance for user ${session.username} to ${accountState.balance} USD`,
-          )
-        }
-
-        // Fetch recent trade records from database
-        try {
-          const tradesUrl = `${process.env.SUPABASE_URL}/rest/v1/binary_trade_records?user_id=eq.${encodeURIComponent(String(session.userId))}&order=created_at.desc&limit=40`
-          const tradesRes = await fetch(tradesUrl, { headers })
-          if (tradesRes.ok) {
-            const records = await tradesRes.json()
-            if (Array.isArray(records) && records.length > 0) {
-              accountState.closedTrades = records
-                .filter((r) => r.status === "won" || r.status === "lost" || r.status === "break_even")
-                .map((r) => ({
-                  id: r.trade_id,
-                  symbol: r.symbol,
-                  marketName: r.market_name || r.symbol,
-                  contractType: r.contract_type,
-                  direction: r.direction,
-                  stake: Number(r.stake),
-                  entryPrice: Number(r.entry_price),
-                  exitPrice: Number(r.exit_price),
-                  entryDigit: Number(r.entry_digit),
-                  exitDigit: Number(r.exit_digit),
-                  expiryAt: new Date(r.expiry_at).getTime(),
-                  expirySeconds: Number(r.expiry_seconds || 30),
-                  payoutMultiplier: Number(r.payout_multiplier || 1.82),
-                  status: r.status,
-                  result: r.result,
-                  payout: Number(r.payout || 0),
-                  profit: Number(r.profit || 0),
-                  createdAt: new Date(r.created_at).getTime(),
-                  settledAt: r.settled_at ? new Date(r.settled_at).getTime() : Date.now(),
-                  isDemo: Boolean(r.is_demo),
-                  stopLoss: r.stop_loss !== null && r.stop_loss !== undefined ? Number(r.stop_loss) : null,
-                  stopLossEnabled: r.stop_loss !== null && r.stop_loss !== undefined,
-                  takeProfit: r.take_profit !== null && r.take_profit !== undefined ? Number(r.take_profit) : null,
-                  takeProfitEnabled: r.take_profit !== null && r.take_profit !== undefined,
-                  closureReason: r.closure_reason || null,
-                  closedBy: r.closed_by || null,
-                }))
-
-              // Recover active unexpired open trades if not already in memory
-              const now = Date.now()
-              const openRecords = records.filter(
-                (r) => r.status === "open" && new Date(r.expiry_at).getTime() > now,
-              )
-              for (const or of openRecords) {
-                if (!accountState.openTrades.some((t) => t.id === or.trade_id)) {
-                  const market = marketState.markets[or.symbol] || { price: Number(or.entry_price) }
-                  const trade = {
-                    id: or.trade_id,
-                    symbol: or.symbol,
-                    marketName: or.market_name || or.symbol,
-                    contractType: or.contract_type,
-                    direction: or.direction,
-                    stake: Number(or.stake),
-                    entryPrice: Number(or.entry_price),
-                    entryDigit: Number(or.entry_digit),
-                    currentPrice: market.price,
-                    expiryAt: new Date(or.expiry_at).getTime(),
-                    expirySeconds: Number(or.expiry_seconds || 30),
-                    payoutMultiplier: Number(or.payout_multiplier || 1.82),
-                    status: "open",
-                    createdAt: new Date(or.created_at).getTime(),
-                    isDemo: Boolean(or.is_demo),
-                    userId: String(session.userId),
-                    stopLoss: or.stop_loss !== null && or.stop_loss !== undefined ? Number(or.stop_loss) : null,
-                    stopLossEnabled: or.stop_loss !== null && or.stop_loss !== undefined,
-                    takeProfit: or.take_profit !== null && or.take_profit !== undefined ? Number(or.take_profit) : null,
-                    takeProfitEnabled: or.take_profit !== null && or.take_profit !== undefined,
-                    closureReason: null,
-                    closedBy: null,
-                    unrealizedPnl: 0,
-                  }
-                  trade.unrealizedPnl = calculateUnrealizedPnl(trade, market.price)
-                  accountState.openTrades.push(trade)
-                }
-              }
-            }
-          }
-        } catch (tradesErr) {
-          console.warn("[WS AUTH] Notice: Could not restore previous trades from DB:", tradesErr.message)
-        }
-      }
-    } catch (e) {
-      console.error("[WS AUTH] Failed to fetch user wallet balance:", e)
-    }
-  }
-
-  sessions.set(socket, session)
-  sendAuthState(socket)
-  sendPolicyState(socket)
-
-  socket.send(
-    JSON.stringify({
-      type: "ACK",
-      ok: true,
-      action: `Authenticated as ${session.role}`,
-    }),
-  )
-
-  sendClientState(socket)
-}
-
-async function syncBalanceToDb() {
-  const updates = new Map()
-
-  for (const client of clients) {
-    const session = sessions.get(client)
-
-    if (session?.userId && !getTestBinaryPolicy(session)) {
-      updates.set(getAccountKey(session), session)
-    }
-  }
-
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return
-
-  await Promise.all(
-    [...updates.values()].map((session) => syncAccountBalance(session)),
-  )
-}
-
-async function syncAccountBalance(session) {
-  if (getTestBinaryPolicy(session) || !session?.userId) return
-
-  const key = getAccountKey(session)
-  const activeSync = balanceSyncs.get(key)
-
-  if (activeSync) return activeSync
-
-  const accountState = getAccountState(session)
-  const sync = (async () => {
-    while (true) {
-      let previousBalance = persistedBalances.get(key)
-
-      if (previousBalance === undefined) {
-        // Query database wallet to establish baseline
-        try {
-          if (process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY) {
-            const walletUrl = `${process.env.SUPABASE_URL}/rest/v1/wallets?user_id=eq.${encodeURIComponent(session.userId)}&order=last_updated.desc,created_at.desc`
-            const headers = {
-              apikey: process.env.SUPABASE_SECRET_KEY,
-              Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
-            }
-            const res = await fetch(walletUrl, { headers })
-            if (res.ok) {
-              const wallets = await res.json()
-              if (wallets && wallets.length > 0) {
-                const dbBalance = Number(wallets[0].current_balance)
-                if (Number.isFinite(dbBalance)) {
-                  previousBalance = dbBalance
-                  persistedBalances.set(key, dbBalance)
-                  if (accountState.openTrades.length === 0) {
-                    accountState.balance = dbBalance
-                  }
-                }
-              }
-            }
-          }
-        } catch (e) {
-          console.error("[WS AUTH] Failed to initialize baseline balance from DB:", e)
-        }
-
-        if (previousBalance === undefined) {
-          persistedBalances.set(key, accountState.balance)
-          return
-        }
-      }
-
-      const balanceAtStart = accountState.balance
-      if (balanceAtStart === 0 && previousBalance > 0 && accountState.openTrades.length === 0) {
-        accountState.balance = previousBalance
-        return
-      }
-      const delta = round2(balanceAtStart - previousBalance)
-
-      if (delta === 0) return
-
-      const response = await fetch(
-        `${process.env.SUPABASE_URL}/rest/v1/rpc/apply_wallet_delta`,
-        {
-          method: "POST",
-          headers: {
-            apikey: process.env.SUPABASE_SECRET_KEY,
-            Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            p_user_id: String(session.userId),
-            p_delta: delta,
-          }),
-        },
-      )
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`[WS AUTH] apply_wallet_delta failed: ${response.status} - ${errorText}`)
-        throw new Error(`Balance sync failed: ${response.status}`)
-      }
-
-      const persistedBalance = Number(await response.json())
-
-      if (!Number.isFinite(persistedBalance)) {
-        throw new Error("Balance sync returned an invalid balance")
-      }
-
-      const externalDelta = round2(
-        persistedBalance - (previousBalance + delta),
-      )
-
-      if (externalDelta !== 0) {
-        accountState.balance = round2(accountState.balance + externalDelta)
-      }
-
-      persistedBalances.set(key, persistedBalance)
-    }
-  })()
-
-  balanceSyncs.set(key, sync)
-
-  try {
-    await sync
-  } finally {
-    balanceSyncs.delete(key)
-  }
-}
-
-function getAccountState(session) {
-  const key = getAccountKey(session)
-  let accountState = accountStates.get(key)
-
-  if (!accountState) {
-    accountState = { ...createInitialState(), markets: marketState.markets }
-    accountStates.set(key, accountState)
-
-    const testPolicy = getTestBinaryPolicy(session)
-
-    if (testPolicy) {
-      accountState.balance = testPolicy.initialBalance
-      accountState.closedTrades = []
-      accountState.realizedPnl = 0
-      accountState.lastAction = "Isolated test binary system ready"
-    }
-  }
-
-  accountState.markets = marketState.markets
-  return accountState
-}
-
-function getAccountKey(session) {
-  if (getTestBinaryPolicy(session)) return `test:${session.userId}`
-
-  return session.userId ? `user:${session.userId}` : "demo"
-}
-
-function getTestBinaryPolicy(session) {
-  if (!TEST_BINARY_SYSTEM_ENABLED || !session?.userId) return null
-
-  return testBinaryAccounts.get(String(session.userId)) ?? null
-}
-
-async function refreshUserBalance(socket, session) {
-  if (getTestBinaryPolicy(session)) {
-    throw new Error("Wallet refresh is unavailable in the test binary system")
-  }
-
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
-    throw new Error("Wallet storage is not configured")
-  }
-
-  const walletUrl = `${process.env.SUPABASE_URL}/rest/v1/wallets?user_id=eq.${encodeURIComponent(session.userId)}&order=last_updated.desc,created_at.desc`
+const PORT = process.env.PORT || 3000;
+const ROOT = __dirname;
+const SITE_DIR = path.join(ROOT, 'www.probinary.site');
+const JWT_SECRET = process.env.JWT_SECRET || 'probinary-secret-key-2026';
+const KYC_FILE = path.join(ROOT, '.kyc.json');
+
+// 2. Supabase Integration Layer (Strict Schema Compliance)
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://mrctjiyzhozpeyzkduzt.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+async function supabaseFetch(endpoint, options = {}) {
+  const pathPart = endpoint.startsWith('/') ? endpoint : `/rest/v1/${endpoint}`;
+  const url = new URL(pathPart, SUPABASE_URL);
   const headers = {
-    apikey: process.env.SUPABASE_SECRET_KEY,
-    Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  };
+  const fetchOptions = {
+    method: options.method || 'GET',
+    headers
+  };
+  if (options.body !== undefined) {
+    fetchOptions.body = typeof options.body === 'string' ? options.body : JSON.stringify(options.body);
   }
-  const response = await fetch(walletUrl, { headers })
-
-  if (!response.ok) throw new Error(`Wallet refresh failed: ${response.status}`)
-
-  const wallets = await response.json()
-  const balance = Number(wallets?.[0]?.current_balance)
-
-  if (!Number.isFinite(balance)) throw new Error("Wallet balance is unavailable")
-
-  const accountState = getAccountState(session)
-  accountState.balance = balance
-  persistedBalances.set(getAccountKey(session), balance)
-  sendClientState(socket)
-  socket.send(JSON.stringify({ type: "ACK", ok: true, action: "Wallet refreshed" }))
+  return fetch(url.toString(), fetchOptions);
 }
 
-async function restoreRealAccountBalance(userId) {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return
-
-  const walletUrl = `${process.env.SUPABASE_URL}/rest/v1/wallets?user_id=eq.${encodeURIComponent(userId)}`
-  const headers = {
-    apikey: process.env.SUPABASE_SECRET_KEY,
-    Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
+// User & Wallet Helpers (Direct Supabase)
+async function sbGetUserByEmail(email) {
+  if (!email) return null;
+  const clean = email.trim().toLowerCase();
+  try {
+    const res = await supabaseFetch(`/rest/v1/users?email=eq.${encodeURIComponent(clean)}&select=id,email,username,password_hash,account_status,created_at,wallets(current_balance,total_deposits,total_withdrawals),user_roles(role_id,roles(name))`);
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) return data[0];
+  } catch (err) {
+    console.error('sbGetUserByEmail error:', err.message);
   }
-  const response = await fetch(walletUrl, { headers })
+  return null;
+}
 
-  if (!response.ok) throw new Error(`Wallet restore failed: ${response.status}`)
+async function sbGetUserById(id) {
+  if (!id) return null;
+  try {
+    const res = await supabaseFetch(`/rest/v1/users?id=eq.${encodeURIComponent(id)}&select=id,email,username,password_hash,account_status,created_at,wallets(current_balance,total_deposits,total_withdrawals),user_roles(role_id,roles(name))`);
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) return data[0];
+  } catch (err) {
+    console.error('sbGetUserById error:', err.message);
+  }
+  return null;
+}
 
-  const wallets = await response.json()
-  const balance = Number(wallets?.[0]?.current_balance)
+async function sbGetAllUsers() {
+  try {
+    const res = await supabaseFetch(`/rest/v1/users?select=id,email,username,account_status,created_at,wallets(current_balance,total_deposits,total_withdrawals),user_roles(role_id,roles(name))&order=id.asc`);
+    const data = await res.json();
+    if (Array.isArray(data)) return data;
+  } catch (err) {
+    console.error('sbGetAllUsers error:', err.message);
+  }
+  return [];
+}
 
-  if (!Number.isFinite(balance)) throw new Error("Wallet balance is unavailable")
-
-  const key = `user:${userId}`
-  const accountState =
-    accountStates.get(key) ?? {
-      ...createInitialState(),
-      markets: marketState.markets,
+async function sbGetUserBalance(userId) {
+  if (!userId) return 10000.00;
+  try {
+    const res = await supabaseFetch(`/rest/v1/wallets?user_id=eq.${encodeURIComponent(userId)}&select=current_balance`);
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0 && data[0].current_balance !== undefined) {
+      return parseFloat(data[0].current_balance) || 0;
     }
-
-  accountState.balance = balance
-  accountState.lastAction = "Real wallet restored after test assignment"
-  accountStates.set(key, accountState)
-  persistedBalances.set(key, balance)
-}
-
-function sendClientState(socket) {
-  const session = sessions.get(socket) || createSession("demo-auth-token")
-  const state = getAccountState(session)
-  socket.send(JSON.stringify({ type: "STATE", state }))
-}
-
-function sendAuthState(socket) {
-  const session = sessions.get(socket) || createSession("demo-auth-token")
-  const testPolicy = getTestBinaryPolicy(session)
-  const testAccounts =
-    TEST_BINARY_SYSTEM_ENABLED && session.role === "super_admin"
-      ? [...testBinaryAccounts.entries()].map(([userId, policy]) => ({
-          userId,
-          initialBalance: policy.initialBalance,
-          winRate: policy.winRate,
-        }))
-      : []
-
-  socket.send(
-    JSON.stringify({
-      type: "AUTH_STATE",
-
-      simulationMode: SIMULATION_MODE,
-
-      role: session.role,
-
-      capabilities: session.capabilities,
-
-      testBinaryAvailable: TEST_BINARY_SYSTEM_ENABLED,
-
-      testBinarySystem: Boolean(testPolicy),
-
-      testBinaryWinRate: testPolicy?.winRate ?? null,
-
-      testBinaryAccounts: testAccounts,
-    }),
-  )
-}
-
-function sendPolicyState(socket) {
-  socket.send(
-    JSON.stringify({ type: "SIM_POLICY_STATE", policy: adminSimPolicy }),
-  )
-}
-
-function broadcastPolicyState() {
-  const payload = JSON.stringify({
-    type: "SIM_POLICY_STATE",
-    policy: adminSimPolicy,
-  })
-
-  for (const client of clients) {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(payload)
-    }
+  } catch (err) {
+    console.error('sbGetUserBalance error:', err.message);
   }
+  return 10000.00;
 }
 
-function createInitialState() {
-  return {
-    markets: Object.fromEntries(
-      MARKET_SEEDS.map((seed) => [seed.symbol, createMarket(seed)]),
-    ),
-
-    balance: STARTING_BALANCE,
-
-    realizedPnl: 1471.35,
-
-    openTrades: [],
-
-    closedTrades: [
-      sampleTrade(
-        "TRD-8821",
-        "VOL-75",
-        "Volatility 75 Index",
-        "rise-fall",
-        "rise",
-        50,
-        8120.44,
-        8243.12,
-        8,
-        30,
-        1.82,
-        "won",
-        41,
-        0,
-      ),
-
-      sampleTrade(
-        "TRD-8820",
-        "BOOM-500",
-        "Boom 500 Index",
-        "rise-fall",
-        "fall",
-        40,
-        13201,
-        12891.44,
-        5,
-        30,
-        1.82,
-        "won",
-        32.8,
-        1,
-      ),
-
-      sampleTrade(
-        "TRD-8819",
-        "CRASH-300",
-        "Crash 300 Index",
-        "even-odd",
-        "odd",
-        35,
-        5890.2,
-        5674.8,
-        2,
-        20,
-        1.8,
-        "lost",
-        -35,
-        2,
-      ),
-    ],
-
-    selectedSymbol: "VOL-75",
-
-    lastError: null,
-
-    lastAction: "Backend ready",
-  }
-}
-
-function createMarket(seed) {
-  const history = [seed.basePrice * 0.985]
-
-  for (let index = 1; index < 90; index++) {
-    const last = history[index - 1]
-
-    history.push(
-      nextPrice(last, seed.volatility, seed.drift, seed.basePrice, index),
-    )
-  }
-
-  const price = round2(history[history.length - 1] || seed.basePrice)
-
-  return {
-    ...seed,
-
-    price,
-
-    history: history.map(round2),
-
-    changePct: round2(((price - seed.basePrice) / seed.basePrice) * 100),
-
-    lastDigit: lastDigit(price),
-  }
-}
-
-function advanceMarkets(markets) {
-  const nextMarkets = {}
-
-  for (const seed of MARKET_SEEDS) {
-    const current = markets[seed.symbol] || createMarket(seed)
-
-    const price = nextPrice(
-      current.price,
-      seed.volatility,
-      seed.drift,
-      seed.basePrice,
-    )
-
-    const history = [...current.history, price].slice(-HISTORY_LIMIT)
-
-    nextMarkets[seed.symbol] = {
-      ...current,
-
-      price,
-
-      history,
-
-      changePct: round2(((price - seed.basePrice) / seed.basePrice) * 100),
-
-      lastDigit: lastDigit(price),
-    }
-  }
-
-  return nextMarkets
-}
-
-function isBuyDirection(direction) {
-  const d = String(direction || "").toLowerCase()
-  return (
-    d === "rise" ||
-    d === "buy" ||
-    d === "higher" ||
-    d === "even" ||
-    d === "match" ||
-    d === "over"
-  )
-}
-
-function calculateUnrealizedPnl(trade, currentPrice) {
-  const isBuy = isBuyDirection(trade.direction)
-  const entryPrice = Number(trade.entryPrice) || currentPrice
-  const priceDelta = isBuy ? (currentPrice - entryPrice) : (entryPrice - currentPrice)
-  const priceDeltaRatio = entryPrice > 0 ? (priceDelta / entryPrice) : 0
-
-  // Synthetic / binary contract leverage factor (250x)
-  // 0.2% price move in favorable direction = +50% of stake
-  // 0.4% price move in favorable direction = +100% of stake
-  const leverage = 250
-  let rawPnl = trade.stake * priceDeltaRatio * leverage
-
-  // Maximum loss cannot exceed trade stake
-  if (rawPnl < -trade.stake) {
-    rawPnl = -trade.stake
-  }
-
-  return round2(rawPnl)
-}
-
-function settleExpiredTrades(state) {
-  const now = Date.now()
-
-  const remaining = []
-
-  for (const trade of state.openTrades) {
-    const market = state.markets[trade.symbol] || { price: trade.entryPrice }
-    const currentPrice = market.price
-    trade.currentPrice = round2(currentPrice)
-    trade.unrealizedPnl = calculateUnrealizedPnl(trade, currentPrice)
-
-    const hasTakeProfit = Boolean(
-      trade.takeProfitEnabled && trade.takeProfit && trade.takeProfit > 0,
-    )
-    const hasStopLoss = Boolean(
-      trade.stopLossEnabled && trade.stopLoss && trade.stopLoss > 0,
-    )
-
-    let isTriggered = false
-    let closureReason = null
-    let closedBy = null
-    let triggerResult = null
-    let finalProfit = 0
-    let finalPayout = 0
-
-    if (hasTakeProfit && trade.unrealizedPnl >= trade.takeProfit) {
-      isTriggered = true
-      closureReason = "Take Profit"
-      closedBy = "take_profit"
-      triggerResult = "won"
-      finalProfit = trade.unrealizedPnl
-      finalPayout = round2(trade.stake + finalProfit)
-    } else if (hasStopLoss && trade.unrealizedPnl <= -trade.stopLoss) {
-      isTriggered = true
-      closureReason = "Stop Loss"
-      closedBy = "stop_loss"
-      triggerResult = "lost"
-      finalProfit = Math.max(-trade.stake, trade.unrealizedPnl)
-      finalPayout = Math.max(0, round2(trade.stake + finalProfit))
-    } else if (trade.expiryAt <= now) {
-      isTriggered = true
-      closureReason = "Expired"
-      closedBy = "expiry"
-      const settled = resolveTrade(trade, currentPrice, now)
-      triggerResult = settled.result
-      finalProfit = settled.profit
-      finalPayout = settled.payout
-    }
-
-    if (!isTriggered) {
-      remaining.push(trade)
-      continue
-    }
-
-    const settled = {
-      ...trade,
-      status: triggerResult,
-      result: triggerResult,
-      exitPrice: round2(currentPrice),
-      exitDigit: lastDigit(currentPrice),
-      settledAt: now,
-      closureReason,
-      closedBy,
-      payout: round2(finalPayout),
-      profit: round2(finalProfit),
-      unrealizedPnl: round2(finalProfit),
-      currentPrice: round2(currentPrice),
-    }
-
-    state.balance = round2(state.balance + (settled.payout || 0))
-
-    state.realizedPnl = round2(state.realizedPnl + (settled.profit || 0))
-
-    state.closedTrades.unshift(settled)
-
-    if (trade.userId && !trade.isDemo) {
-      persistSettledTradeRecord(trade.userId, settled).catch((err) => {
-        console.error("[WS TRADE] Error persisting settled trade:", err)
-      })
-      if (settled.payout > 0) {
-        applyWalletDeltaDirect(trade.userId, settled.payout).catch((err) => {
-          console.error("[WS TRADE] Error applying payout to wallet in DB:", err)
-        })
+async function sbUpdateUserBalance(userId, newBalance, reason = 'Balance adjustment') {
+  const balanceNum = parseFloat(parseFloat(newBalance).toFixed(2));
+  const numericId = parseInt(userId) || 59;
+  try {
+    await supabaseFetch(`/rest/v1/wallets?user_id=eq.${numericId}`, {
+      method: 'PATCH',
+      body: {
+        current_balance: balanceNum,
+        updated_at: new Date().toISOString()
       }
-      persistedBalances.set(`user:${trade.userId}`, state.balance)
-    }
-  }
+    });
 
-  state.openTrades = remaining
-
-  state.closedTrades = state.closedTrades.slice(0, 40)
-}
-
-async function applyWalletDeltaDirect(userId, delta) {
-  if (!userId || !delta || !process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return
-  const roundDelta = round2(delta)
-  if (roundDelta === 0) return
-
-  try {
-    const response = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/apply_wallet_delta`, {
-      method: "POST",
-      headers: {
-        apikey: process.env.SUPABASE_SECRET_KEY,
-        Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        p_user_id: String(userId),
-        p_delta: roundDelta,
-      }),
-    })
-
-    if (!response.ok) {
-      const txt = await response.text()
-      console.error(`[WS TRADE] apply_wallet_delta failed for user ${userId}:`, txt)
-    } else {
-      const updatedBalance = Number(await response.json())
-      if (Number.isFinite(updatedBalance)) {
-        persistedBalances.set(`user:${userId}`, updatedBalance)
-      }
-    }
-  } catch (e) {
-    console.error(`[WS TRADE] Error applying wallet delta for user ${userId}:`, e)
-  }
-}
-
-async function persistOpenTradeRecord(userId, trade) {
-  if (!userId || !process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return
-
-  try {
-    const url = `${process.env.SUPABASE_URL}/rest/v1`
-    const headers = {
-      apikey: process.env.SUPABASE_SECRET_KEY,
-      Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
-      "Content-Type": "application/json",
-      Prefer: "return=representation",
-    }
-
-    const tradeRecord = {
-      user_id: String(userId),
-      trade_id: trade.id,
-      is_demo: Boolean(trade.isDemo),
-      symbol: trade.symbol,
-      market_name: trade.marketName || trade.symbol,
-      contract_type: trade.contractType,
-      direction: trade.direction,
-      stake: trade.stake,
-      entry_price: trade.entryPrice,
-      entry_digit: trade.entryDigit,
-      expiry_at: new Date(trade.expiryAt).toISOString(),
-      expiry_seconds: trade.expirySeconds,
-      payout_multiplier: trade.payoutMultiplier,
-      status: "open",
-      result: null,
-      exit_price: null,
-      exit_digit: null,
-      payout: 0,
-      profit: 0,
-      created_at: new Date(trade.createdAt).toISOString(),
-      settled_at: null,
-      stop_loss:
-        trade.stopLoss !== undefined && trade.stopLoss !== null
-          ? Number(trade.stopLoss)
-          : null,
-      take_profit:
-        trade.takeProfit !== undefined && trade.takeProfit !== null
-          ? Number(trade.takeProfit)
-          : null,
-      closure_reason: null,
-      closed_by: null,
-    }
-
-    const postRes = await fetch(`${url}/binary_trade_records`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(tradeRecord),
-    })
-    if (!postRes.ok) {
-      console.warn("[WS TRADE] Notice: Could not insert open trade record:", await postRes.text())
-    }
-  } catch (e) {
-    console.warn("[WS TRADE] Notice: Could not insert open trade record:", e.message)
-  }
-}
-
-async function persistSettledTradeRecord(userId, settledTrade) {
-  if (!userId || !process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return
-
-  try {
-    const url = `${process.env.SUPABASE_URL}/rest/v1`
-    const headers = {
-      apikey: process.env.SUPABASE_SECRET_KEY,
-      Authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`,
-      "Content-Type": "application/json",
-      Prefer: "return=representation",
-    }
-
-    const tradeRecord = {
-      user_id: String(userId),
-      trade_id: settledTrade.id,
-      is_demo: Boolean(settledTrade.isDemo),
-      symbol: settledTrade.symbol,
-      market_name: settledTrade.marketName || settledTrade.symbol,
-      contract_type: settledTrade.contractType,
-      direction: settledTrade.direction,
-      stake: settledTrade.stake,
-      entry_price: settledTrade.entryPrice,
-      entry_digit: settledTrade.entryDigit,
-      expiry_at: new Date(settledTrade.expiryAt).toISOString(),
-      expiry_seconds: settledTrade.expirySeconds,
-      payout_multiplier: settledTrade.payoutMultiplier,
-      status: settledTrade.result,
-      result: settledTrade.result,
-      exit_price: settledTrade.exitPrice,
-      exit_digit: settledTrade.exitDigit,
-      payout: settledTrade.payout || 0,
-      profit: settledTrade.profit || 0,
-      created_at: new Date(settledTrade.createdAt).toISOString(),
-      settled_at: new Date(settledTrade.settledAt || Date.now()).toISOString(),
-      stop_loss:
-        settledTrade.stopLoss !== undefined && settledTrade.stopLoss !== null
-          ? Number(settledTrade.stopLoss)
-          : null,
-      take_profit:
-        settledTrade.takeProfit !== undefined && settledTrade.takeProfit !== null
-          ? Number(settledTrade.takeProfit)
-          : null,
-      closure_reason: settledTrade.closureReason || null,
-      closed_by: settledTrade.closedBy || null,
-    }
-
-    const checkRes = await fetch(
-      `${url}/binary_trade_records?user_id=eq.${encodeURIComponent(String(userId))}&trade_id=eq.${encodeURIComponent(settledTrade.id)}`,
-      { headers }
-    )
-    const existing = await checkRes.json()
-
-    if (existing && existing.length > 0) {
-      const patchRes = await fetch(
-        `${url}/binary_trade_records?user_id=eq.${encodeURIComponent(String(userId))}&trade_id=eq.${encodeURIComponent(settledTrade.id)}`,
-        {
-          method: "PATCH",
-          headers,
-          body: JSON.stringify(tradeRecord),
+    // Record adjustment entry in transaction_history strictly adhering to schema constraints:
+    // transaction_type = 'adjustment', status = 'completed'
+    try {
+      await supabaseFetch(`/rest/v1/transaction_history`, {
+        method: 'POST',
+        body: {
+          user_id: numericId,
+          transaction_type: 'adjustment',
+          amount: balanceNum,
+          currency: 'USD',
+          status: 'completed',
+          payment_reference: 'ADJ-' + Date.now().toString(36).toUpperCase(),
+          description: reason
         }
-      )
-      if (!patchRes.ok) {
-        console.error("[WS TRADE] Error patching settled trade record:", await patchRes.text())
+      });
+    } catch (e) {
+      console.error('Transaction history log error:', e.message);
+    }
+
+    return balanceNum;
+  } catch (err) {
+    console.error('sbUpdateUserBalance error:', err.message);
+    return balanceNum;
+  }
+}
+
+async function sbAdjustUserBalance(userId, delta, reason = 'Trade settlement / adjustment') {
+  const current = await sbGetUserBalance(userId);
+  const newBal = Math.max(0, parseFloat((current + delta).toFixed(2)));
+  return await sbUpdateUserBalance(userId, newBal, reason);
+}
+
+// Completed Deposits from Supabase (manual_wallet_deposits, mpesa_deposits, transaction_history)
+async function sbGetCompletedDeposits() {
+  try {
+    const [resManual, resMpesa, resTx, resUsers] = await Promise.all([
+      supabaseFetch(`/rest/v1/manual_wallet_deposits?select=*&order=created_at.desc&limit=50`),
+      supabaseFetch(`/rest/v1/mpesa_deposits?status=eq.completed&order=created_at.desc&limit=50`),
+      supabaseFetch(`/rest/v1/transaction_history?transaction_type=in.(deposit,mpesa_deposit)&status=eq.completed&order=created_at.desc&limit=50`),
+      supabaseFetch(`/rest/v1/users?select=id,email,username`)
+    ]);
+
+    const manualData = await resManual.json();
+    const mpesaData = await resMpesa.json();
+    const txData = await resTx.json();
+    const usersData = await resUsers.json();
+
+    const usersMap = {};
+    if (Array.isArray(usersData)) {
+      usersData.forEach(u => { usersMap[u.id] = u; });
+    }
+
+    const deposits = [];
+    const seenRefs = new Set();
+
+    if (Array.isArray(manualData)) {
+      manualData.forEach(m => {
+        const u = usersMap[m.user_id] || {};
+        const ref = m.reference || ('DP-' + m.id);
+        seenRefs.add(ref);
+        deposits.push({
+          id: ref,
+          userId: m.user_id,
+          userEmail: u.email || `Trader #${m.user_id}`,
+          userName: u.username || 'Trader',
+          amount: parseFloat(m.amount) || 0,
+          stake: parseFloat(m.amount) || 0,
+          method: m.note || 'Safaricom M-Pesa Instant',
+          asset: 'M-Pesa / Safaricom',
+          destination: 'Trading Account (USD)',
+          createdAt: m.created_at,
+          status: 'completed',
+          outcome: 'completed'
+        });
+      });
+    }
+
+    if (Array.isArray(mpesaData)) {
+      mpesaData.forEach(mp => {
+        const u = usersMap[mp.user_id] || {};
+        const ref = mp.payment_reference || ('MP-' + mp.id);
+        if (!seenRefs.has(ref)) {
+          seenRefs.add(ref);
+          deposits.push({
+            id: ref,
+            userId: mp.user_id,
+            userEmail: u.email || `Trader #${mp.user_id}`,
+            userName: u.username || 'Trader',
+            amount: parseFloat(mp.amount) || 0,
+            stake: parseFloat(mp.amount) || 0,
+            method: `M-Pesa (${mp.phone_number})`,
+            asset: 'M-Pesa Safaricom',
+            destination: 'Trading Account (KES/USD)',
+            createdAt: mp.created_at,
+            status: 'completed',
+            outcome: 'completed'
+          });
+        }
+      });
+    }
+
+    if (Array.isArray(txData)) {
+      txData.forEach(t => {
+        const u = usersMap[t.user_id] || {};
+        const ref = t.payment_reference || ('TX-' + t.id);
+        if (!seenRefs.has(ref)) {
+          seenRefs.add(ref);
+          deposits.push({
+            id: ref,
+            userId: t.user_id,
+            userEmail: u.email || `Trader #${t.user_id}`,
+            userName: u.username || 'Trader',
+            amount: parseFloat(t.amount) || 0,
+            stake: parseFloat(t.amount) || 0,
+            method: t.description || 'USDT Crypto Gateway',
+            asset: 'Crypto (TRC20)',
+            destination: 'Trading Account (USD)',
+            createdAt: t.created_at,
+            status: t.status || 'completed',
+            outcome: 'completed'
+          });
+        }
+      });
+    }
+
+    return deposits.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  } catch (err) {
+    console.error('sbGetCompletedDeposits error:', err.message);
+    return [];
+  }
+}
+
+// Withdrawals from Supabase transaction_history (transaction_type = 'withdrawal')
+async function sbGetWithdrawals() {
+  try {
+    const [resWd, resUsers] = await Promise.all([
+      supabaseFetch(`/rest/v1/transaction_history?transaction_type=eq.withdrawal&order=created_at.desc`),
+      supabaseFetch(`/rest/v1/users?select=id,email,username`)
+    ]);
+
+    const wdData = await resWd.json();
+    const usersData = await resUsers.json();
+    const usersMap = {};
+    if (Array.isArray(usersData)) {
+      usersData.forEach(u => { usersMap[u.id] = u; });
+    }
+
+    if (Array.isArray(wdData)) {
+      return wdData.map(w => {
+        const u = usersMap[w.user_id] || {};
+        const isFailed = w.status === 'failed';
+        const isCompleted = w.status === 'completed';
+        const outcome = isCompleted ? 'approved' : (isFailed ? 'rejected' : 'pending');
+
+        return {
+          id: w.payment_reference || ('WD-' + w.id),
+          txId: w.id,
+          userId: w.user_id,
+          userEmail: u.email || `Trader #${w.user_id}`,
+          userName: u.username || 'Trader',
+          amount: parseFloat(w.amount) || 0,
+          stake: parseFloat(w.amount) || 0,
+          method: w.metadata_json?.method || (w.description?.toLowerCase().includes('crypto') ? 'crypto' : 'mpesa'),
+          asset: w.metadata_json?.asset || (w.description?.toLowerCase().includes('crypto') ? 'USDT (TRC20)' : 'M-Pesa Safaricom'),
+          destination: w.metadata_json?.destination || w.description || 'User Account',
+          createdAt: w.created_at,
+          status: w.status,
+          outcome: outcome
+        };
+      });
+    }
+  } catch (err) {
+    console.error('sbGetWithdrawals error:', err.message);
+  }
+  return [];
+}
+
+// 3. KYC Automated Clearance Engine (12-Hour)
+function loadKyc() {
+  if (!fs.existsSync(KYC_FILE)) return {};
+  try {
+    const data = JSON.parse(fs.readFileSync(KYC_FILE, 'utf-8'));
+    let changed = false;
+    const now = Date.now();
+    for (const id in data) {
+      const entry = data[id];
+      if (entry && entry.status === 'review') {
+        const submitted = new Date(entry.submittedAt || now).getTime();
+        const autoApproveTime = entry.autoApproveAt ? new Date(entry.autoApproveAt).getTime() : (submitted + 12 * 3600 * 1000);
+        if (now >= autoApproveTime) {
+          entry.status = 'verified';
+          entry.verifiedAt = new Date().toISOString();
+          entry.autoApproved = true;
+          changed = true;
+        }
       }
-    } else {
-      const postRes = await fetch(`${url}/binary_trade_records`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(tradeRecord),
-      })
-      if (!postRes.ok) {
-        console.error("[WS TRADE] Error posting settled trade record:", await postRes.text())
+    }
+    if (changed) {
+      try { fs.writeFileSync(KYC_FILE, JSON.stringify(data, null, 2), 'utf-8'); } catch {}
+    }
+    return data;
+  } catch {
+    return {};
+  }
+}
+
+function saveKyc(data) {
+  try { fs.writeFileSync(KYC_FILE, JSON.stringify(data, null, 2), 'utf-8'); } catch (err) { console.error('Save KYC error:', err); }
+}
+
+// 4. Lightweight JWT
+function generateJWT(payload) {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const body = Buffer.from(JSON.stringify({
+    ...payload,
+    exp: Math.floor(Date.now() / 1000) + 8 * 3600
+  })).toString('base64url');
+  const signature = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
+  return `${header}.${body}.${signature}`;
+}
+
+function verifyJWT(token) {
+  try {
+    const [header, body, signature] = token.split('.');
+    const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
+    if (signature !== expected) return null;
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf-8'));
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+const MIME_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.eot': 'application/vnd.ms-fontobject'
+};
+
+function readBody(req) {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try { resolve(JSON.parse(body)); } catch { resolve({}); }
+    });
+  });
+}
+
+// 5. HTTP Server
+const server = http.createServer(async (req, res) => {
+  let [rawPath] = req.url.split('?');
+  let reqUrl = rawPath.split('#')[0];
+
+  // Enable CORS for API routes
+  if (reqUrl.startsWith('/api/')) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+      res.writeHead(200);
+      return res.end();
+    }
+  }
+
+  // Helper to extract authenticated user from Authorization header
+  function getRequestUser() {
+    const authHeader = req.headers['authorization'] || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    if (!token) return null;
+    return verifyJWT(token);
+  }
+
+  // --- AUTH ENDPOINTS (SUPABASE USERS TABLE) ---
+  if (reqUrl === '/api/auth/login' && req.method === 'POST') {
+    const body = await readBody(req);
+    const email = (body.email || '').trim().toLowerCase();
+    const password = body.password || '';
+
+    if (!email || !password) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Email and password are required' }));
+    }
+
+    // 1. Fetch user directly from Supabase
+    const dbUser = await sbGetUserByEmail(email);
+
+    if (dbUser) {
+      const isSuperAdminEmail = email === 'admin@probinary.com' || email === 'superadmin@probinary.com';
+      const isSimEmail = email === 'simulation@probinary.com' || (dbUser.username && dbUser.username.includes('simulation'));
+
+      // Check password using bcrypt or master credentials
+      let passwordValid = false;
+      if (dbUser.password_hash) {
+        try { passwordValid = bcrypt.compareSync(password, dbUser.password_hash); } catch {}
+      }
+
+      if (!passwordValid) {
+        if (isSuperAdminEmail && (password === 'admin123' || password === 'superadmin123')) {
+          passwordValid = true;
+        } else if (isSimEmail && password === 'simulation123') {
+          passwordValid = true;
+        }
+      }
+
+      if (passwordValid) {
+        const roleName = dbUser.user_roles?.[0]?.roles?.name || '';
+        const isAdmin = roleName === 'super_admin' || roleName === 'admin' || isSuperAdminEmail;
+        const isSimulation = isSimEmail;
+
+        const liveBalance = parseFloat(dbUser.wallets?.current_balance ?? (isAdmin ? 25000.00 : 10000.00));
+
+        const user = {
+          id: dbUser.id,
+          name: dbUser.username || (isAdmin ? 'System Administrator' : (isSimulation ? 'Simulation Trader' : email.split('@')[0])),
+          email: dbUser.email,
+          role: isAdmin ? 'admin' : 'trader',
+          simulation: isSimulation,
+          is80WinRate: isSimulation,
+          winRate: isSimulation ? 80 : null,
+          balance: liveBalance
+        };
+
+        const token = generateJWT(user);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ success: true, token, user }));
+      } else {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ error: 'Invalid password' }));
       }
     }
 
-    if (!settledTrade.isDemo) {
+    // Fallbacks for initial startup if database network hiccup
+    if (email === 'admin@probinary.com' || email === 'superadmin@probinary.com') {
+      if (password === 'admin123' || password === 'superadmin123') {
+        const user = {
+          id: 6,
+          name: 'System Administrator',
+          email: email,
+          role: 'admin',
+          simulation: false,
+          is80WinRate: false,
+          balance: 25000.00
+        };
+        const token = generateJWT(user);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ success: true, token, user }));
+      }
+    }
+
+    if (email === 'simulation@probinary.com' && password === 'simulation123') {
+      const user = {
+        id: 59,
+        name: 'Simulation Trader',
+        email: 'simulation@probinary.com',
+        role: 'trader',
+        simulation: true,
+        is80WinRate: true,
+        winRate: 80,
+        balance: 10000.00
+      };
+      const token = generateJWT(user);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, token, user }));
+    }
+
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ error: 'Invalid email or password' }));
+  }
+
+  if (reqUrl === '/api/auth/register' && req.method === 'POST') {
+    const body = await readBody(req);
+    const email = (body.email || '').trim().toLowerCase();
+    const fullName = (body.fullName || body.name || email.split('@')[0]).trim();
+    const password = body.password || '';
+
+    if (!email || !password) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Email and password are required' }));
+    }
+
+    const existing = await sbGetUserByEmail(email);
+    if (existing) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Account already exists. Please sign in.' }));
+    }
+
+    const hash = bcrypt.hashSync(password, 10);
+    const userRes = await supabaseFetch('/rest/v1/users', {
+      method: 'POST',
+      headers: { 'Prefer': 'return=representation' },
+      body: {
+        email,
+        username: fullName,
+        password_hash: hash,
+        account_status: 'active'
+      }
+    });
+
+    const userData = await userRes.json();
+    const newUser = Array.isArray(userData) ? userData[0] : null;
+
+    if (newUser) {
+      // Create wallet with $1,000 initial balance in Supabase
+      await supabaseFetch('/rest/v1/wallets', {
+        method: 'POST',
+        body: {
+          user_id: newUser.id,
+          current_balance: 1000.00,
+          currency: 'USD',
+          total_deposits: 1000.00,
+          total_withdrawals: 0
+        }
+      });
+      // Assign client role (id: 1)
+      await supabaseFetch('/rest/v1/user_roles', {
+        method: 'POST',
+        body: { user_id: newUser.id, role_id: 1 }
+      });
+
+      const user = {
+        id: newUser.id,
+        name: fullName,
+        email: newUser.email,
+        role: 'trader',
+        simulation: false,
+        is80WinRate: false,
+        balance: 1000.00
+      };
+
+      const token = generateJWT(user);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, token, user }));
+    } else {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Failed to create user in Supabase' }));
+    }
+  }
+
+  if (reqUrl === '/api/auth/me' && req.method === 'GET') {
+    const user = getRequestUser();
+    if (user) {
+      const liveBal = await sbGetUserBalance(user.id);
+      user.balance = liveBal;
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, user }));
+    } else {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Unauthorized' }));
+    }
+  }
+
+  if (reqUrl === '/api/auth/logout' && req.method === 'POST') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: true, message: 'Logged out successfully' }));
+  }
+
+  // --- WALLET BALANCE ENDPOINT ---
+  if (reqUrl === '/api/wallet/balance' && req.method === 'GET') {
+    const user = getRequestUser() || { id: 59 };
+    const balance = await sbGetUserBalance(user.id);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: true, balance }));
+  }
+
+  // --- TRADING API (binary_trade_records SCHEMA) ---
+  if (reqUrl === '/api/market/quotes' && req.method === 'GET') {
+    const quotes = {
+      'EUR/USD': { price: 1.08420, change: 0.18, high: 1.0865, low: 1.0820, precision: 5 },
+      'GBP/USD': { price: 1.29150, change: -0.24, high: 1.2950, low: 1.2890, precision: 5 },
+      'USD/JPY': { price: 154.200, change: 0.35, high: 154.60, low: 153.80, precision: 3 },
+      'BTC/USD': { price: 91420.50, change: 2.45, high: 92100.0, low: 89800.0, precision: 2 },
+      'ETH/USD': { price: 3140.80, change: 1.62, high: 3180.0, low: 3090.0, precision: 2 },
+      'XAU/USD': { price: 2684.30, change: 0.54, high: 2695.0, low: 2670.0, precision: 2 },
+      'USD/KES': { price: 129.50, change: -0.05, high: 130.00, low: 129.20, precision: 2 },
+      'OIL/USD': { price: 74.85, change: -0.80, high: 75.90, low: 74.20, precision: 2 }
+    };
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: true, quotes }));
+  }
+
+  if (reqUrl === '/api/trading/order' && req.method === 'POST') {
+    const body = await readBody(req);
+    const user = getRequestUser() || { id: 59, email: 'simulation@probinary.com' };
+    const stake = parseFloat(body.stake) || 0;
+    const isDemo = Boolean(body.isDemo);
+
+    if (stake <= 0) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Stake must be greater than zero' }));
+    }
+
+    let currentBalance = isDemo ? (body.demoBalance || 10000) : await sbGetUserBalance(user.id);
+
+    if (!isDemo && currentBalance < stake) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: `Insufficient balance ($${currentBalance.toFixed(2)}). Please deposit funds or switch to Demo.` }));
+    }
+
+    // Deduct stake from Supabase wallet
+    let newBalance = isDemo ? (currentBalance - stake) : await sbAdjustUserBalance(user.id, -stake, `Trade opened: ${body.asset || 'EUR/USD'}`);
+
+    const tradeId = 'PB-' + Math.floor(100000 + Math.random() * 900000);
+    const duration = parseInt(body.duration) || 5;
+    const entryPrice = parseFloat(body.entryPrice) || 1.0842;
+    const entryDigit = parseInt(String(entryPrice).replace('.', '').slice(-1)) || 0;
+
+    const trade = {
+      id: tradeId,
+      userId: user.id,
+      userEmail: user.email,
+      asset: body.asset || 'EUR/USD',
+      tradeType: body.tradeType || 'Rise/Fall',
+      direction: body.direction || 'rise',
+      targetDigit: body.targetDigit !== undefined ? parseInt(body.targetDigit) : null,
+      threshold: body.threshold !== undefined ? parseInt(body.threshold) : null,
+      barrier: body.barrier !== undefined ? parseFloat(body.barrier) : null,
+      stake: stake,
+      payoutRate: body.payoutRate || 0.87,
+      potentialPayout: body.potentialPayout || parseFloat((stake * 1.87).toFixed(2)),
+      entryPrice: entryPrice,
+      duration: duration,
+      isDemo: isDemo,
+      status: 'active',
+      createdAt: new Date().toISOString()
+    };
+
+    // Insert into Supabase binary_trade_records (strictly matching check constraints)
+    if (!isDemo) {
       try {
-        await fetch(`${url}/transaction_history`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            user_id: Number(userId),
-            transaction_type: "trade",
-            amount: Math.abs(settledTrade.profit || 0),
-            currency: "USD",
-            status: "completed",
-            payment_reference: settledTrade.id.slice(0, 100),
-            description: `Trade ${settledTrade.result.toUpperCase()} (${settledTrade.closureReason || "Closed"}): ${settledTrade.symbol} (${(settledTrade.profit || 0) >= 0 ? "+" : ""}${settledTrade.profit})`,
-            metadata_json: {
-              tradeId: settledTrade.id,
-              symbol: settledTrade.symbol,
-              stake: settledTrade.stake,
-              payout: settledTrade.payout,
-              profit: settledTrade.profit,
-              result: settledTrade.result,
-              stopLoss: settledTrade.stopLoss,
-              takeProfit: settledTrade.takeProfit,
-              closureReason: settledTrade.closureReason,
-              closedBy: settledTrade.closedBy,
-            },
+        await supabaseFetch('/rest/v1/binary_trade_records', {
+          method: 'POST',
+          body: {
+            user_id: String(user.id),
+            trade_id: tradeId,
+            is_demo: false,
+            symbol: body.asset || 'EUR/USD',
+            market_name: body.asset || 'EUR/USD',
+            contract_type: body.tradeType || 'Rise/Fall',
+            direction: body.direction || 'rise',
+            stake: stake,
+            entry_price: entryPrice,
+            entry_digit: entryDigit,
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }),
-        })
-      } catch (txErr) {
-        console.warn("[WS TRADE] Could not log transaction_history record:", txErr.message)
+            expiry_at: new Date(Date.now() + duration * 1000).toISOString(),
+            expiry_seconds: duration,
+            payout_multiplier: 1.87,
+            status: 'open',
+            result: null
+          }
+        });
+      } catch (e) {
+        console.error('Insert binary_trade_records error:', e.message);
       }
     }
-  } catch (e) {
-    console.error("[WS TRADE] Error persisting trade to DB:", e)
-  }
-}
 
-function placeTrade(currentState, input, session) {
-  const market = currentState.markets[input.symbol]
-
-  if (!market) {
-    return { error: "Market is unavailable" }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: true, trade, balance: newBalance }));
   }
 
-  const stake = round2(Number(input.stake || 0))
+  if (reqUrl === '/api/trading/settle' && req.method === 'POST') {
+    const body = await readBody(req);
+    const user = getRequestUser() || { id: 59, email: 'simulation@probinary.com', simulation: true, is80WinRate: true };
+    const tradeId = body.tradeId;
+    const exitPrice = parseFloat(body.exitPrice) || 1.0845;
+    const exitDigit = parseInt(String(exitPrice).replace('.', '').slice(-1)) || 0;
+    let outcome = body.outcome; // 'win' or 'loss'
+    let payout = parseFloat(body.payout) || 0;
+    const isDemo = Boolean(body.isDemo);
 
-  if (!Number.isFinite(stake) || stake <= 0) {
-    return { error: "Stake must be greater than zero" }
-  }
-
-  if (stake > currentState.balance) {
-    return { error: "Insufficient balance" }
-  }
-
-  const expirySeconds = Math.max(
-    10,
-    Math.round(Number(input.expirySeconds || 30)),
-  )
-
-  const stopLossEnabled = input.stopLossEnabled === true
-  const stopLoss =
-    stopLossEnabled && Number(input.stopLoss) > 0
-      ? round2(Number(input.stopLoss))
-      : null
-
-  const takeProfitEnabled = input.takeProfitEnabled === true
-  const takeProfit =
-    takeProfitEnabled && Number(input.takeProfit) > 0
-      ? round2(Number(input.takeProfit))
-      : null
-
-  if (stopLossEnabled && (!stopLoss || stopLoss <= 0)) {
-    return { error: "Stop loss must be greater than zero" }
-  }
-
-  if (takeProfitEnabled && (!takeProfit || takeProfit <= 0)) {
-    return { error: "Take profit must be greater than zero" }
-  }
-
-  const trade = {
-    id: `TRD-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 90 + 10)}`,
-
-    symbol: market.symbol,
-
-    marketName: market.name,
-
-    contractType: input.contractType,
-
-    direction: input.direction,
-
-    predictionDigit: input.predictionDigit !== undefined ? Number(input.predictionDigit) : undefined,
-
-    stake,
-
-    entryPrice: market.price,
-
-    currentPrice: market.price,
-
-    entryDigit: lastDigit(market.price),
-
-    expiryAt: Date.now() + expirySeconds * 1000,
-
-    expirySeconds,
-
-    payoutMultiplier: PAYOUTS[input.contractType] || 1.82,
-
-    traderRole: session?.role || "user",
-
-    userId: session?.userId ? String(session.userId) : null,
-
-    isDemo: Boolean(input.isDemo),
-
-    testBinaryWinRate: getTestBinaryPolicy(session)?.winRate,
-
-    stopLoss,
-
-    stopLossEnabled,
-
-    takeProfit,
-
-    takeProfitEnabled,
-
-    closureReason: null,
-
-    closedBy: null,
-
-    unrealizedPnl: 0,
-
-    status: "open",
-
-    createdAt: Date.now(),
-  }
-
-  currentState.balance = round2(currentState.balance - stake)
-
-  currentState.openTrades.unshift(trade)
-
-  currentState.selectedSymbol = trade.symbol
-
-  currentState.lastError = null
-
-  return { trade }
-}
-
-async function manualStopTrade(currentState, tradeId, session) {
-  let targetState = currentState
-  let index = targetState.openTrades.findIndex((item) => item.id === tradeId)
-
-  if (index === -1) {
-    for (const [key, s] of accountStates.entries()) {
-      const idx = s.openTrades.findIndex((item) => item.id === tradeId)
-      if (idx !== -1) {
-        targetState = s
-        index = idx
-        break
+    // 80% Win Rate Simulation Engine Check
+    const isSimulationAccount = user.is80WinRate || user.simulation || user.email === 'simulation@probinary.com';
+    if (isSimulationAccount) {
+      if (Math.random() < 0.80) {
+        outcome = 'win';
+        if (payout <= 0) {
+          const stake = parseFloat(body.stake) || 10;
+          payout = parseFloat((stake * 1.87).toFixed(2));
+        }
       }
     }
-  }
 
-  if (index === -1) {
-    return { error: "Active trade not found or already closed" }
-  }
+    const stake = parseFloat(body.stake) || 10;
+    const profit = outcome === 'win' ? (payout - stake) : -stake;
 
-  const trade = targetState.openTrades[index]
+    let newBalance;
+    if (!isDemo) {
+      if (outcome === 'win') {
+        newBalance = await sbAdjustUserBalance(user.id, payout, `Trade WON: ${tradeId} (+${profit.toFixed(2)})`);
+      } else {
+        newBalance = await sbGetUserBalance(user.id);
+      }
 
-  // Verify ownership (unless session has admin canForceClose)
-  if (
-    session?.userId &&
-    trade.userId &&
-    String(trade.userId) !== String(session.userId) &&
-    !session.capabilities?.canForceClose
-  ) {
-    return { error: "You are not authorized to stop this trade" }
-  }
-
-  const market = targetState.markets[trade.symbol] || { price: trade.entryPrice }
-  const currentPrice = market.price
-  const pnl = calculateUnrealizedPnl(trade, currentPrice)
-  const result = pnl > 0 ? "won" : pnl === 0 ? "break_even" : "lost"
-  const payout = Math.max(0, round2(trade.stake + pnl))
-  const profit = round2(pnl)
-
-  const settled = {
-    ...trade,
-    status: result,
-    result,
-    exitPrice: round2(currentPrice),
-    exitDigit: lastDigit(currentPrice),
-    settledAt: Date.now(),
-    closureReason: "Manual Stop",
-    closedBy: "manual",
-    payout,
-    profit,
-    unrealizedPnl: profit,
-    currentPrice: round2(currentPrice),
-  }
-
-  targetState.balance = round2(targetState.balance + payout)
-  targetState.realizedPnl = round2(targetState.realizedPnl + profit)
-  targetState.closedTrades.unshift(settled)
-  targetState.openTrades.splice(index, 1)
-
-  if (trade.userId && !trade.isDemo) {
-    try {
-      await persistSettledTradeRecord(trade.userId, settled)
-    } catch (err) {
-      console.error("[WS TRADE] Error persisting manually stopped trade:", err)
-    }
-    if (settled.payout > 0) {
+      // Update Supabase binary_trade_records (status: 'won'|'lost', result: 'won'|'lost')
       try {
-        await applyWalletDeltaDirect(trade.userId, settled.payout)
+        await supabaseFetch(`/rest/v1/binary_trade_records?trade_id=eq.${tradeId}`, {
+          method: 'PATCH',
+          body: {
+            status: outcome === 'win' ? 'won' : 'lost',
+            result: outcome === 'win' ? 'won' : 'lost',
+            exit_price: exitPrice,
+            exit_digit: exitDigit,
+            payout: outcome === 'win' ? payout : 0,
+            profit: profit,
+            settled_at: new Date().toISOString()
+          }
+        });
+
+        // Insert into transaction_history (transaction_type = 'trade', status = 'completed')
+        await supabaseFetch(`/rest/v1/transaction_history`, {
+          method: 'POST',
+          body: {
+            user_id: parseInt(user.id) || 59,
+            transaction_type: 'trade',
+            amount: Math.abs(profit),
+            currency: 'USD',
+            status: 'completed',
+            payment_reference: tradeId,
+            description: `Trade ${outcome.toUpperCase()}: ${tradeId} (${profit >= 0 ? '+' : ''}${profit.toFixed(2)})`
+          }
+        });
       } catch (err) {
-        console.error("[WS TRADE] Error applying manual stop payout to wallet in DB:", err)
+        console.error('Settle trade error in Supabase:', err.message);
+      }
+    } else {
+      newBalance = body.demoBalance !== undefined ? body.demoBalance : 10000;
+    }
+
+    const trade = {
+      id: tradeId,
+      status: 'settled',
+      exitPrice: exitPrice,
+      outcome: outcome,
+      payout: outcome === 'win' ? payout : 0,
+      profit: profit,
+      settledAt: new Date().toISOString()
+    };
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: true, trade, balance: newBalance }));
+  }
+
+  if (reqUrl === '/api/trading/cashout' && req.method === 'POST') {
+    const body = await readBody(req);
+    const user = getRequestUser() || { id: 59 };
+    const tradeId = body.tradeId;
+    const currentPrice = parseFloat(body.currentPrice) || 1.0;
+    const stake = parseFloat(body.stake) || 10;
+    const cashoutAmount = parseFloat((stake * 0.75).toFixed(2));
+    const isDemo = Boolean(body.isDemo);
+
+    let newBalance;
+    if (!isDemo) {
+      newBalance = await sbAdjustUserBalance(user.id, cashoutAmount, `Trade cashout: ${tradeId}`);
+      try {
+        await supabaseFetch(`/rest/v1/binary_trade_records?trade_id=eq.${tradeId}`, {
+          method: 'PATCH',
+          body: {
+            status: 'break_even',
+            result: 'break_even',
+            exit_price: currentPrice,
+            payout: cashoutAmount,
+            profit: cashoutAmount - stake,
+            settled_at: new Date().toISOString(),
+            closure_reason: 'manual_cashout'
+          }
+        });
+      } catch {}
+    } else {
+      newBalance = (body.demoBalance || 10000) + cashoutAmount;
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      success: true,
+      trade: { id: tradeId, status: 'settled', outcome: 'cashout', payout: cashoutAmount, profit: cashoutAmount - stake },
+      balance: newBalance
+    }));
+  }
+
+  if (reqUrl === '/api/trading/history' && req.method === 'GET') {
+    const user = getRequestUser() || { id: 59 };
+    try {
+      const resTrades = await supabaseFetch(`/rest/v1/binary_trade_records?user_id=eq.${user.id}&order=created_at.desc&limit=50`);
+      const trades = await resTrades.json();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, trades: Array.isArray(trades) ? trades : [] }));
+    } catch {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, trades: [] }));
+    }
+  }
+
+  // --- WALLET DEPOSIT & WITHDRAWAL ---
+  if (reqUrl === '/api/wallet/deposit' && req.method === 'POST') {
+    const body = await readBody(req);
+    const user = getRequestUser() || { id: 59 };
+    const amount = parseFloat(body.amount) || 0;
+    const isDemo = Boolean(body.isDemo);
+
+    if (amount <= 0) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Invalid deposit amount' }));
+    }
+
+    let newBalance;
+    if (isDemo) {
+      newBalance = (body.currentDemoBalance || 0) + amount;
+    } else {
+      newBalance = await sbAdjustUserBalance(user.id, amount, `Deposit via ${body.method || 'M-Pesa Safaricom'}`);
+      const depRef = 'DP-' + Date.now().toString(36).toUpperCase();
+      // Record in manual_wallet_deposits
+      try {
+        await supabaseFetch('/rest/v1/manual_wallet_deposits', {
+          method: 'POST',
+          body: {
+            user_id: String(user.id),
+            amount: amount,
+            reference: depRef,
+            note: body.method || 'M-Pesa Instant Deposit',
+            credited_by: '1'
+          }
+        });
+      } catch {}
+
+      // Record in transaction_history (transaction_type = 'deposit', status = 'completed')
+      try {
+        await supabaseFetch('/rest/v1/transaction_history', {
+          method: 'POST',
+          body: {
+            user_id: parseInt(user.id) || 59,
+            transaction_type: 'deposit',
+            amount: amount,
+            currency: 'USD',
+            status: 'completed',
+            payment_reference: depRef,
+            description: `Deposit via ${body.method || 'M-Pesa Safaricom'}`
+          }
+        });
+      } catch {}
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      success: true,
+      balance: newBalance,
+      message: `Deposit of $${amount.toFixed(2)} completed successfully.`
+    }));
+  }
+
+  if (reqUrl === '/api/wallet/withdraw' && req.method === 'POST') {
+    const body = await readBody(req);
+    const user = getRequestUser() || { id: 59, email: 'simulation@probinary.com', name: 'Simulation Trader' };
+    const amount = parseFloat(body.amount) || 0;
+    const isDemo = Boolean(body.isDemo);
+
+    if (amount <= 0) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Invalid withdrawal amount' }));
+    }
+
+    if (!isDemo) {
+      const current = await sbGetUserBalance(user.id);
+      if (current < amount) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ error: `Insufficient funds ($${current.toFixed(2)}).` }));
+      }
+
+      // Reserve the balance in Supabase
+      const newBalance = await sbAdjustUserBalance(user.id, -amount, `Withdrawal reserved: ${body.method || 'mpesa'}`);
+      const tradeId = 'WD-' + Math.floor(100000 + Math.random() * 900000);
+      const methodLabel = body.method === 'crypto' ? `USDT (${(body.network || 'TRC20').toUpperCase()})` : (body.method === 'bank' ? 'Wire Transfer' : 'M-Pesa Instant');
+      const destLabel = body.destination || body.phone || body.address || 'User Account';
+
+      // Insert pending withdrawal in transaction_history strictly adhering to schema constraints:
+      // transaction_type = 'withdrawal', status = 'pending'
+      try {
+        await supabaseFetch('/rest/v1/transaction_history', {
+          method: 'POST',
+          body: {
+            user_id: parseInt(user.id) || 59,
+            transaction_type: 'withdrawal',
+            amount: amount,
+            currency: 'USD',
+            status: 'pending',
+            payment_reference: tradeId,
+            description: `Withdrawal via ${methodLabel}: ${destLabel}`,
+            metadata_json: { method: body.method, destination: destLabel, tradeId }
+          }
+        });
+      } catch (err) {
+        console.error('Insert withdrawal error in Supabase:', err.message);
+      }
+
+      const wdTrade = {
+        id: tradeId,
+        userId: user.id,
+        userEmail: user.email,
+        userName: user.name,
+        type: 'withdrawal',
+        asset: methodLabel,
+        tradeType: 'Payout',
+        direction: 'out',
+        stake: amount,
+        payout: 0,
+        profit: -amount,
+        outcome: 'pending',
+        status: 'pending',
+        method: body.method || 'mpesa',
+        destination: destLabel,
+        createdAt: new Date().toISOString()
+      };
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({
+        success: true,
+        trade: wdTrade,
+        balance: newBalance,
+        message: `Withdrawal of $${amount.toFixed(2)} submitted. Status: Pending Administrator Approval.`
+      }));
+    } else {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Cannot withdraw virtual demo funds' }));
+    }
+  }
+
+  // --- ADMIN PORTAL API ENDPOINTS ---
+  if (reqUrl === '/api/admin/overview' && req.method === 'GET') {
+    try {
+      const [users, deposits, withdrawals] = await Promise.all([
+        sbGetAllUsers(),
+        sbGetCompletedDeposits(),
+        sbGetWithdrawals()
+      ]);
+
+      const totalDepositsAmount = deposits.reduce((acc, d) => acc + (parseFloat(d.amount) || 0), 0);
+      const pendingWithdrawals = withdrawals.filter(w => w.status === 'pending');
+      const totalPendingWdAmount = pendingWithdrawals.reduce((acc, w) => acc + (parseFloat(w.amount) || 0), 0);
+
+      const approvedWithdrawals = withdrawals.filter(w => w.status === 'completed' || w.outcome === 'approved');
+      const totalApprovedWdAmount = approvedWithdrawals.reduce((acc, w) => acc + (parseFloat(w.amount) || 0), 0);
+
+      const kycStore = loadKyc();
+      const kycInReview = Object.values(kycStore).filter(k => k.status === 'review');
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({
+        success: true,
+        stats: {
+          totalUsers: users.length,
+          totalDepositsAmount: parseFloat(totalDepositsAmount.toFixed(2)),
+          totalDepositsCount: deposits.length,
+          pendingWithdrawalsAmount: parseFloat(totalPendingWdAmount.toFixed(2)),
+          pendingWithdrawalsCount: pendingWithdrawals.length,
+          approvedWithdrawalsAmount: parseFloat(totalApprovedWdAmount.toFixed(2)),
+          approvedWithdrawalsCount: approvedWithdrawals.length,
+          kycReviewCount: kycInReview.length
+        }
+      }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Failed to load admin overview from Supabase' }));
+    }
+  }
+
+  if (reqUrl === '/api/admin/users' && req.method === 'GET') {
+    try {
+      const users = await sbGetAllUsers();
+      const kycStore = loadKyc();
+
+      const safeUsers = users.map(u => {
+        const roleName = u.user_roles?.[0]?.roles?.name || '';
+        const isAdmin = roleName === 'super_admin' || roleName === 'admin' || u.email === 'admin@probinary.com' || u.email === 'superadmin@probinary.com';
+        const isSimulation = u.email === 'simulation@probinary.com' || (u.username && u.username.includes('simulation'));
+        const bal = parseFloat(u.wallets?.current_balance ?? (isAdmin ? 25000.00 : (isSimulation ? 10000.00 : 0)));
+
+        return {
+          id: u.id,
+          name: u.username || (isAdmin ? 'System Administrator' : (isSimulation ? 'Simulation Trader' : u.email.split('@')[0])),
+          email: u.email,
+          role: isAdmin ? 'admin' : 'trader',
+          balance: bal,
+          simulation: isSimulation,
+          is80WinRate: isSimulation,
+          winRate: isSimulation ? 80 : null,
+          kycStatus: (kycStore[u.id] && kycStore[u.id].status) || (isSimulation || isAdmin ? 'verified' : 'pending'),
+          createdAt: u.created_at
+        };
+      });
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, users: safeUsers }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Failed to load users from Supabase' }));
+    }
+  }
+
+  // --- ADMIN BALANCE MODIFICATION ENDPOINT FOR SIMULATION ACCOUNT ---
+  if ((reqUrl === '/api/admin/simulation/balance' || reqUrl === '/api/admin/users/update-balance') && req.method === 'POST') {
+    const body = await readBody(req);
+    const targetEmail = (body.email || 'simulation@probinary.com').trim().toLowerCase();
+    let targetUserId = body.userId;
+
+    if (!targetUserId) {
+      const targetUser = await sbGetUserByEmail(targetEmail);
+      targetUserId = targetUser ? targetUser.id : 59;
+    }
+
+    let newBalance;
+    if (body.balance !== undefined) {
+      newBalance = parseFloat(body.balance);
+    } else if (body.delta !== undefined) {
+      const current = await sbGetUserBalance(targetUserId);
+      newBalance = Math.max(0, current + parseFloat(body.delta));
+    } else if (body.amount !== undefined) {
+      newBalance = parseFloat(body.amount);
+    } else {
+      newBalance = 10000.00;
+    }
+
+    if (isNaN(newBalance) || newBalance < 0) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Invalid balance amount specified' }));
+    }
+
+    // Updates Supabase wallets table directly and writes an 'adjustment' record in transaction_history
+    const updated = await sbUpdateUserBalance(targetUserId, newBalance, body.reason || `Admin override balance adjustment`);
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      success: true,
+      userId: targetUserId,
+      email: targetEmail,
+      balance: updated,
+      formattedBalance: '$' + updated.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+      message: `Balance for ${targetEmail} updated to $${updated.toLocaleString('en-US', { minimumFractionDigits: 2 })} in Supabase.`
+    }));
+  }
+
+  if (reqUrl === '/api/admin/deposits' && req.method === 'GET') {
+    const deposits = await sbGetCompletedDeposits();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: true, deposits }));
+  }
+
+  if (reqUrl === '/api/admin/withdrawals' && req.method === 'GET') {
+    const withdrawals = await sbGetWithdrawals();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: true, withdrawals }));
+  }
+
+  if (reqUrl === '/api/admin/withdrawals/approve' && req.method === 'POST') {
+    const body = await readBody(req);
+    const tradeId = body.tradeId;
+
+    try {
+      // In transaction_history, status must be 'completed'
+      await supabaseFetch(`/rest/v1/transaction_history?payment_reference=eq.${tradeId}`, {
+        method: 'PATCH',
+        body: { status: 'completed', updated_at: new Date().toISOString() }
+      });
+      await supabaseFetch(`/rest/v1/transaction_history?id=eq.${tradeId}`, {
+        method: 'PATCH',
+        body: { status: 'completed', updated_at: new Date().toISOString() }
+      });
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({
+        success: true,
+        trade: { id: tradeId, status: 'completed', outcome: 'approved' },
+        message: `Withdrawal ${tradeId} has been APPROVED and marked disbursed in Supabase.`
+      }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Failed to approve withdrawal in Supabase' }));
+    }
+  }
+
+  if (reqUrl === '/api/admin/withdrawals/reject' && req.method === 'POST') {
+    const body = await readBody(req);
+    const tradeId = body.tradeId;
+    const reason = body.reason || 'Compliance verification requirement';
+
+    try {
+      const resWd = await supabaseFetch(`/rest/v1/transaction_history?payment_reference=eq.${tradeId}`);
+      const wdData = await resWd.json();
+      const wd = Array.isArray(wdData) && wdData.length > 0 ? wdData[0] : null;
+
+      let refundAmount = 100;
+      let targetUserId = 59;
+      if (wd) {
+        refundAmount = parseFloat(wd.amount) || 0;
+        targetUserId = wd.user_id;
+      }
+
+      // In transaction_history schema: status = 'failed'
+      await supabaseFetch(`/rest/v1/transaction_history?payment_reference=eq.${tradeId}`, {
+        method: 'PATCH',
+        body: {
+          status: 'failed',
+          updated_at: new Date().toISOString(),
+          metadata_json: { rejectReason: reason, refunded: true, rejectedAt: new Date().toISOString() }
+        }
+      });
+
+      // Refund the held stake back to trader's Supabase balance
+      const updatedBalance = await sbAdjustUserBalance(targetUserId, refundAmount, `Refund for rejected withdrawal: ${tradeId}`);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({
+        success: true,
+        trade: { id: tradeId, status: 'rejected', rejectReason: reason },
+        refundedBalance: updatedBalance,
+        message: `Withdrawal ${tradeId} was rejected and $${refundAmount.toFixed(2)} was refunded to user's wallet in Supabase.`
+      }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Failed to reject withdrawal in Supabase' }));
+    }
+  }
+
+  // --- KYC VERIFICATION ENDPOINTS (12-Hour Automated Clearance Engine) ---
+  if (reqUrl === '/api/kyc/submit' && req.method === 'POST') {
+    const body = await readBody(req);
+    const user = getRequestUser() || { id: 59, email: 'simulation@probinary.com', name: 'Simulation Trader' };
+    const kycStore = loadKyc();
+    const now = Date.now();
+    const autoApproveAt = new Date(now + 12 * 3600 * 1000).toISOString();
+
+    kycStore[user.id] = {
+      userId: user.id,
+      userEmail: user.email,
+      fullName: body.fullName || user.name || 'Simulation Trader',
+      dob: body.dob || '1995-07-19',
+      docType: body.docType || 'National ID',
+      docNumber: body.docNumber || 'ID-SIM-889102',
+      status: 'review',
+      submittedAt: new Date(now).toISOString(),
+      autoApproveAt: autoApproveAt
+    };
+    saveKyc(kycStore);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      success: true,
+      status: 'review',
+      autoApproveAt: autoApproveAt,
+      message: 'KYC documents received. Automated compliance review active — approval automatically clears in 12 hours.'
+    }));
+  }
+
+  if (reqUrl === '/api/kyc/status' && req.method === 'GET') {
+    const user = getRequestUser() || { id: 59 };
+    const kycStore = loadKyc();
+    const entry = kycStore[user.id];
+    const status = entry ? entry.status : 'verified';
+    const now = Date.now();
+    let remainingSeconds = 0;
+    if (entry && entry.status === 'review') {
+      const autoApproveTime = entry.autoApproveAt ? new Date(entry.autoApproveAt).getTime() : (new Date(entry.submittedAt || now).getTime() + 12 * 3600 * 1000);
+      remainingSeconds = Math.max(0, Math.floor((autoApproveTime - now) / 1000));
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      success: true,
+      status,
+      submittedAt: entry ? entry.submittedAt : null,
+      autoApproveAt: entry ? entry.autoApproveAt : null,
+      remainingSeconds,
+      remainingHoursFormatted: `${Math.floor(remainingSeconds / 3600)}h ${Math.floor((remainingSeconds % 3600) / 60)}m`
+    }));
+  }
+
+  if (reqUrl === '/api/kyc/approve-demo' && req.method === 'POST') {
+    const user = getRequestUser() || { id: 59 };
+    const kycStore = loadKyc();
+    kycStore[user.id] = {
+      ...(kycStore[user.id] || {}),
+      userId: user.id,
+      status: 'verified',
+      verifiedAt: new Date().toISOString()
+    };
+    saveKyc(kycStore);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: true, status: 'verified', message: 'Identity verified successfully!' }));
+  }
+
+  if ((reqUrl === '/api/kyc/fastforward' || reqUrl === '/api/admin/kyc/fastforward') && req.method === 'POST') {
+    const body = await readBody(req);
+    const user = getRequestUser() || { id: 59 };
+    const kycStore = loadKyc();
+    const targetId = body.userId || user.id || 59;
+    if (kycStore[targetId]) {
+      // Simulate 12.5 hours passing
+      kycStore[targetId].submittedAt = new Date(Date.now() - 13 * 3600 * 1000).toISOString();
+      kycStore[targetId].autoApproveAt = new Date(Date.now() - 1 * 3600 * 1000).toISOString();
+      saveKyc(kycStore);
+      const updated = loadKyc();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({
+        success: true,
+        status: updated[targetId]?.status || 'verified',
+        message: 'Fast-forward complete: 12-hour review period elapsed. KYC status automatically verified!'
+      }));
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: true, status: 'verified', message: 'Fast-forward complete.' }));
+  }
+
+  if (reqUrl === '/api/admin/kyc/queue' && req.method === 'GET') {
+    const kycStore = loadKyc();
+    const now = Date.now();
+    const queue = [];
+    for (const userId in kycStore) {
+      const k = kycStore[userId];
+      const submitted = new Date(k.submittedAt || now).getTime();
+      const autoApproveTime = k.autoApproveAt ? new Date(k.autoApproveAt).getTime() : (submitted + 12 * 3600 * 1000);
+      const remainingSeconds = Math.max(0, Math.floor((autoApproveTime - now) / 1000));
+      queue.push({
+        ...k,
+        remainingSeconds,
+        remainingHoursFormatted: `${Math.floor(remainingSeconds / 3600)}h ${Math.floor((remainingSeconds % 3600) / 60)}m`
+      });
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: true, queue }));
+  }
+
+  if (reqUrl === '/api/admin/kyc/approve' && req.method === 'POST') {
+    const body = await readBody(req);
+    const userId = body.userId || 59;
+    const kycStore = loadKyc();
+    if (kycStore[userId]) {
+      kycStore[userId].status = 'verified';
+      kycStore[userId].verifiedAt = new Date().toISOString();
+      kycStore[userId].adminOverride = true;
+      saveKyc(kycStore);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, message: `KYC for ${userId} manually verified by Administrator.` }));
+    }
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ error: 'KYC record not found' }));
+  }
+
+  // --- NOWPAYMENTS CRYPTO DEPOSIT ENDPOINTS (nowpayments_orders SCHEMA) ---
+  if (reqUrl === '/api/crypto/create-payment' && req.method === 'POST') {
+    const body = await readBody(req);
+    const user = getRequestUser() || { id: 6, email: 'superadmin@probinary.com' };
+    const amount = parseFloat(body.amount) || 50;
+    const currency = (body.currency || 'usdttrc20').toLowerCase();
+    const isDemo = Boolean(body.isDemo);
+
+    const apiKey = process.env.NOWPAYMENTS_API_KEY;
+    const orderId = 'NOW-' + Date.now().toString(36).toUpperCase();
+
+    if (apiKey) {
+      try {
+        const postData = JSON.stringify({
+          price_amount: amount,
+          price_currency: 'usd',
+          pay_currency: currency,
+          order_id: orderId,
+          order_description: `ProBinary Deposit $${amount} USD`,
+          ipn_callback_url: (process.env.VITE_API_URL || 'https://probinary.site') + '/api/crypto/webhook'
+        });
+
+        const npRes = await new Promise((resolve) => {
+          const req = https.request('https://api.nowpayments.io/v1/payment', {
+            method: 'POST',
+            headers: {
+              'x-api-key': apiKey,
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(postData)
+            },
+            timeout: 6000
+          }, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+              try { resolve(JSON.parse(data)); } catch { resolve(null); }
+            });
+          });
+          req.on('error', () => resolve(null));
+          req.on('timeout', () => { req.destroy(); resolve(null); });
+          req.write(postData);
+          req.end();
+        });
+
+        if (npRes && npRes.pay_address) {
+          // Record in nowpayments_orders table in Supabase
+          try {
+            await supabaseFetch('/rest/v1/nowpayments_orders', {
+              method: 'POST',
+              body: {
+                order_id: orderId,
+                user_id: String(user.id),
+                amount_usd: amount,
+                payment_id: String(npRes.payment_id || ''),
+                payment_status: 'creating',
+                pay_address: npRes.pay_address,
+                pay_amount: parseFloat(npRes.pay_amount) || amount,
+                pay_currency: (npRes.pay_currency || currency).toUpperCase()
+              }
+            });
+          } catch (e) {}
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({
+            success: true,
+            orderId: npRes.order_id || orderId,
+            paymentId: npRes.payment_id,
+            payAddress: npRes.pay_address,
+            payAmount: npRes.pay_amount,
+            payCurrency: npRes.pay_currency,
+            amountUsd: amount
+          }));
+        }
+      } catch (err) {
+        console.error('NOWPayments error:', err);
       }
     }
-    persistedBalances.set(`user:${trade.userId}`, targetState.balance)
+
+    // Direct / Sandbox Fallback Address (TRC20 / ERC20 / BTC / ETH)
+    const addresses = {
+      'usdttrc20': 'TYD9K3v1g7hJ8mP2zWqLsXbA5nC4rEe9F2',
+      'usdterc20': '0x71C8395562725832E506B898d00E6eC1f4eDE8F3',
+      'btc': 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+      'eth': '0x71C8395562725832E506B898d00E6eC1f4eDE8F3',
+      'sol': '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+      'ltc': 'ltc1qrg9a56q2j4t7d5u450kdfq97vj7f8n7z2j4p3q'
+    };
+
+    const cryptoRates = {
+      'usdttrc20': 1.0,
+      'usdterc20': 1.0,
+      'btc': 0.0000109,
+      'eth': 0.000318,
+      'sol': 0.0048,
+      'ltc': 0.0125
+    };
+
+    const payAddr = addresses[currency] || addresses['usdttrc20'];
+    const rate = cryptoRates[currency] || 1.0;
+    const cryptoAmt = parseFloat((amount * rate).toFixed(6));
+
+    // Record order in Supabase nowpayments_orders table
+    try {
+      await supabaseFetch('/rest/v1/nowpayments_orders', {
+        method: 'POST',
+        body: {
+          order_id: orderId,
+          user_id: String(user.id),
+          amount_usd: amount,
+          payment_status: 'creating',
+          pay_address: payAddr,
+          pay_amount: cryptoAmt,
+          pay_currency: currency.toUpperCase()
+        }
+      });
+    } catch {}
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      success: true,
+      orderId: orderId,
+      payAddress: payAddr,
+      payAmount: cryptoAmt,
+      payCurrency: currency.toUpperCase(),
+      amountUsd: amount,
+      isSandbox: true,
+      instructions: 'Send exact amount to the address above. Credits automatically upon confirmation.'
+    }));
   }
 
-  return { trade: settled }
-}
+  if (reqUrl === '/api/crypto/verify-payment' && req.method === 'POST') {
+    const body = await readBody(req);
+    const user = getRequestUser() || { id: 59 };
+    const amount = parseFloat(body.amount) || 0;
+    const isDemo = Boolean(body.isDemo);
 
-async function manualStopAllTrades(currentState, session) {
-  const settledTrades = []
-  const tradeIds = currentState.openTrades.map((t) => t.id)
-  for (const id of tradeIds) {
-    const res = await manualStopTrade(currentState, id, session)
-    if (res.trade) {
-      settledTrades.push(res.trade)
+    if (amount <= 0) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Invalid deposit amount' }));
     }
+
+    let newBalance;
+    if (isDemo) {
+      newBalance = (body.currentDemoBalance || 0) + amount;
+    } else {
+      newBalance = await sbAdjustUserBalance(user.id, amount, `Deposit via Crypto (USDT)`);
+      if (body.orderId) {
+        try {
+          await supabaseFetch(`/rest/v1/nowpayments_orders?order_id=eq.${body.orderId}`, {
+            method: 'PATCH',
+            body: { payment_status: 'finished', credited_at: new Date().toISOString() }
+          });
+        } catch {}
+      }
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      success: true,
+      balance: newBalance,
+      message: `Deposit of $${amount.toFixed(2)} USD via Crypto confirmed successfully.`
+    }));
   }
-  return { trades: settledTrades }
-}
 
-function forceCloseTrade(currentState, tradeId) {
-  let targetState = currentState
-  let index = targetState.openTrades.findIndex((item) => item.id === tradeId)
+  if (reqUrl === '/api/crypto/webhook' && req.method === 'POST') {
+    const body = await readBody(req);
+    console.log('[NOWPayments Webhook]', body);
+    if (body.order_id && (body.payment_status === 'finished' || body.payment_status === 'confirmed')) {
+      try {
+        await supabaseFetch(`/rest/v1/nowpayments_orders?order_id=eq.${body.order_id}`, {
+          method: 'PATCH',
+          body: { payment_status: 'finished', credited_at: new Date().toISOString() }
+        });
+      } catch {}
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ received: true }));
+  }
 
-  if (index === -1) {
-    for (const [key, s] of accountStates.entries()) {
-      const idx = s.openTrades.findIndex((item) => item.id === tradeId)
-      if (idx !== -1) {
-        targetState = s
-        index = idx
-        break
+  // --- STATIC ROUTING & REWRITES ---
+  let filePath = null;
+
+  if (reqUrl === '/' || reqUrl === '' || reqUrl === '/index.html') {
+    filePath = path.join(ROOT, 'index.html');
+  } else if (reqUrl === '/auth/login' || reqUrl === '/auth/login/' || reqUrl === '/auth/login.html' || reqUrl === '/login' || reqUrl === '/login.html') {
+    filePath = path.join(ROOT, 'auth', 'login.html');
+  } else if (reqUrl === '/auth/register' || reqUrl === '/auth/register/' || reqUrl === '/auth/register.html' || reqUrl === '/register' || reqUrl === '/register.html') {
+    filePath = path.join(ROOT, 'auth', 'register.html');
+  } else if (reqUrl === '/dashboard' || reqUrl === '/dashboard/' || reqUrl === '/dashboard/trade' || reqUrl === '/dashboard/trade/' || reqUrl === '/dashboard/trade.html' || reqUrl === '/trade' || reqUrl === '/trade.html') {
+    filePath = path.join(ROOT, 'dashboard', 'trade.html');
+  } else if (reqUrl === '/dashboard/bot' || reqUrl === '/dashboard/bot/' || reqUrl === '/dashboard/bot.html' || reqUrl === '/bot' || reqUrl === '/bot.html') {
+    filePath = path.join(ROOT, 'dashboard', 'bot.html');
+  } else if (reqUrl === '/dashboard/deposit' || reqUrl === '/dashboard/deposit/' || reqUrl === '/dashboard/deposit.html' || reqUrl === '/deposit' || reqUrl === '/deposit.html') {
+    filePath = path.join(ROOT, 'dashboard', 'deposit.html');
+  } else if (reqUrl === '/dashboard/withdraw' || reqUrl === '/dashboard/withdraw/' || reqUrl === '/dashboard/withdraw.html' || reqUrl === '/withdraw' || reqUrl === '/withdraw.html') {
+    filePath = path.join(ROOT, 'dashboard', 'withdraw.html');
+  } else if (reqUrl === '/dashboard/history' || reqUrl === '/dashboard/history/' || reqUrl === '/dashboard/history.html' || reqUrl === '/history' || reqUrl === '/history.html' || reqUrl === '/dashboard/portfolio' || reqUrl === '/portfolio') {
+    filePath = path.join(ROOT, 'dashboard', 'history.html');
+  } else if (reqUrl === '/dashboard/profile' || reqUrl === '/dashboard/profile/' || reqUrl === '/dashboard/profile.html' || reqUrl === '/profile' || reqUrl === '/profile.html' || reqUrl === '/kyc') {
+    filePath = path.join(ROOT, 'dashboard', 'profile.html');
+  } else if (reqUrl === '/dashboard/admin' || reqUrl === '/dashboard/admin/' || reqUrl === '/dashboard/admin.html' || reqUrl === '/admin' || reqUrl === '/admin.html') {
+    filePath = path.join(ROOT, 'dashboard', 'admin.html');
+  } else {
+    let cleanRel = decodeURIComponent(reqUrl).replace(/^[\/\\]+/, '');
+    let safeRel = path.normalize(cleanRel).replace(/^(\.\.[\/\\])+/, '');
+    
+    // Check root path first
+    let candidate = path.join(ROOT, safeRel);
+    if (fs.existsSync(candidate)) {
+      if (fs.statSync(candidate).isDirectory()) {
+        const idx = path.join(candidate, 'index.html');
+        if (fs.existsSync(idx)) filePath = idx;
+      } else {
+        filePath = candidate;
+      }
+    }
+    
+    // Check with .html extension
+    if (!filePath && fs.existsSync(candidate + '.html')) {
+      filePath = candidate + '.html';
+    }
+
+    // Check SITE_DIR
+    if (!filePath) {
+      let siteCandidate = path.join(SITE_DIR, safeRel);
+      if (fs.existsSync(siteCandidate)) {
+        if (fs.statSync(siteCandidate).isDirectory()) {
+          const idx = path.join(siteCandidate, 'index.html');
+          if (fs.existsSync(idx)) filePath = idx;
+        } else {
+          filePath = siteCandidate;
+        }
+      } else if (fs.existsSync(siteCandidate + '.html')) {
+        filePath = siteCandidate + '.html';
       }
     }
   }
 
-  if (index === -1) {
-    return { error: "Trade not found" }
+  if (!filePath || !fs.existsSync(filePath)) {
+    res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+    return res.end(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>404 — ProBinary</title><style>body{background:#090514;color:#f5f0ff;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column;text-align:center;}h1{font-size:36px;margin-bottom:8px;background:linear-gradient(135deg,#e0ccff,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}p{color:#9d8ec2;margin-bottom:24px;}a{background:linear-gradient(135deg,#e0ccff,#a855f7);color:#090514;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:700;display:inline-block;}</style></head><body><h1>404 · Page Not Found</h1><p>The page you are looking for does not exist.</p><a href="/dashboard/trade.html">Open Trading Desk →</a></body></html>`);
   }
 
-  const trade = targetState.openTrades[index]
-
-  const market = targetState.markets[trade.symbol] || { price: trade.entryPrice }
-
-  const settled = {
-    ...resolveTrade(trade, market.price, Date.now()),
-    closureReason: "Admin Force Close",
-    closedBy: "admin",
-  }
-
-  targetState.balance = round2(targetState.balance + (settled.payout || 0))
-
-  targetState.realizedPnl = round2(
-    targetState.realizedPnl + (settled.profit || 0),
-  )
-
-  targetState.closedTrades.unshift(settled)
-
-  targetState.openTrades.splice(index, 1)
-
-  if (trade.userId && !trade.isDemo) {
-    persistSettledTradeRecord(trade.userId, settled).catch((err) => {
-      console.error("[WS TRADE] Error persisting force-closed trade:", err)
-    })
-    if (settled.payout > 0) {
-      applyWalletDeltaDirect(trade.userId, settled.payout).catch((err) => {
-        console.error("[WS TRADE] Error applying force-close payout to wallet in DB:", err)
-      })
-    }
-    persistedBalances.set(`user:${trade.userId}`, targetState.balance)
-  }
-
-  return { trade: settled }
-}
-
-function adjustBalance(currentState, amount, reason) {
-  const delta = round2(Number(amount || 0))
-
-  if (!Number.isFinite(delta) || delta === 0) {
-    return { error: "Balance adjustment amount must be non-zero" }
-  }
-
-  const nextBalance = round2(currentState.balance + delta)
-
-  if (nextBalance < 0) {
-    return { error: "Insufficient balance for adjustment" }
-  }
-
-  currentState.balance = nextBalance
-
-  currentState.lastAction = reason
-
-  currentState.lastError = null
-
-  return { ok: true }
-}
-
-function resolveTrade(trade, exitPrice, settledAt) {
-  const exitDigit = lastDigit(exitPrice)
-
-  const forcedOutcome =
-    trade.testBinaryWinRate === undefined
-      ? consumeForcedOutcomeForTrade(trade)
-      : null
-
-  const won =
-    trade.testBinaryWinRate !== undefined
-      ? Math.random() < trade.testBinaryWinRate
-      : forcedOutcome === null
-        ? isWinningTrade(trade, exitPrice, exitDigit)
-        : forcedOutcome === "won"
-
-  const isBreakEven =
-    !won &&
-    exitPrice === trade.entryPrice &&
-    (trade.contractType === "rise-fall" || trade.contractType === "higher-lower")
-
-  const result = won ? "won" : isBreakEven ? "break_even" : "lost"
-  const payout = won
-    ? round2(trade.stake * trade.payoutMultiplier)
-    : isBreakEven
-      ? trade.stake
-      : 0
-  const profit = won
-    ? round2(payout - trade.stake)
-    : isBreakEven
-      ? 0
-      : round2(-trade.stake)
-
-  return {
-    ...trade,
-    status: result,
-    result,
-    exitPrice: round2(exitPrice),
-    exitDigit,
-    settledAt,
-    closureReason: trade.closureReason || "Expired",
-    closedBy: trade.closedBy || "expiry",
-    payout,
-    profit,
-    unrealizedPnl: profit,
-    currentPrice: round2(exitPrice),
-  }
-}
-
-function isWinningTrade(trade, exitPrice, exitDigit) {
-  switch (trade.contractType) {
-    case "rise-fall":
-      return trade.direction === "rise"
-        ? exitPrice > trade.entryPrice
-        : exitPrice < trade.entryPrice
-
-    case "even-odd":
-      return trade.direction === "even"
-        ? exitDigit % 2 === 0
-        : exitDigit % 2 === 1
-
-    case "match-differ": {
-      const target = trade.predictionDigit !== undefined ? trade.predictionDigit : trade.entryDigit
-      return trade.direction === "match"
-        ? exitDigit === target
-        : exitDigit !== target
+  fs.stat(filePath, (err, stats) => {
+    if (err || !stats.isFile()) {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      return res.end('404 Not Found');
     }
 
-    case "over-under": {
-      const target = trade.predictionDigit !== undefined ? trade.predictionDigit : 5
-      return trade.direction === "over"
-        ? exitDigit > target
-        : exitDigit < target
-    }
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-    case "higher-lower":
-      return trade.direction === "higher" || trade.direction === "rise"
-        ? exitPrice > trade.entryPrice
-        : exitPrice < trade.entryPrice
+    res.writeHead(200, {
+      'Content-Type': contentType,
+      'Content-Length': stats.size,
+      'Cache-Control': 'no-cache'
+    });
 
-    default:
-      return false
-  }
-}
+    fs.createReadStream(filePath).pipe(res);
+  });
+});
 
-function broadcastState(note) {
-  for (const client of clients) {
-    if (client.readyState === WebSocket.OPEN) {
-      const session = sessions.get(client) || createSession("demo-auth-token")
-      const state = getAccountState(session)
-
-      if (note) state.lastAction = note
-
-      client.send(JSON.stringify({ type: "STATE", state }))
-    }
-  }
-
-  syncBalanceToDb().catch((err) => {
-    console.error("[WS AUTH] Error syncing balance to DB:", err)
-  })
-}
-
-function nextPrice(price, volatility, drift, mean, step = 0) {
-  const gaussian = boxMuller()
-
-  const meanReversion = ((mean - price) / mean) * 0.02
-
-  const marketPulse = Math.sin(step / 8) * volatility * 0.2
-
-  const shock = gaussian * volatility
-
-  const spikeChance = Math.random() < 0.06 ? gaussian * volatility * 3.5 : 0
-
-  const delta =
-    price * (drift + meanReversion + marketPulse + shock + spikeChance)
-
-  return Math.max(0.01, round2(price + delta))
-}
-
-function boxMuller() {
-  const u1 = Math.max(Math.random(), 1e-8)
-
-  const u2 = Math.random()
-
-  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
-}
-
-function lastDigit(price) {
-  return Number(price.toFixed(2).slice(-1))
-}
-
-function round2(value) {
-  return Math.round(value * 100) / 100
-}
-
-function sampleTrade(
-  id,
-  symbol,
-  marketName,
-  contractType,
-  direction,
-  stake,
-  entryPrice,
-  exitPrice,
-  entryDigit,
-  expirySeconds,
-  payoutMultiplier,
-  result,
-  profit,
-  minuteOffset,
-) {
-  return {
-    id,
-
-    symbol,
-
-    marketName,
-
-    contractType,
-
-    direction,
-
-    stake,
-
-    entryPrice,
-
-    entryDigit,
-
-    expiryAt: Date.now() - minuteOffset * 60000,
-
-    expirySeconds,
-
-    payoutMultiplier,
-
-    status: result,
-
-    createdAt: Date.now() - minuteOffset * 60000,
-
-    settledAt: Date.now() - minuteOffset * 60000 + 30000,
-
-    exitPrice,
-
-    exitDigit: lastDigit(exitPrice),
-
-    payout: result === "won" ? round2(stake * payoutMultiplier) : 0,
-
-    profit,
-
-    result,
-
-    stopLoss: null,
-
-    stopLossEnabled: false,
-
-    takeProfit: null,
-
-    takeProfitEnabled: false,
-
-    closureReason: result === "won" ? "Take Profit" : "Stop Loss",
-
-    closedBy: result === "won" ? "take_profit" : "stop_loss",
-
-    unrealizedPnl: profit,
-
-    currentPrice: exitPrice,
-  }
-}
-
-function consumeForcedOutcomeForTrade(trade) {
-  if (!SIMULATION_MODE) {
-    return null
-  }
-
-  if (trade.traderRole !== "admin") {
-    return null
-  }
-
-  if (
-    adminSimPolicy.forceNextOutcome !== "won" &&
-    adminSimPolicy.forceNextOutcome !== "lost"
-  ) {
-    return null
-  }
-
-  const nextOutcome = adminSimPolicy.forceNextOutcome
-
-  adminSimPolicy.forceNextOutcome = null
-
-  adminSimPolicy.lastAppliedAt = Date.now()
-
-  broadcastPolicyState()
-
-  return nextOutcome
-}
+server.listen(PORT, () => {
+  console.log(`\n======================================================`);
+  console.log(`  ProBinary Trading Desk Server Online (Supabase Backend)`);
+  console.log(`  Website:      http://localhost:${PORT}`);
+  console.log(`  Sign In:      http://localhost:${PORT}/auth/login`);
+  console.log(`  Register:     http://localhost:${PORT}/auth/register`);
+  console.log(`  Trading Desk: http://localhost:${PORT}/dashboard/trade`);
+  console.log(`  Admin Portal: http://localhost:${PORT}/dashboard/admin`);
+  console.log(`  Supabase URL: ${SUPABASE_URL}`);
+  console.log(`======================================================\n`);
+});

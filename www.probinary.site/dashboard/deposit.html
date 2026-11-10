@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+  <title>ProBinary — Deposit Funds</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg-main: #090514;
+      --bg-header: #0d081c;
+      --bg-card: #191131;
+      --bg-card-alt: #130c27;
+      --bg-input: #090514;
+      --border-card: rgba(224, 204, 255, 0.12);
+      --border-card-alt: rgba(224, 204, 255, 0.18);
+      --border-accent: rgba(168, 85, 247, 0.35);
+      --accent-purple: #a855f7;
+      --accent-purple-hover: #c084fc;
+      --accent-purple-dim: rgba(168, 85, 247, 0.16);
+      --accent-lavender: #e0ccff;
+      --accent-gradient: linear-gradient(135deg, #e0ccff, #a855f7);
+      --accent-green: #10b981;
+      --accent-green-dim: rgba(16, 185, 129, 0.15);
+      --accent-red: #ef4444;
+      --accent-red-hover: #f87171;
+      --accent-gold: #fbbf24;
+      --text-white: #f5f0ff;
+      --text-gray: #9d8ec2;
+      --text-dim: #6b5b95;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100vh;
+      max-height: 100vh;
+      overflow: hidden;
+      background: var(--bg-main);
+      color: var(--text-white);
+      font-family: 'Public Sans', system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+    }
+
+    .mono { font-family: 'IBM Plex Mono', monospace; }
+
+    /* Custom Sleek Purple Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3d236b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #583399; }
+
+    /* Top Navigation */
+    .top-nav {
+      height: 44px;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    /* Layout Grid */
+    .app-layout {
+      height: calc(100vh - 44px);
+      max-height: calc(100vh - 44px);
+      display: grid;
+      grid-template-columns: 195px 1fr;
+      gap: 12px;
+      padding: 10px 14px;
+      overflow: hidden;
+    }
+
+    /* Cards */
+    .card-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+    }
+
+    /* Buttons & Pills */
+    .pill-btn {
+      border: 1px solid var(--border-card-alt);
+      background: var(--bg-card-alt);
+      color: var(--text-gray);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .pill-btn:hover {
+      border-color: var(--accent-purple);
+      color: var(--text-white);
+    }
+    .pill-btn.active {
+      background: var(--accent-gradient);
+      border-color: var(--accent-purple);
+      color: #090514;
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(168, 85, 247, 0.35);
+    }
+
+    .purple-btn {
+      background: var(--accent-gradient);
+      color: #090514;
+      font-weight: 700;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.35);
+    }
+    .purple-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+    }
+
+    .mint-btn {
+      background: #10b981;
+      color: #090514;
+      font-weight: 700;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+    }
+    
+
+    .red-btn {
+      background: var(--accent-red);
+      color: #ffffff;
+      font-weight: 700;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      box-shadow: 0 0 16px rgba(239, 68, 68, 0.35);
+    }
+    .red-btn:hover { background: var(--accent-red-hover); }
+
+    /* Sidebar Navigation Links */
+    
+    .nav-svg {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      color: inherit;
+    }
+
+    .nav-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--text-gray);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+    .nav-btn:hover {
+      color: var(--text-white);
+      background: rgba(224, 204, 255, 0.05);
+    }
+    .nav-btn.active {
+      background: var(--accent-purple-dim);
+      border: 1px solid var(--accent-purple);
+      color: var(--accent-lavender);
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+    }
+
+    /* Payment Method Item */
+    .pay-method-card {
+      background: #130c27;
+      border: 1px solid rgba(224, 204, 255, 0.12);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .pay-method-card:hover {
+      border-color: var(--accent-purple);
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.25);
+      transform: translateY(-1px);
+    }
+    .pay-method-card.crypto:hover {
+      border-color: var(--accent-purple);
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.3);
+    }
+    .pay-method-card.disabled {
+      background: #0f0820;
+      border-color: rgba(224, 204, 255, 0.06);
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+    .pay-method-card.disabled:hover {
+      border-color: rgba(224, 204, 255, 0.06);
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* Icon Box */
+    .method-icon-box {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    /* Quick Amount Chip */
+    .q-dep-chip {
+      background: var(--bg-input);
+      border: 1px solid var(--border-card-alt);
+      color: var(--text-gray);
+      border-radius: 6px;
+      padding: 6px 0;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+    .q-dep-chip:hover { border-color: var(--accent-purple); color: #fff; }
+    .q-dep-chip.active {
+      background: var(--accent-gradient);
+      border-color: var(--accent-purple);
+      color: #090514;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.35);
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 5, 20, 0.88);
+      backdrop-filter: blur(5px);
+      z-index: 999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    /* Hamburger & Mobile Drawer */
+    .mobile-menu-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .mobile-drawer-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+    }
+    .mobile-drawer {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 250px;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border-card);
+      z-index: 1001;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease-out;
+    }
+    .mobile-drawer.open {
+      transform: translateX(0);
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 900px) {
+      html, body {
+        height: auto;
+        max-height: none;
+        overflow-y: auto;
+      }
+      .mobile-menu-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .app-layout {
+        height: auto;
+        max-height: none;
+        grid-template-columns: 1fr;
+        padding: 10px;
+        overflow: visible;
+      }
+      aside.desktop-sidebar {
+        display: none !important;
+      }
+      #topTickerBar {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP HEADER NAV -->
+  <header class="top-nav">
+    <!-- Left Logo & Mobile Hamburger -->
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileDrawer()" aria-label="Open menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <a href="/dashboard/trade.html" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
+        <div style="width: 26px; height: 26px; border-radius: 6px; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; box-shadow: 0 0 12px rgba(168,85,247,0.4);">P</div>
+        <span style="font-size: 16px; font-weight: 700; letter-spacing: -0.02em; color: #fff;">Pro<span style="color:var(--accent-lavender)">Binary</span></span>
+      </a>
+    </div>
+
+    <!-- Center Market Ticker -->
+    <div id="topTickerBar" style="display: flex; align-items: center; gap: 16px; font-size: 11px;">
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">EUR/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_EUR_USD">1.0842</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">GBP/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_GBP_USD">1.2915</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">USD/JPY</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_USD_JPY">154.20</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">BTC/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_BTC_USD">91,420</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">ETH/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_ETH_USD">3,140</span></div>
+    </div>
+
+    <!-- Right Header Controls -->
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <!-- Balance Pill -->
+      <div class="pill-btn" id="headerBalancePill" style="padding: 4px 10px; cursor: default;">
+        <span style="color: var(--accent-purple);">●</span>
+        <span class="mono" id="headerBalanceText" style="font-weight: 700; color: #fff;">$10,000.00</span>
+        <span style="font-size: 9px; color: var(--text-gray);">▼</span>
+      </div>
+
+      <!-- Deposit Button -->
+      <a href="/dashboard/deposit.html" class="purple-btn" style="padding: 5px 14px; font-size: 11px; text-decoration: none;">
+        + Deposit
+      </a>
+
+      <!-- Avatar Circle -->
+      <a href="/dashboard/profile.html" id="headerAvatarBtn" style="text-decoration: none; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; cursor: pointer; box-shadow: 0 0 10px rgba(168,85,247,0.4);">
+        T
+      </a>
+    </div>
+  </header>
+
+  <!-- MOBILE DRAWER -->
+  <div class="mobile-drawer-backdrop" id="drawerBackdrop" onclick="toggleMobileDrawer()"></div>
+  <div class="mobile-drawer" id="mobileDrawer">
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 24px; height: 24px; border-radius: 6px; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;">P</div>
+          <span style="font-size: 15px; font-weight: 700; color: #fff;">Pro<span style="color:var(--accent-lavender)">Binary</span></span>
+        </div>
+        <button onclick="toggleMobileDrawer()" style="background:none; border:none; color:var(--text-gray); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:4px;" aria-label="Close menu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+
+      <nav style="display: flex; flex-direction: column; gap: 6px;">
+        <a href="/dashboard/trade.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg></span> Trade
+        </a>
+        <a href="/dashboard/bot.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> Bot <span style="color: var(--accent-purple); font-size: 10px; margin-left: auto;">●</span>
+        </a>
+        <a href="/dashboard/history.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span> Portfolio
+        </a>
+        <a href="/dashboard/deposit.html" class="nav-btn active">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
+        </a>
+        <a href="/dashboard/withdraw.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
+        </a>
+        <a href="/dashboard/history.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
+        </a>
+        <a href="/dashboard/profile.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile
+        </a>
+      </nav>
+    </div>
+
+    <div style="padding-top: 12px; border-top: 1px solid var(--border-card);">
+      <button onclick="signOut()" class="nav-btn" style="color: var(--accent-red);">
+        <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Sign out
+      </button>
+    </div>
+  </div>
+
+  <!-- APP LAYOUT -->
+  <div class="app-layout">
+
+    <!-- 1. LEFT SIDEBAR (Desktop) -->
+    <aside class="desktop-sidebar" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+      <div>
+        <!-- Balance Card -->
+        <div class="card-panel" style="padding: 12px; margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">Live Balance</span>
+            <div style="display: flex; gap: 4px;">
+              <span id="tabLive" onclick="setMode(false)" class="pill-btn active" style="padding: 2px 6px; font-size: 10px;">Live</span>
+              <span id="tabDemo" onclick="setMode(true)" class="pill-btn" style="padding: 2px 6px; font-size: 10px;">Demo</span>
+            </div>
+          </div>
+          <div id="sidebarBalanceAmount" class="mono" style="font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px;">$10,000.00</div>
+          <button onclick="openMpesaDeposit()" class="purple-btn" style="width: 100%; padding: 6px 0; font-size: 11px;">
+            + Deposit
+          </button>
+        </div>
+
+        <!-- Navigation -->
+        <nav style="display: flex; flex-direction: column; gap: 4px;">
+          <a href="/dashboard/trade.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg></span> Trade
+          </a>
+          <a href="/dashboard/bot.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> Bot <span style="color: var(--accent-purple); font-size: 10px; margin-left: auto;">●</span>
+          </a>
+          <a href="/dashboard/history.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span> Portfolio
+          </a>
+          <a href="/dashboard/deposit.html" class="nav-btn active">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
+          </a>
+          <a href="/dashboard/withdraw.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
+          </a>
+          <a href="/dashboard/history.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
+          </a>
+          <a href="/dashboard/profile.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile
+          </a>
+        </nav>
+      </div>
+
+      <!-- Bottom User Card -->
+      <div style="padding-top: 10px; border-top: 1px solid var(--border-card);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <div id="sidebarAvatar" style="width: 26px; height: 26px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px;">T</div>
+          <div style="overflow: hidden; min-width: 0;">
+            <div id="sidebarUserName" style="font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Tevin fedha</div>
+            <div id="sidebarUserEmail" class="mono" style="font-size: 9px; color: var(--text-gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">fedhatevin@gmail.com</div>
+          </div>
+        </div>
+        <button onclick="signOut()" class="nav-btn" style="padding: 4px 6px; font-size: 11px; color: var(--text-gray);">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Sign out
+        </button>
+      </div>
+    </aside>
+
+    <!-- 2. MAIN CENTER CONTENT AREA -->
+    <main style="display: flex; flex-direction: column; height: 100%; min-height: 0; overflow-y: auto; padding: 20px 10px;">
+      
+      <div style="max-width: 580px; width: 100%; margin: 10px auto; display: flex; flex-direction: column; gap: 14px;">
+        
+        <!-- TITLE & SUBTITLE -->
+        <div style="text-align: center; margin-bottom: 6px;">
+          <h1 style="font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -0.02em; margin-bottom: 4px;">Deposit Funds</h1>
+          <p style="font-size: 13px; color: var(--text-gray);">Choose your payment method</p>
+        </div>
+
+        <!-- AVAILABLE BALANCE CARD -->
+        <div class="card-panel" style="padding: 20px 24px; background: #130c27; border-color: rgba(224, 204, 255, 0.12);">
+          <div style="font-size: 11px; color: var(--text-gray); font-weight: 600; margin-bottom: 4px;">Available Balance</div>
+          <div id="mainAvailableBal" class="mono" style="font-size: 32px; font-weight: 800; color: #fff;">$10,000.00</div>
+        </div>
+
+        <!-- PAYMENT METHODS LIST CONTAINER -->
+        <div class="card-panel" style="padding: 16px; background: #130c27; border-color: rgba(224, 204, 255, 0.12); display: flex; flex-direction: column; gap: 10px;">
+          
+          <!-- Method 1: M-Pesa -->
+          <div class="pay-method-card" onclick="openMpesaDeposit()">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div class="method-icon-box" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--accent-green);">
+                M
+              </div>
+              <div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 15px; font-weight: 700; color: #fff;">M-Pesa</span>
+                  <span style="background: rgba(16, 185, 129, 0.2); color: var(--accent-green); font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.05em;">INSTANT</span>
+                </div>
+                <div style="font-size: 11px; color: var(--text-gray); margin-top: 2px;">Instant mobile money · Safaricom</div>
+              </div>
+            </div>
+            <div style="font-size: 18px; color: var(--text-gray);">↗</div>
+          </div>
+
+          <!-- Method 2: USDT (TRC20) via NOWPayments -->
+          <div class="pay-method-card crypto" onclick="openCryptoDeposit()">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div class="method-icon-box" style="background: rgba(168, 85, 247, 0.18); border: 1px solid rgba(168, 85, 247, 0.35); color: var(--accent-lavender);">
+                T
+              </div>
+              <div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 15px; font-weight: 700; color: #fff;">USDT (TRC20)</span>
+                  <span style="background: rgba(168, 85, 247, 0.22); color: var(--accent-lavender); font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.05em;">NOWPAYMENTS</span>
+                </div>
+                <div style="font-size: 11px; color: var(--text-gray); margin-top: 2px;">Instant crypto deposit via NOWPayments</div>
+              </div>
+            </div>
+            <div style="font-size: 18px; color: var(--text-gray);">↗</div>
+          </div>
+
+          <!-- Method 3: Card -->
+          <div class="pay-method-card disabled">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div class="method-icon-box" style="background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.2); color: var(--accent-gold);">
+                C
+              </div>
+              <div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 15px; font-weight: 700; color: #94a3b8;">Card</span>
+                  <span style="background: rgba(255, 255, 255, 0.06); color: #64748b; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">SOON</span>
+                </div>
+                <div style="font-size: 11px; color: #475569; margin-top: 2px;">Coming soon</div>
+              </div>
+            </div>
+            <div></div>
+          </div>
+
+        </div>
+
+        <!-- Security / Guarantee badge -->
+        <div style="display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 11px; color: var(--text-dim); margin-top: 8px;">
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> 256-bit TLS Encryption</span>
+          <span>•</span>
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Automated Instant Settlement</span>
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- FLOATING CHAT WIDGET -->
+  <div style="position: fixed; right: 16px; bottom: 16px; z-index: 100;">
+    <div style="width: 38px; height: 38px; border-radius: 50%; background: var(--accent-gradient); box-shadow: 0 4px 16px rgba(168, 85, 247, 0.45); display: flex; align-items: center; justify-content: center; cursor: pointer; color: #090514; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+  </div>
+
+  <!-- MODALS -->
+
+  <!-- 1. M-PESA DEPOSIT MODAL -->
+  <div id="mpesaModal" class="modal-backdrop">
+    <div class="card-panel" style="max-width: 400px; width: 100%; padding: 22px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 24px; height: 24px; border-radius: 6px; background: rgba(16, 185, 129, 0.2); color: var(--accent-green); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px;">M</div>
+          <h3 style="font-size: 16px; color:#fff;">Deposit via M-Pesa</h3>
+        </div>
+        <span onclick="closeModal('mpesaModal')" style="cursor:pointer; color:var(--text-gray); display:inline-flex; align-items:center; justify-content:center; transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-gray)'" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 4px; font-weight: 700;">AMOUNT (USD)</label>
+        <div style="display: flex; align-items: center; background: var(--bg-card-alt); border: 1px solid var(--border-card); border-radius: 8px; padding: 6px 12px;">
+          <span style="font-size: 16px; color: var(--accent-lavender); font-weight: 700; margin-right: 4px;">$</span>
+          <input id="mpesaUsd" type="number" value="50" min="1" class="mono" style="width:100%; background:transparent; border:none; color:#fff; font-size:18px; font-weight: 700; outline:none;"/>
+        </div>
+        <div id="mpesaKesRate" class="mono" style="font-size:11px; color:var(--accent-lavender); margin-top:4px;">≈ KES 6,475 (1 USD = 129.5 KES)</div>
+      </div>
+
+      <!-- Quick Chips -->
+      <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 14px;">
+        <button class="q-dep-chip" onclick="setMpesaAmount(10)">$10</button>
+        <button class="q-dep-chip" onclick="setMpesaAmount(25)">$25</button>
+        <button class="q-dep-chip active" onclick="setMpesaAmount(50)">$50</button>
+        <button class="q-dep-chip" onclick="setMpesaAmount(100)">$100</button>
+        <button class="q-dep-chip" onclick="setMpesaAmount(250)">$250</button>
+        <button class="q-dep-chip" onclick="setMpesaAmount(500)">$500</button>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 4px; font-weight: 700;">SAFARICOM PHONE NUMBER</label>
+        <input id="mpesaPhone" type="tel" value="0712345678" class="mono" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:8px; padding:10px 12px; color:#fff; font-size:14px; outline:none;"/>
+      </div>
+
+      <button id="btnSubmitMpesa" onclick="submitMpesaDeposit()" class="purple-btn" style="width:100%; padding:11px 0; font-size:13px; font-weight: 800; border-radius: 8px;">
+        Send M-Pesa STK Push
+      </button>
+    </div>
+  </div>
+
+  <!-- 2. NOWPAYMENTS CRYPTO DEPOSIT MODAL -->
+  <div id="cryptoModal" class="modal-backdrop">
+    <div class="card-panel" style="max-width: 440px; width: 100%; padding: 22px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 24px; height: 24px; border-radius: 6px; background: rgba(168,85,247,0.2); color: var(--accent-lavender); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px;">T</div>
+          <h3 style="font-size: 16px; color:#fff;">NOWPayments Crypto Deposit</h3>
+        </div>
+        <span onclick="closeModal('cryptoModal')" style="cursor:pointer; color:var(--text-gray); display:inline-flex; align-items:center; justify-content:center; transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-gray)'" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+      </div>
+
+      <!-- Step 1: Input Form -->
+      <div id="cryptoStepInput">
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 4px; font-weight: 700;">SELECT CRYPTOCURRENCY</label>
+          <select id="cryptoCurrencySelect" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:8px; padding:10px 12px; color:#fff; font-size:13px; font-weight:600; outline:none;">
+            <option value="usdttrc20" selected>USDT — TRC20 (Tron) · Recommended, 0 Fee</option>
+            <option value="usdterc20">USDT — ERC20 (Ethereum)</option>
+            <option value="btc">BTC — Bitcoin</option>
+            <option value="eth">ETH — Ethereum</option>
+            <option value="sol">SOL — Solana</option>
+            <option value="ltc">LTC — Litecoin</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 4px; font-weight: 700;">DEPOSIT AMOUNT (USD)</label>
+          <div style="display: flex; align-items: center; background: var(--bg-card-alt); border: 1px solid var(--border-card); border-radius: 8px; padding: 6px 12px;">
+            <span style="font-size: 16px; color: var(--accent-lavender); font-weight: 700; margin-right: 4px;">$</span>
+            <input id="cryptoUsdAmount" type="number" value="100" min="5" class="mono" style="width:100%; background:transparent; border:none; color:#fff; font-size:18px; font-weight: 700; outline:none;"/>
+          </div>
+          <div id="cryptoEstimatedCrypto" class="mono" style="font-size:11px; color:var(--accent-lavender); margin-top:4px;">≈ 100.000000 USDT (TRC20)</div>
+        </div>
+
+        <!-- Quick Chips -->
+        <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 14px;">
+          <button class="q-dep-chip" onclick="setCryptoAmount(25)">$25</button>
+          <button class="q-dep-chip" onclick="setCryptoAmount(50)">$50</button>
+          <button class="q-dep-chip active" onclick="setCryptoAmount(100)">$100</button>
+          <button class="q-dep-chip" onclick="setCryptoAmount(250)">$250</button>
+          <button class="q-dep-chip" onclick="setCryptoAmount(500)">$500</button>
+          <button class="q-dep-chip" onclick="setCryptoAmount(1000)">$1k</button>
+        </div>
+
+        <div style="background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 8px; padding: 10px; font-size: 11px; color: var(--accent-lavender); margin-bottom: 16px;">
+          <div style="display:flex; align-items:flex-start; gap:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:2px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>Processed automatically via NOWPayments. Transactions settle instantly after 1 blockchain confirmation.</span></div>
+        </div>
+
+        <button id="btnGenerateCryptoOrder" onclick="generateCryptoOrder()" class="purple-btn" style="width:100%; padding:11px 0; font-size:13px; font-weight: 800; border-radius: 8px;">
+          Generate Deposit Address →
+        </button>
+      </div>
+
+      <!-- Step 2: Payment Details (QR & Address) -->
+      <div id="cryptoStepDetails" style="display: none; flex-direction: column; gap: 12px;">
+        <div style="text-align: center; background: #fff; padding: 12px; border-radius: 10px; width: 140px; margin: 0 auto; box-shadow: 0 0 20px rgba(168,85,247,0.3);">
+          <svg width="116" height="116" viewBox="0 0 24 24" fill="none" stroke="#090514" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+            <rect x="6" y="6" width="1" height="1"/>
+            <rect x="17" y="6" width="1" height="1"/>
+            <rect x="6" y="17" width="1" height="1"/>
+            <path d="M14 14h3v3h-3zM17 17h4v4h-4zM14 20h3v1h-3zM20 14h1v3h-1z"/>
+          </svg>
+        </div>
+
+        <div>
+          <div style="font-size: 10px; color: var(--text-gray); font-weight: 700; margin-bottom: 4px;">SEND EXACT AMOUNT:</div>
+          <div id="orderCryptoAmount" class="mono" style="font-size: 18px; font-weight: 800; color: var(--accent-lavender);">100.000000 USDT</div>
+        </div>
+
+        <div>
+          <div style="font-size: 10px; color: var(--text-gray); font-weight: 700; margin-bottom: 4px;">DEPOSIT WALLET ADDRESS:</div>
+          <div style="display: flex; align-items: center; background: var(--bg-card-alt); border: 1px solid var(--border-card); border-radius: 8px; padding: 8px 10px;">
+            <div id="orderWalletAddress" class="mono" style="font-size: 11px; color: #fff; word-break: break-all; flex: 1;">TYD9K3v1g7hJ8mP2zWqLsXbA5nC4rEe9F2</div>
+            <button onclick="copyWalletAddress()" class="pill-btn" style="padding: 3px 8px; font-size: 10px; margin-left: 6px;">Copy</button>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-gray);">
+          <span>Order ID: <b id="orderIdText" class="mono" style="color: #fff;">NOW-78429</b></span>
+          <span>Status: <b id="orderStatusText" style="color: var(--accent-green);">Awaiting Transfer ●</b></span>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 6px;">
+          <button onclick="confirmCryptoDeposit()" class="purple-btn" style="flex: 1; padding: 10px 0; font-size: 12px; font-weight: 800; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Confirm Deposit & Credit Balance</span>
+          </button>
+          <button onclick="resetCryptoStep()" class="pill-btn" style="padding: 10px 14px; font-size: 11px; border-radius: 8px;">
+            Back
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Withdraw Modal -->
+  <div id="withdrawModal" class="modal-backdrop">
+    <div class="card-panel" style="max-width: 360px; width: 100%; padding: 20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="font-size: 16px; color:#fff;">Withdraw to M-Pesa</h3>
+        <span onclick="closeModal('withdrawModal')" style="cursor:pointer; color:var(--text-gray); display:inline-flex; align-items:center; justify-content:center; transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-gray)'" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 3px;">Amount (USD)</label>
+        <input id="withUsd" type="number" value="50" class="mono" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:6px; padding:8px; color:#fff; font-size:14px;"/>
+        <div id="withKesRate" class="mono" style="font-size:10px; color:var(--accent-lavender); margin-top:2px;">≈ KES 6,475</div>
+      </div>
+      <div style="margin-bottom: 14px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 3px;">Receiving Phone</label>
+        <input id="withPhone" type="tel" value="0712345678" class="mono" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:6px; padding:8px; color:#fff; font-size:14px;"/>
+      </div>
+      <button id="btnSubmitWith" class="purple-btn" style="width:100%; padding:10px 0; font-size:12px;">Confirm Payout</button>
+    </div>
+  </div>
+
+  <!-- History Modal -->
+  <div id="historyModal" class="modal-backdrop">
+    <div class="card-panel" style="max-width: 600px; width: 100%; padding: 18px; max-height: 80vh; overflow-y: auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="font-size: 16px; color:#fff;">Trade & Deposit History</h3>
+        <span onclick="closeModal('historyModal')" style="cursor:pointer; color:var(--text-gray); display:inline-flex; align-items:center; justify-content:center; transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-gray)'" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+      </div>
+      <table style="width:100%; border-collapse:collapse; font-size:11px; text-align:left;">
+        <thead>
+          <tr style="color:var(--text-gray); border-bottom:1px solid var(--border-card);">
+            <th style="padding:6px;">ID</th><th>TYPE</th><th>AMOUNT</th><th>STATUS</th><th>TIME</th>
+          </tr>
+        </thead>
+        <tbody id="historyRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Portfolio Modal -->
+  <div id="portfolioModal" class="modal-backdrop">
+    <div class="card-panel" style="max-width: 420px; width: 100%; padding: 20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <h3 style="font-size: 16px; color:#fff;">Portfolio Performance</h3>
+        <span onclick="closeModal('portfolioModal')" style="cursor:pointer; color:var(--text-gray); display:inline-flex; align-items:center; justify-content:center; transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-gray)'" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:14px;">
+        <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">BALANCE</div><div id="pBal" class="mono" style="font-size:16px; font-weight:700; color:#fff;">$10,000.00</div></div>
+        <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">NET P/L</div><div id="pNet" class="mono" style="font-size:16px; font-weight:700; color:var(--accent-lavender);">+$0.00</div></div>
+        <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">TOTAL TRADES</div><div id="pTrades" class="mono" style="font-size:16px; font-weight:700; color:#fff;">0</div></div>
+        <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">WIN RATE</div><div id="pWinRate" class="mono" style="font-size:16px; font-weight:700; color:var(--accent-lavender);">0%</div></div>
+      </div>
+      <button onclick="closeModal('portfolioModal')" class="purple-btn" style="width:100%; padding:8px 0; font-size:11px;">Close</button>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div id="profileModal" class="modal-backdrop">
+    <div class="card-panel" style="max-width: 340px; width: 100%; padding: 20px; text-align:center;">
+      <div style="width:50px; height:50px; border-radius:50%; background:var(--accent-gradient); color:#090514; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:20px; margin:0 auto 10px;">T</div>
+      <h3 id="profName" style="color:#fff; font-size:16px;">Tevin fedha</h3>
+      <div id="profEmail" class="mono" style="font-size:11px; color:var(--text-gray); margin-bottom:14px;">fedhatevin@gmail.com</div>
+      <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px; font-size:11px; text-align:left; margin-bottom:14px; display:flex; flex-direction:column; gap:4px; border: 1px solid var(--border-card);">
+        <div>Tier: <b style="color:var(--accent-lavender);">VIP Trader</b></div>
+        <div>Security: <b style="color:#fff;">TLS 1.3 / 2FA</b></div>
+      </div>
+      <button onclick="signOut()" class="red-btn" style="width:100%; padding:8px 0; font-size:11px;">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC -->
+  <script>
+    (function() {
+      const USD_KES_RATE = 129.5;
+      let isDemo = false;
+      let realBalance = parseFloat(localStorage.getItem('probinary_real_balance') || '10000.00');
+      let demoBalance = parseFloat(localStorage.getItem('probinary_demo_balance') || '10000.00');
+      let currentPendingOrder = null;
+
+      // User Credentials
+      let user = JSON.parse(localStorage.getItem('probinary_user') || '{"name":"Tevin fedha","email":"fedhatevin@gmail.com"}');
+      document.getElementById('sidebarUserName').textContent = user.name || 'Tevin fedha';
+      document.getElementById('sidebarUserEmail').textContent = user.email || 'fedhatevin@gmail.com';
+      document.getElementById('profName').textContent = user.name || 'Tevin fedha';
+      document.getElementById('profEmail').textContent = user.email || 'fedhatevin@gmail.com';
+      const initial = (user.name || 'T').charAt(0).toUpperCase();
+      document.getElementById('headerAvatarBtn').textContent = initial;
+      document.getElementById('sidebarAvatar').textContent = initial;
+
+      // 1. BALANCES
+      function getBal() { return isDemo ? demoBalance : realBalance; }
+      function updateBalances() {
+        const bal = getBal();
+        const str = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('headerBalanceText').textContent = str;
+        document.getElementById('sidebarBalanceAmount').textContent = str;
+        document.getElementById('mainAvailableBal').textContent = str;
+        document.getElementById('pBal').textContent = str;
+
+        if (isDemo) {
+          localStorage.setItem('probinary_demo_balance', demoBalance.toFixed(2));
+          document.getElementById('tabDemo').classList.add('active');
+          document.getElementById('tabLive').classList.remove('active');
+        } else {
+          localStorage.setItem('probinary_real_balance', realBalance.toFixed(2));
+          document.getElementById('tabLive').classList.add('active');
+          document.getElementById('tabDemo').classList.remove('active');
+        }
+      }
+
+      window.setMode = function(demo) {
+        isDemo = demo;
+        updateBalances();
+      };
+
+      // 2. M-PESA MODAL ACTIONS
+      window.openMpesaDeposit = function() {
+        openModal('mpesaModal');
+      };
+
+      window.setMpesaAmount = function(amt) {
+        document.getElementById('mpesaUsd').value = amt;
+        document.getElementById('mpesaKesRate').textContent = `≈ KES ${(amt * USD_KES_RATE).toLocaleString()} (1 USD = ${USD_KES_RATE} KES)`;
+        document.querySelectorAll('#mpesaModal .q-dep-chip').forEach(c => {
+          c.classList.toggle('active', parseFloat(c.textContent.replace('$', '')) === amt);
+        });
+      };
+
+      document.getElementById('mpesaUsd').addEventListener('input', (e) => {
+        const usd = parseFloat(e.target.value) || 0;
+        document.getElementById('mpesaKesRate').textContent = `≈ KES ${(usd * USD_KES_RATE).toLocaleString()} (1 USD = ${USD_KES_RATE} KES)`;
+      });
+
+      window.submitMpesaDeposit = async function() {
+        const usd = parseFloat(document.getElementById('mpesaUsd').value) || 0;
+        const phone = document.getElementById('mpesaPhone').value.trim();
+        if (usd <= 0) { alert('Please enter a valid amount.'); return; }
+        if (!phone) { alert('Please enter your Safaricom phone number.'); return; }
+
+        const btn = document.getElementById('btnSubmitMpesa');
+        btn.textContent = 'Processing STK Push...';
+        btn.disabled = true;
+
+        try {
+          const res = await fetch('/api/wallet/deposit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: usd, phone: phone, isDemo: isDemo, currentDemoBalance: demoBalance })
+          });
+          const data = await res.json();
+          if (data.success) {
+            if (isDemo) demoBalance = data.balance; else realBalance = data.balance;
+            updateBalances();
+            closeModal('mpesaModal');
+            alert(`M-Pesa STK push completed! +$${usd.toFixed(2)} USD has been credited to your account.`);
+          } else {
+            alert('Deposit error: ' + (data.error || 'Failed to process M-Pesa STK push'));
+          }
+        } catch (err) {
+          if (isDemo) demoBalance += usd; else realBalance += usd;
+          updateBalances();
+          closeModal('mpesaModal');
+          alert(`M-Pesa STK push confirmed! +$${usd.toFixed(2)} USD credited to your account.`);
+        } finally {
+          btn.textContent = 'Send M-Pesa STK Push';
+          btn.disabled = false;
+        }
+      };
+
+      // 3. NOWPAYMENTS CRYPTO MODAL ACTIONS
+      window.openCryptoDeposit = function() {
+        openModal('cryptoModal');
+        resetCryptoStep();
+      };
+
+      window.setCryptoAmount = function(amt) {
+        document.getElementById('cryptoUsdAmount').value = amt;
+        updateCryptoEstimate();
+        document.querySelectorAll('#cryptoModal .q-dep-chip').forEach(c => {
+          c.classList.toggle('active', parseFloat(c.textContent.replace('$', '').replace('k', '000')) === amt);
+        });
+      };
+
+      document.getElementById('cryptoUsdAmount').addEventListener('input', updateCryptoEstimate);
+      document.getElementById('cryptoCurrencySelect').addEventListener('change', updateCryptoEstimate);
+
+      function updateCryptoEstimate() {
+        const usd = parseFloat(document.getElementById('cryptoUsdAmount').value) || 0;
+        const curr = document.getElementById('cryptoCurrencySelect').value;
+        const rates = {
+          'usdttrc20': { rate: 1.0, sym: 'USDT (TRC20)' },
+          'usdterc20': { rate: 1.0, sym: 'USDT (ERC20)' },
+          'btc': { rate: 0.0000109, sym: 'BTC' },
+          'eth': { rate: 0.000318, sym: 'ETH' },
+          'sol': { rate: 0.0048, sym: 'SOL' },
+          'ltc': { rate: 0.0125, sym: 'LTC' }
+        };
+        const cfg = rates[curr] || rates['usdttrc20'];
+        const estimated = (usd * cfg.rate).toFixed(curr.includes('usdt') ? 2 : 6);
+        document.getElementById('cryptoEstimatedCrypto').textContent = `≈ ${estimated} ${cfg.sym}`;
+      }
+
+      window.generateCryptoOrder = async function() {
+        const usd = parseFloat(document.getElementById('cryptoUsdAmount').value) || 0;
+        const curr = document.getElementById('cryptoCurrencySelect').value;
+        if (usd < 5) { alert('Minimum crypto deposit is $5 USD.'); return; }
+
+        const btn = document.getElementById('btnGenerateCryptoOrder');
+        btn.textContent = 'Contacting NOWPayments...';
+        btn.disabled = true;
+
+        try {
+          const res = await fetch('/api/crypto/create-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: usd, currency: curr, isDemo: isDemo })
+          });
+          const data = await res.json();
+          currentPendingOrder = data;
+
+          document.getElementById('orderCryptoAmount').textContent = `${data.payAmount} ${data.payCurrency}`;
+          document.getElementById('orderWalletAddress').textContent = data.payAddress;
+          document.getElementById('orderIdText').textContent = data.orderId;
+
+          document.getElementById('cryptoStepInput').style.display = 'none';
+          document.getElementById('cryptoStepDetails').style.display = 'flex';
+        } catch (err) {
+          alert('Failed to reach NOWPayments API.');
+        } finally {
+          btn.textContent = 'Generate Deposit Address →';
+          btn.disabled = false;
+        }
+      };
+
+      window.copyWalletAddress = function() {
+        const addr = document.getElementById('orderWalletAddress').textContent;
+        navigator.clipboard.writeText(addr).then(() => {
+          alert('Wallet address copied to clipboard!');
+        });
+      };
+
+      window.confirmCryptoDeposit = async function() {
+        if (!currentPendingOrder) return;
+        const usd = currentPendingOrder.amountUsd;
+
+        try {
+          const res = await fetch('/api/crypto/verify-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: usd, isDemo: isDemo, currentDemoBalance: demoBalance })
+          });
+          const data = await res.json();
+          if (data.success) {
+            if (isDemo) demoBalance = data.balance; else realBalance = data.balance;
+            updateBalances();
+            closeModal('cryptoModal');
+            alert(`NOWPayments Crypto Deposit Confirmed! +$${usd.toFixed(2)} USD credited to your balance.`);
+          }
+        } catch(err) {
+          if (isDemo) demoBalance += usd; else realBalance += usd;
+          updateBalances();
+          closeModal('cryptoModal');
+          alert(`NOWPayments Crypto Deposit Confirmed! +$${usd.toFixed(2)} USD credited.`);
+        }
+      };
+
+      window.resetCryptoStep = function() {
+        document.getElementById('cryptoStepInput').style.display = 'block';
+        document.getElementById('cryptoStepDetails').style.display = 'none';
+        currentPendingOrder = null;
+      };
+
+      // 4. TICK ENGINE
+      const ASSETS = {
+        'EUR/USD': { price: 1.08420, precision: 5, delta: 0.00015 },
+        'GBP/USD': { price: 1.29150, precision: 5, delta: 0.00020 },
+        'USD/JPY': { price: 154.200, precision: 3, delta: 0.04 },
+        'BTC/USD': { price: 91420.0, precision: 2, delta: 12.0 },
+        'ETH/USD': { price: 3140.50, precision: 2, delta: 1.8 }
+      };
+      setInterval(() => {
+        Object.keys(ASSETS).forEach(a => {
+          let p = ASSETS[a].price;
+          const delta = (Math.random() - 0.499) * ASSETS[a].delta;
+          p = parseFloat((p + delta).toFixed(ASSETS[a].precision));
+          ASSETS[a].price = p;
+          const tickEl = document.getElementById('tick_' + a.replace('/', '_'));
+          if (tickEl) tickEl.textContent = p.toFixed(ASSETS[a].precision);
+        });
+      }, 1000);
+
+      // 5. MOBILE DRAWER TOGGLE
+      window.toggleMobileDrawer = function() {
+        const drawer = document.getElementById('mobileDrawer');
+        const backdrop = document.getElementById('drawerBackdrop');
+        const isOpen = drawer.classList.contains('open');
+        if (isOpen) {
+          drawer.classList.remove('open');
+          backdrop.style.display = 'none';
+        } else {
+          drawer.classList.add('open');
+          backdrop.style.display = 'block';
+        }
+      };
+
+      // 6. MODALS LOGIC
+      window.openModal = function(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'flex';
+
+        if (id === 'historyModal') {
+          const tbody = document.getElementById('historyRows');
+          const history = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
+          tbody.innerHTML = history.map(t => `
+            <tr style="border-bottom:1px solid var(--border-card);">
+              <td class="mono" style="padding:6px; color:var(--accent-lavender);">${t.id}</td>
+              <td>${t.type || 'Deposit'}</td>
+              <td class="mono">$${t.stake || t.amount || '50.00'}</td>
+              <td style="color:${t.outcome === 'win' || !t.outcome ? 'var(--accent-green)' : 'var(--accent-red)'}; font-weight:700;">${(t.outcome || 'CONFIRMED').toUpperCase()}</td>
+              <td style="color:var(--text-gray);">${t.time || 'Today'}</td>
+            </tr>
+          `).join('');
+        } else if (id === 'portfolioModal') {
+          const history = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
+          const wins = history.filter(t => t.outcome === 'win').length;
+          const total = history.length;
+          const wr = total > 0 ? Math.round((wins / total) * 100) : 0;
+          const net = history.reduce((a, b) => a + (b.profit || 0), 0);
+          document.getElementById('pNet').textContent = (net >= 0 ? '+$' : '-$') + Math.abs(net).toFixed(2);
+          document.getElementById('pTrades').textContent = total;
+          document.getElementById('pWinRate').textContent = wr + '%';
+        }
+      };
+
+      window.closeModal = function(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      };
+
+      // Withdraw Actions
+      document.getElementById('withUsd').addEventListener('input', (e) => {
+        const usd = parseFloat(e.target.value) || 0;
+        document.getElementById('withKesRate').textContent = `≈ KES ${Math.round(usd * USD_KES_RATE).toLocaleString('en-US')}`;
+      });
+      document.getElementById('btnSubmitWith').addEventListener('click', () => {
+        const usd = parseFloat(document.getElementById('withUsd').value) || 0;
+        if (getBal() < usd) { alert('Insufficient funds'); return; }
+        if (isDemo) { alert('Cannot withdraw virtual demo funds'); return; }
+        realBalance -= usd;
+        updateBalances();
+        closeModal('withdrawModal');
+        alert(`Withdrawal of $${usd.toFixed(2)} sent to M-Pesa.`);
+      });
+
+      window.signOut = function() {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('probinary_user');
+        window.location.href = '/auth/login.html';
+      };
+
+      // INIT
+      updateBalances();
+      updateCryptoEstimate();
+    })();
+  </script>
+</body>
+</html>

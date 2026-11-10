@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+  <title>ProBinary — Admin Management Console</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg-main: #090514;
+      --bg-header: #0d081c;
+      --bg-card: #191131;
+      --bg-card-alt: #130c27;
+      --bg-input: #090514;
+      --border-card: rgba(224, 204, 255, 0.12);
+      --border-card-alt: rgba(224, 204, 255, 0.18);
+      --border-accent: rgba(168, 85, 247, 0.35);
+      --accent-purple: #a855f7;
+      --accent-purple-hover: #c084fc;
+      --accent-purple-dim: rgba(168, 85, 247, 0.16);
+      --accent-lavender: #e0ccff;
+      --accent-gradient: linear-gradient(135deg, #e0ccff, #a855f7);
+      --accent-green: #10b981;
+      --accent-green-dim: rgba(16, 185, 129, 0.15);
+      --accent-red: #ef4444;
+      --accent-red-hover: #f87171;
+      --accent-gold: #fbbf24;
+      --accent-gold-dim: rgba(251, 191, 36, 0.15);
+      --text-white: #f5f0ff;
+      --text-gray: #9d8ec2;
+      --text-dim: #6b5b95;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100vh;
+      max-height: 100vh;
+      overflow: hidden;
+      background: var(--bg-main);
+      color: var(--text-white);
+      font-family: 'Public Sans', system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+    }
+
+    .mono { font-family: 'IBM Plex Mono', monospace; }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3d236b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #583399; }
+
+    /* Top Navigation */
+    .top-nav {
+      height: 44px;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    /* Layout Grid */
+    .app-layout {
+      height: calc(100vh - 44px);
+      max-height: calc(100vh - 44px);
+      display: grid;
+      grid-template-columns: 195px 1fr;
+      gap: 12px;
+      padding: 10px 14px;
+      overflow: hidden;
+    }
+
+    /* Cards */
+    .card-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+    }
+
+    .pill-btn {
+      border: 1px solid var(--border-card-alt);
+      background: var(--bg-card-alt);
+      color: var(--text-gray);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+    .pill-btn:hover {
+      border-color: var(--accent-purple);
+      color: #fff;
+    }
+    .pill-btn.active {
+      background: rgba(168, 85, 247, 0.2);
+      border-color: var(--accent-purple);
+      color: var(--accent-lavender);
+    }
+
+    /* Sidebar Navigation Links */
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      color: var(--text-gray);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 12px;
+      transition: all 0.15s ease;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      width: 100%;
+      text-align: left;
+    }
+    .nav-btn:hover {
+      background: rgba(224, 204, 255, 0.06);
+      color: #fff;
+    }
+    .nav-btn.active {
+      background: rgba(168, 85, 247, 0.18);
+      color: var(--accent-lavender);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+    .nav-svg {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Action Buttons */
+    .btn-approve {
+      background: var(--accent-green);
+      color: #090514;
+      border: none;
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-approve:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-reject {
+      background: transparent;
+      border: 1px solid var(--accent-red);
+      color: var(--accent-red);
+      border-radius: 6px;
+      padding: 4px 9px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.15s;
+    }
+    .btn-reject:hover {
+      background: rgba(239, 68, 68, 0.15);
+    }
+
+    /* Table */
+    .ledger-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .ledger-table th {
+      text-align: left;
+      padding: 9px 12px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-gray);
+      background: var(--bg-card-alt);
+      border-bottom: 1px solid var(--border-card);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .ledger-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(224, 204, 255, 0.06);
+      color: #e5def5;
+    }
+    .ledger-table tr:hover td {
+      background: rgba(224, 204, 255, 0.03);
+    }
+
+    /* Mobile Drawer */
+    .mobile-drawer {
+      position: fixed;
+      top: 0;
+      left: -260px;
+      width: 250px;
+      height: 100vh;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border-card);
+      z-index: 100;
+      transition: left 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px;
+    }
+    .mobile-drawer.open {
+      left: 0;
+    }
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(4px);
+      z-index: 99;
+      display: none;
+    }
+
+    /* Pulse animation */
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.05); }
+    }
+    .pulse-amber {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-gold);
+      box-shadow: 0 0 8px var(--accent-gold);
+      animation: pulseGlow 1.8s infinite;
+    }
+
+    @media (max-width: 900px) {
+      .app-layout {
+        grid-template-columns: 1fr;
+      }
+      .sidebar-panel {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP HEADER -->
+  <header class="top-nav">
+    <!-- Left: Hamburger + Logo + Admin Badge -->
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <button onclick="toggleMobileDrawer()" style="background: none; border: none; color: var(--text-gray); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;" aria-label="Open menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+
+      <a href="/dashboard/trade.html" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background: var(--accent-gradient); color: #090514; font-weight: 800; font-size: 13px;">P</span>
+        <span style="font-size: 15px; font-weight: 800; color: #fff; letter-spacing: -0.02em;">Pro<span style="color: var(--accent-lavender)">Binary</span></span>
+      </a>
+
+      <span style="padding: 2px 8px; border-radius: 6px; background: rgba(168,85,247,0.22); border: 1px solid var(--accent-purple); color: var(--accent-lavender); font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
+        Admin Control Console
+      </span>
+    </div>
+
+    <!-- Center: Live Stats Overview Pill -->
+    <div style="display: flex; align-items: center; gap: 14px; font-size: 11px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span class="pulse-amber"></span>
+        <span style="color: var(--text-gray);">Pending Approvals:</span>
+        <span id="headerPendingCount" class="mono" style="color: var(--accent-gold); font-weight: 700;">0</span>
+      </div>
+      <div style="width: 1px; height: 14px; background: var(--border-card);"></div>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span style="color: var(--text-gray);">Total Deposits:</span>
+        <span id="headerDepositsVol" class="mono" style="color: var(--accent-green); font-weight: 700;">$0.00</span>
+      </div>
+    </div>
+
+    <!-- Right: Quick Jump to Trader Desk + Admin Avatar -->
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <a href="/dashboard/trade.html" class="pill-btn" style="background: rgba(168,85,247,0.14); border-color: rgba(168,85,247,0.4); color: var(--accent-lavender); font-size: 11px; padding: 4px 10px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg>
+        Open Trader Desk →
+      </a>
+
+      <a href="/dashboard/profile.html" id="headerAvatarBtn" style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; cursor: pointer; text-decoration: none; box-shadow: 0 0 10px rgba(168,85,247,0.4);">
+        A
+      </a>
+    </div>
+  </header>
+
+  <!-- MOBILE DRAWER -->
+  <div id="drawerBackdrop" class="drawer-backdrop" onclick="toggleMobileDrawer()"></div>
+  <div id="mobileDrawer" class="mobile-drawer">
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; background: var(--accent-gradient); color: #090514; font-weight: 800; font-size: 14px;">P</span>
+          <span style="font-size: 15px; font-weight: 800; color: #fff;">Pro<span style="color: var(--accent-lavender)">Binary</span></span>
+        </div>
+        <button onclick="toggleMobileDrawer()" style="background:none; border:none; color:var(--text-gray); cursor:pointer; padding:4px;" aria-label="Close menu">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <nav style="display: flex; flex-direction: column; gap: 6px;">
+        <a href="/dashboard/admin.html" class="nav-btn active" onclick="toggleMobileDrawer()">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> Admin Portal
+        </a>
+        <a href="/dashboard/trade.html" class="nav-btn" onclick="toggleMobileDrawer()">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg></span> Trade
+        </a>
+        <a href="/dashboard/bot.html" class="nav-btn" onclick="toggleMobileDrawer()">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> Bot
+        </a>
+        <a href="/dashboard/history.html" class="nav-btn" onclick="toggleMobileDrawer()">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span> Portfolio
+        </a>
+        <a href="/dashboard/deposit.html" class="nav-btn" onclick="toggleMobileDrawer()">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
+        </a>
+        <a href="/dashboard/withdraw.html" class="nav-btn" onclick="toggleMobileDrawer()">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
+        </a>
+        <a href="/dashboard/history.html" class="nav-btn" onclick="toggleMobileDrawer()">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
+        </a>
+        <a href="/dashboard/profile.html" class="nav-btn" onclick="toggleMobileDrawer()">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile
+        </a>
+      </nav>
+    </div>
+
+    <div style="padding-top: 12px; border-top: 1px solid var(--border-card);">
+      <button onclick="signOut()" class="nav-btn" style="color: var(--accent-red);">
+        <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Sign out
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN APP LAYOUT -->
+  <div class="app-layout">
+
+    <!-- DESKTOP SIDEBAR -->
+    <aside class="sidebar-panel card-panel" style="display: flex; flex-direction: column; justify-content: space-between; padding: 12px; height: 100%;">
+      <div>
+        <!-- Role Identifier Box -->
+        <div style="background: var(--bg-card-alt); border: 1px solid rgba(168,85,247,0.3); border-radius: 10px; padding: 10px; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-size: 10px; font-weight: 700; color: var(--accent-lavender); text-transform: uppercase; letter-spacing: 0.05em;">Role Active</span>
+            <span style="font-size: 9px; padding: 1px 6px; border-radius: 4px; background: rgba(16,185,129,0.15); color: var(--accent-green); font-weight: 700;">Super Admin</span>
+          </div>
+          <div class="mono" style="font-size: 16px; font-weight: 800; color: #fff;" id="sidebarBalanceAmount">$25,000.00</div>
+          <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">Treasury & Custody Pool</div>
+        </div>
+
+        <!-- Navigation -->
+        <nav style="display: flex; flex-direction: column; gap: 4px;">
+          <a href="/dashboard/admin.html" class="nav-btn active">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> Admin Portal
+          </a>
+          <a href="/dashboard/trade.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg></span> Trade Desk
+          </a>
+          <a href="/dashboard/bot.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> AI Bot
+          </a>
+          <a href="/dashboard/history.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span> Portfolio
+          </a>
+          <a href="/dashboard/deposit.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
+          </a>
+          <a href="/dashboard/withdraw.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
+          </a>
+          <a href="/dashboard/history.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
+          </a>
+          <a href="/dashboard/profile.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile & KYC
+          </a>
+        </nav>
+      </div>
+
+      <!-- Bottom User Card -->
+      <div style="padding-top: 10px; border-top: 1px solid var(--border-card);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <div id="sidebarAvatar" style="width: 26px; height: 26px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px;">A</div>
+          <div style="overflow: hidden; min-width: 0;">
+            <div id="sidebarUserName" style="font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Admin Controller</div>
+            <div id="sidebarUserEmail" class="mono" style="font-size: 9px; color: var(--text-gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">admin@probinary.com</div>
+          </div>
+        </div>
+        <button onclick="signOut()" class="nav-btn" style="color: var(--accent-red); padding: 4px 6px;">
+          <span class="nav-svg"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Sign out
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN ADMIN CONTENT AREA -->
+    <main style="display: flex; flex-direction: column; gap: 12px; height: 100%; overflow: hidden;">
+
+      <!-- 4 TOP SUMMARY METRICS -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; flex-shrink: 0;">
+
+        <!-- Card 1: Completed Deposits -->
+        <div class="card-panel" style="padding: 12px 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">Completed Deposits</span>
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: rgba(16,185,129,0.15); color: var(--accent-green);">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg>
+            </span>
+          </div>
+          <div class="mono" style="font-size: 18px; font-weight: 800; color: var(--accent-green);" id="statCompletedDeposits">$0.00</div>
+          <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;" id="statDepositsCount">0 Transactions</div>
+        </div>
+
+        <!-- Card 2: Pending Withdrawals -->
+        <div class="card-panel" style="padding: 12px 14px; border-color: rgba(251,191,36,0.25);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">Pending Withdrawals</span>
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: var(--accent-gold-dim); color: var(--accent-gold);">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </span>
+          </div>
+          <div class="mono" style="font-size: 18px; font-weight: 800; color: var(--accent-gold);" id="statPendingWithdrawals">$0.00</div>
+          <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;" id="statPendingWdCount">0 Requests Awaiting Action</div>
+        </div>
+
+        <!-- Card 3: Registered Traders -->
+        <div class="card-panel" style="padding: 12px 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">Registered Traders</span>
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: rgba(168,85,247,0.15); color: var(--accent-lavender);">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </span>
+          </div>
+          <div class="mono" style="font-size: 18px; font-weight: 800; color: #fff;" id="statTotalUsers">0</div>
+          <div style="font-size: 10px; color: var(--accent-lavender); margin-top: 2px;">Simulation & Real Desks</div>
+        </div>
+
+        <!-- Card 4: KYC 12h Auto-Review Queue -->
+        <div class="card-panel" style="padding: 12px 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">KYC 12h Auto-Review</span>
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: rgba(224,204,255,0.12); color: var(--accent-lavender);">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            </span>
+          </div>
+          <div class="mono" style="font-size: 18px; font-weight: 800; color: var(--accent-lavender);" id="statKycReviewCount">0</div>
+          <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">12-Hour Automated Clearance</div>
+        </div>
+
+      </div>
+
+      <!-- TABS CONTROLLER & FILTER BAR -->
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; flex-shrink: 0;">
+        <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;">
+          <button class="pill-btn active" id="tabBtnWithdrawals" onclick="switchAdminTab('withdrawals')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg>
+            Withdrawal Approvals (<span id="tabCountWd">0</span>)
+          </button>
+          <button class="pill-btn" id="tabBtnDeposits" onclick="switchAdminTab('deposits')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg>
+            Completed Deposits
+          </button>
+          <button class="pill-btn" id="tabBtnUsers" onclick="switchAdminTab('users')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            Traders Directory
+          </button>
+          <button class="pill-btn" id="tabBtnKyc" onclick="switchAdminTab('kyc')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            KYC 12h Auto-Approval Queue
+          </button>
+        </div>
+
+        <button onclick="refreshAdminData()" class="pill-btn" style="font-size: 10px; padding: 4px 10px;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Refresh Feed
+        </button>
+      </div>
+
+      <!-- TAB 1: WITHDRAWAL APPROVALS -->
+      <section id="panelWithdrawals" class="card-panel" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-card); background: var(--bg-card-alt); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h2 style="font-size: 13px; font-weight: 700; color: #fff;">Payout Clearance & Approval Engine</h2>
+            <p style="font-size: 11px; color: var(--text-gray);">Review trader withdrawal requests. Click Approve to disburse or Reject to refund funds.</p>
+          </div>
+          <span style="font-size: 11px; color: var(--accent-gold); font-weight: 600;" id="wdStatusNote">● Live Approval Queue</span>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto;">
+          <table class="ledger-table">
+            <thead>
+              <tr>
+                <th>Reference ID</th>
+                <th>Trader Details</th>
+                <th>Payout Rail</th>
+                <th>Amount (USD)</th>
+                <th>Destination / Account</th>
+                <th>Requested At</th>
+                <th>Status</th>
+                <th style="text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="withdrawalsTableBody">
+              <tr>
+                <td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">Loading withdrawal requests...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 2: COMPLETED DEPOSITS -->
+      <section id="panelDeposits" class="card-panel" style="flex: 1; display: none; flex-direction: column; overflow: hidden;">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-card); background: var(--bg-card-alt); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h2 style="font-size: 13px; font-weight: 700; color: #fff;">Completed Deposits Activity Feed</h2>
+            <p style="font-size: 11px; color: var(--text-gray);">Live ledger of all incoming funds cleared via M-Pesa, USDT Crypto (TRC20/ERC20), and Treasury.</p>
+          </div>
+          <span class="mono" style="font-size: 11px; color: var(--accent-green); font-weight: 700;" id="depositsTotalBanner">Total: $0.00</span>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto;">
+          <table class="ledger-table">
+            <thead>
+              <tr>
+                <th>Deposit ID</th>
+                <th>Trader Account</th>
+                <th>Deposit Method</th>
+                <th>Amount</th>
+                <th>Transaction Reference / Hash</th>
+                <th>Destination Account</th>
+                <th>Confirmed Time</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="depositsTableBody">
+              <tr>
+                <td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">Loading deposits...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 3: TRADERS DIRECTORY -->
+      <section id="panelUsers" class="card-panel" style="flex: 1; display: none; flex-direction: column; overflow: hidden;">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-card); background: var(--bg-card-alt); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h2 style="font-size: 13px; font-weight: 700; color: #fff;">Registered Traders & User Roles (Supabase Sync)</h2>
+            <p style="font-size: 11px; color: var(--text-gray);">Directory of platform users, active balances, role credentials, and simulation flags directly from Supabase.</p>
+          </div>
+          <span style="font-size: 11px; color: var(--accent-lavender); font-weight: 600;" id="usersTotalBanner">Loading Users...</span>
+        </div>
+
+        <!-- DEDICATED SIMULATION ACCOUNT BALANCE MANAGER -->
+        <div style="padding: 12px 14px; border-bottom: 1px solid var(--border-card); background: linear-gradient(135deg, rgba(25,17,49,0.95), rgba(45,20,80,0.65)); display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: rgba(168,85,247,0.2); border: 1px solid var(--accent-purple); color: var(--accent-lavender);">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              </span>
+              <div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-weight: 800; font-size: 13px; color: #fff;">Simulation Account Control</span>
+                  <span style="font-size: 9px; padding: 2px 6px; border-radius: 10px; background: rgba(168,85,247,0.25); border: 1px solid var(--accent-purple); color: var(--accent-lavender); font-weight: 700;">80% WIN RATE · SUPABASE SYNCED</span>
+                </div>
+                <span class="mono" style="font-size: 11px; color: #baa4e8;">simulation@probinary.com (ID: <span id="simUserId">59</span>)</span>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 11px; color: var(--text-gray);">Live Supabase Balance:</span>
+              <span class="mono" id="simCardBalance" style="font-size: 17px; font-weight: 800; color: var(--accent-green); text-shadow: 0 0 8px rgba(16,185,129,0.3);">$10,000.00</span>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <div style="position: relative; width: 160px;">
+              <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-gray); font-weight: 700; font-size: 12px;">$</span>
+              <input type="number" id="simBalanceInput" step="50" min="0" placeholder="New Balance" style="width: 100%; padding: 6px 8px 6px 22px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-accent); color: #fff; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 700; outline: none;" />
+            </div>
+
+            <button onclick="updateSimulationBalance()" class="purple-btn" style="padding: 6px 14px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Set Balance
+            </button>
+
+            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+              <button onclick="quickSetSimBalance(1000)" class="pill-btn" style="font-size: 10px; padding: 4px 8px;">$1k</button>
+              <button onclick="quickSetSimBalance(5000)" class="pill-btn" style="font-size: 10px; padding: 4px 8px;">$5k</button>
+              <button onclick="quickSetSimBalance(10000)" class="pill-btn" style="font-size: 10px; padding: 4px 8px;">$10k</button>
+              <button onclick="quickSetSimBalance(25000)" class="pill-btn" style="font-size: 10px; padding: 4px 8px;">$25k</button>
+              <button onclick="quickAdjustSimBalance(500)" class="pill-btn" style="font-size: 10px; padding: 4px 8px; border-color: rgba(16,185,129,0.3); color: var(--accent-green);">+ $500</button>
+              <button onclick="quickAdjustSimBalance(1000)" class="pill-btn" style="font-size: 10px; padding: 4px 8px; border-color: rgba(16,185,129,0.3); color: var(--accent-green);">+ $1,000</button>
+              <button onclick="quickAdjustSimBalance(5000)" class="pill-btn" style="font-size: 10px; padding: 4px 8px; border-color: rgba(16,185,129,0.3); color: var(--accent-green);">+ $5,000</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto;">
+          <table class="ledger-table">
+            <thead>
+              <tr>
+                <th>User ID</th>
+                <th>Name & Identity</th>
+                <th>Email Address</th>
+                <th>Account Role</th>
+                <th>Available Balance</th>
+                <th>Win Rate Engine</th>
+                <th>KYC Clearance</th>
+                <th>Created Date</th>
+                <th style="text-align: right;">Balance Action</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr>
+                <td colspan="9" style="text-align: center; padding: 24px; color: var(--text-gray);">Loading users from Supabase...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 4: KYC 12H AUTOMATION QUEUE -->
+      <section id="panelKyc" class="card-panel" style="flex: 1; display: none; flex-direction: column; overflow: hidden;">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-card); background: var(--bg-card-alt); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h2 style="font-size: 13px; font-weight: 700; color: #fff;">KYC 12-Hour Automated Compliance Clearance</h2>
+            <p style="font-size: 11px; color: var(--text-gray);">Submissions automatically approve 12 hours after upload. Admins can inspect documents or override approval.</p>
+          </div>
+          <button onclick="triggerKycFastForward()" class="btn-approve" style="font-size: 10px; padding: 4px 8px; background: rgba(168,85,247,0.2); border: 1px solid var(--accent-purple); color: var(--accent-lavender);">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+            Simulate 12h Fast-Forward
+          </button>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto;">
+          <table class="ledger-table">
+            <thead>
+              <tr>
+                <th>Trader ID</th>
+                <th>Full Legal Name</th>
+                <th>Document Type</th>
+                <th>Document Number</th>
+                <th>Submitted Timestamp</th>
+                <th>Auto-Clearance Timer</th>
+                <th>Status</th>
+                <th style="text-align: right;">Manual Action</th>
+              </tr>
+            </thead>
+            <tbody id="kycTableBody">
+              <tr>
+                <td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">Loading compliance queue...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- SCRIPT -->
+  <script>
+    (function() {
+      // 1. Verify User Role
+      let currentUser = null;
+      try {
+        currentUser = JSON.parse(localStorage.getItem('probinary_user') || '{}');
+      } catch (e) {}
+
+      // Display Admin name/email
+      if (currentUser && currentUser.name) {
+        document.getElementById('sidebarUserName').textContent = currentUser.name;
+        document.getElementById('sidebarUserEmail').textContent = currentUser.email || 'admin@probinary.com';
+        const initial = currentUser.name.charAt(0).toUpperCase();
+        document.getElementById('sidebarAvatar').textContent = initial;
+        document.getElementById('headerAvatarBtn').textContent = initial;
+      }
+
+      // Initial Data Load
+      refreshAdminData();
+
+      // Polling every 10 seconds for real-time compliance updates
+      setInterval(refreshAdminData, 10000);
+
+      window.switchAdminTab = function(tabId) {
+        const tabs = ['withdrawals', 'deposits', 'users', 'kyc'];
+        tabs.forEach(t => {
+          const btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+          const panel = document.getElementById('panel' + t.charAt(0).toUpperCase() + t.slice(1));
+          if (btn && panel) {
+            if (t === tabId) {
+              btn.classList.add('active');
+              panel.style.display = 'flex';
+            } else {
+              btn.classList.remove('active');
+              panel.style.display = 'none';
+            }
+          }
+        });
+      };
+
+      window.refreshAdminData = async function() {
+        try {
+          const [overviewRes, wdRes, depRes, usersRes, kycRes] = await Promise.all([
+            fetch('/api/admin/overview').then(r => r.json()).catch(() => ({})),
+            fetch('/api/admin/withdrawals').then(r => r.json()).catch(() => ({})),
+            fetch('/api/admin/deposits').then(r => r.json()).catch(() => ({})),
+            fetch('/api/admin/users').then(r => r.json()).catch(() => ({})),
+            fetch('/api/admin/kyc/queue').then(r => r.json()).catch(() => ({}))
+          ]);
+
+          // 1. Overview Cards
+          if (overviewRes.stats) {
+            const s = overviewRes.stats;
+            document.getElementById('statCompletedDeposits').textContent = '$' + (s.totalDepositsAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('statDepositsCount').textContent = (s.totalDepositsCount || 0) + ' Completed Deposits';
+            document.getElementById('headerDepositsVol').textContent = '$' + (s.totalDepositsAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+
+            document.getElementById('statPendingWithdrawals').textContent = '$' + (s.pendingWithdrawalsAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('statPendingWdCount').textContent = (s.pendingWithdrawalsCount || 0) + ' Requests Awaiting Action';
+            document.getElementById('headerPendingCount').textContent = s.pendingWithdrawalsCount || 0;
+            document.getElementById('tabCountWd').textContent = s.pendingWithdrawalsCount || 0;
+
+            document.getElementById('statTotalUsers').textContent = s.totalUsers || 0;
+            document.getElementById('statKycReviewCount').textContent = (s.kycReviewCount || 0) + ' Under 12h Review';
+          }
+
+          // 2. Render Withdrawals Table
+          const wdTable = document.getElementById('withdrawalsTableBody');
+          if (wdRes.withdrawals && wdRes.withdrawals.length > 0) {
+            wdTable.innerHTML = wdRes.withdrawals.map(w => {
+              const isPending = w.status === 'pending';
+              const statusBadge = isPending
+                ? `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(251,191,36,0.15); color: var(--accent-gold); font-size: 10px; font-weight: 700; border: 1px solid rgba(251,191,36,0.3);">● Awaiting Approval</span>`
+                : (w.status === 'completed' || w.outcome === 'approved'
+                  ? `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(16,185,129,0.15); color: var(--accent-green); font-size: 10px; font-weight: 700; border: 1px solid rgba(16,185,129,0.3);">Approved</span>`
+                  : `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(239,68,68,0.15); color: var(--accent-red); font-size: 10px; font-weight: 700; border: 1px solid rgba(239,68,68,0.3);">Rejected</span>`);
+
+              const actions = isPending ? `
+                <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                  <button class="btn-approve" onclick="approveWithdrawal('${w.id}', ${w.stake})">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Approve
+                  </button>
+                  <button class="btn-reject" onclick="rejectWithdrawal('${w.id}', ${w.stake})">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Reject
+                  </button>
+                </div>
+              ` : `<span style="color: var(--text-gray); font-size: 11px;">Processed</span>`;
+
+              const dateStr = new Date(w.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+
+              return `
+                <tr>
+                  <td class="mono" style="color: var(--accent-lavender); font-weight: 700;">${w.id}</td>
+                  <td>
+                    <div style="font-weight: 700; color: #fff;">${w.userName || w.userEmail || 'Trader'}</div>
+                    <div class="mono" style="font-size: 10px; color: var(--text-gray);">${w.userEmail || ''}</div>
+                  </td>
+                  <td><span style="font-weight: 600;">${w.asset || w.method || 'M-Pesa'}</span></td>
+                  <td class="mono" style="font-weight: 800; font-size: 13px; color: #fff;">$${(parseFloat(w.stake) || 0).toFixed(2)}</td>
+                  <td class="mono" style="font-size: 11px; color: var(--text-gray);">${w.destination || 'N/A'}</td>
+                  <td style="font-size: 11px; color: var(--text-gray);">${dateStr}</td>
+                  <td>${statusBadge}</td>
+                  <td style="text-align: right;">${actions}</td>
+                </tr>
+              `;
+            }).join('');
+          } else {
+            wdTable.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">No withdrawal requests recorded yet.</td></tr>`;
+          }
+
+          // 3. Render Completed Deposits Table
+          const depTable = document.getElementById('depositsTableBody');
+          if (depRes.deposits && depRes.deposits.length > 0) {
+            depTable.innerHTML = depRes.deposits.map(d => {
+              const dateStr = new Date(d.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+              return `
+                <tr>
+                  <td class="mono" style="color: var(--accent-lavender); font-weight: 700;">${d.id}</td>
+                  <td>
+                    <div style="font-weight: 700; color: #fff;">${d.userName || d.userEmail || 'Trader'}</div>
+                    <div class="mono" style="font-size: 10px; color: var(--text-gray);">${d.userEmail || ''}</div>
+                  </td>
+                  <td><span style="font-weight: 600; color: #fff;">${d.asset || d.method || 'M-Pesa'}</span></td>
+                  <td class="mono" style="font-weight: 800; color: var(--accent-green); font-size: 13px;">+$${(parseFloat(d.stake) || 0).toFixed(2)}</td>
+                  <td class="mono" style="font-size: 11px; color: var(--accent-purple);">${d.txHash || 'CONFIRMED'}</td>
+                  <td class="mono" style="font-size: 11px; color: var(--text-gray);">${d.destination || 'Platform Custody'}</td>
+                  <td style="font-size: 11px; color: var(--text-gray);">${dateStr}</td>
+                  <td>
+                    <span style="padding: 2px 8px; border-radius: 4px; background: rgba(16,185,129,0.15); color: var(--accent-green); font-size: 10px; font-weight: 700; border: 1px solid rgba(16,185,129,0.3);">
+                      Completed
+                    </span>
+                  </td>
+                </tr>
+              `;
+            }).join('');
+          } else {
+            depTable.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">No deposits recorded yet.</td></tr>`;
+          }
+
+          // 4. Render Users Table
+          const usersTable = document.getElementById('usersTableBody');
+          if (usersRes.users && usersRes.users.length > 0) {
+            // Update Simulation Account Control Card
+            const simUser = usersRes.users.find(u => u.simulation || u.email === 'simulation@probinary.com');
+            if (simUser) {
+              const cardBal = document.getElementById('simCardBalance');
+              if (cardBal) cardBal.textContent = `$${(parseFloat(simUser.balance) || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+              const simUid = document.getElementById('simUserId');
+              if (simUid) simUid.textContent = simUser.id;
+            }
+
+            const banner = document.getElementById('usersTotalBanner');
+            if (banner) banner.textContent = `${usersRes.users.length} Registered Traders (Supabase)`;
+
+            usersTable.innerHTML = usersRes.users.map(u => {
+              const roleBadge = u.role === 'admin' || u.role === 'superadmin'
+                ? `<span style="padding: 2px 7px; border-radius: 4px; background: rgba(168,85,247,0.2); color: var(--accent-lavender); font-size: 10px; font-weight: 700; border: 1px solid rgba(168,85,247,0.4);">Administrator</span>`
+                : (u.simulation || u.is80WinRate
+                  ? `<span style="padding: 2px 7px; border-radius: 4px; background: rgba(16,185,129,0.18); color: var(--accent-green); font-size: 10px; font-weight: 700; border: 1px solid rgba(16,185,129,0.4);">Simulation (80% Win)</span>`
+                  : `<span style="padding: 2px 7px; border-radius: 4px; background: rgba(224,204,255,0.08); color: #fff; font-size: 10px; font-weight: 600;">Trader Desk</span>`);
+
+              const winRateLabel = (u.simulation || u.is80WinRate)
+                ? `<span class="mono" style="color: var(--accent-green); font-weight: 800;">80% Target</span>`
+                : `<span class="mono" style="color: var(--text-gray);">Market Dynamic</span>`;
+
+              const kycBadge = u.kycStatus === 'verified'
+                ? `<span style="color: var(--accent-green); font-weight: 700; font-size: 11px;">● Verified Tier 2</span>`
+                : (u.kycStatus === 'review'
+                  ? `<span style="color: var(--accent-gold); font-weight: 700; font-size: 11px;">● Under 12h Review</span>`
+                  : `<span style="color: var(--text-gray); font-size: 11px;">Pending</span>`);
+
+              const dateStr = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'Active';
+
+              return `
+                <tr>
+                  <td class="mono" style="color: var(--accent-lavender); font-weight: 700;">${u.id}</td>
+                  <td style="font-weight: 700; color: #fff;">${u.name}</td>
+                  <td class="mono" style="font-size: 11px; color: #baa4e8;">${u.email}</td>
+                  <td>${roleBadge}</td>
+                  <td class="mono" style="font-weight: 800; color: #fff;">$${(parseFloat(u.balance) || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                  <td>${winRateLabel}</td>
+                  <td>${kycBadge}</td>
+                  <td style="font-size: 11px; color: var(--text-gray);">${dateStr}</td>
+                  <td style="text-align: right;">
+                    <button onclick="openBalanceModal(${u.id}, '${u.email}', ${u.balance})" class="pill-btn" style="font-size: 10px; padding: 3px 8px; border-color: rgba(168,85,247,0.4); color: var(--accent-lavender);">
+                      Adjust Balance
+                    </button>
+                  </td>
+                </tr>
+              `;
+            }).join('');
+          }
+
+          // 5. Render KYC Queue
+          const kycTable = document.getElementById('kycTableBody');
+          if (kycRes.queue && kycRes.queue.length > 0) {
+            kycTable.innerHTML = kycRes.queue.map(k => {
+              const isReview = k.status === 'review';
+              const statusPill = k.status === 'verified'
+                ? `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(16,185,129,0.15); color: var(--accent-green); font-size: 10px; font-weight: 700;">Verified Level 2</span>`
+                : `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(251,191,36,0.15); color: var(--accent-gold); font-size: 10px; font-weight: 700;">Under 12h Review</span>`;
+
+              const timerDisplay = isReview
+                ? `<span class="mono" style="color: var(--accent-gold); font-weight: 700;">${k.remainingHoursFormatted} (<span id="sec_${k.userId}">${k.remainingSeconds}s</span>)</span>`
+                : `<span class="mono" style="color: var(--accent-green); font-weight: 700;">Auto-Cleared</span>`;
+
+              const manualAction = isReview ? `
+                <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                  <button class="btn-approve" onclick="manualApproveKyc('${k.userId}')">
+                    Approve Now
+                  </button>
+                </div>
+              ` : `<span style="color: var(--text-gray); font-size: 11px;">Cleared</span>`;
+
+              const submittedStr = k.submittedAt ? new Date(k.submittedAt).toLocaleString() : 'N/A';
+
+              return `
+                <tr>
+                  <td class="mono" style="color: var(--accent-lavender); font-weight: 700;">${k.userId}</td>
+                  <td style="font-weight: 700; color: #fff;">${k.fullName}</td>
+                  <td>${k.docType || 'National ID'}</td>
+                  <td class="mono" style="color: var(--accent-lavender);">${k.docNumber || 'ID-SIM-889102'}</td>
+                  <td style="font-size: 11px; color: var(--text-gray);">${submittedStr}</td>
+                  <td>${timerDisplay}</td>
+                  <td>${statusPill}</td>
+                  <td style="text-align: right;">${manualAction}</td>
+                </tr>
+              `;
+            }).join('');
+          } else {
+            kycTable.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">No KYC submissions pending.</td></tr>`;
+          }
+
+        } catch (e) {
+          console.error('Error refreshing admin data:', e);
+        }
+      };
+
+      // Admin Actions
+      window.approveWithdrawal = async function(tradeId, amount) {
+        if (!confirm(`Confirm approval and disbursement of $${amount.toFixed(2)} for request ${tradeId}?`)) return;
+        try {
+          const res = await fetch('/api/admin/withdrawals/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tradeId })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            alert(data.message || 'Withdrawal approved successfully!');
+            refreshAdminData();
+          } else {
+            alert(data.error || 'Failed to approve withdrawal.');
+          }
+        } catch (e) {
+          alert('Error connecting to server.');
+        }
+      };
+
+      window.rejectWithdrawal = async function(tradeId, amount) {
+        const reason = prompt(`Enter rejection reason for request ${tradeId}. (The $${amount.toFixed(2)} will be refunded back to user):`, 'Document validation mismatch');
+        if (!reason) return;
+        try {
+          const res = await fetch('/api/admin/withdrawals/reject', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tradeId, reason })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            alert(data.message || 'Withdrawal rejected and funds refunded.');
+            refreshAdminData();
+          } else {
+            alert(data.error || 'Failed to reject withdrawal.');
+          }
+        } catch (e) {
+          alert('Error connecting to server.');
+        }
+      };
+
+      window.manualApproveKyc = async function(userId) {
+        if (!confirm(`Manually approve KYC Level 2 for user ${userId}?`)) return;
+        try {
+          const res = await fetch('/api/admin/kyc/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            alert(data.message || 'KYC approved successfully!');
+            refreshAdminData();
+          } else {
+            alert(data.error || 'Failed to approve KYC.');
+          }
+        } catch (e) {
+          alert('Error connecting to server.');
+        }
+      };
+
+      window.triggerKycFastForward = async function() {
+        if (!confirm('Simulate 12 hours passing? This will test the automated 12-hour compliance clearance engine and automatically verify pending KYC submissions.')) return;
+        try {
+          const res = await fetch('/api/admin/kyc/fastforward', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: 'usr_simulation' })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            alert(data.message || '12-Hour simulation complete! KYC auto-approved.');
+            refreshAdminData();
+          } else {
+            alert(data.error || 'Failed to trigger fast-forward.');
+          }
+        } catch (e) {
+          alert('Error connecting to server.');
+        }
+      };
+
+      // Simulation & User Balance Modification (Supabase Sync)
+      window.updateSimulationBalance = async function() {
+        const input = document.getElementById('simBalanceInput');
+        const val = parseFloat(input?.value);
+        if (isNaN(val) || val < 0) {
+          alert('Please enter a valid positive dollar amount.');
+          return;
+        }
+
+        try {
+          const res = await fetch('/api/admin/simulation/balance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'simulation@probinary.com', balance: val })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            alert(data.message || `Simulation balance successfully updated to $${val.toFixed(2)} in Supabase!`);
+            if (input) input.value = '';
+            refreshAdminData();
+          } else {
+            alert(data.error || 'Failed to update simulation balance.');
+          }
+        } catch (e) {
+          alert('Error connecting to server.');
+        }
+      };
+
+      window.quickSetSimBalance = async function(amount) {
+        if (!confirm(`Set Simulation Account balance to $${amount.toLocaleString()} in Supabase?`)) return;
+        try {
+          const res = await fetch('/api/admin/simulation/balance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'simulation@probinary.com', balance: amount })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            alert(data.message || `Simulation balance set to $${amount.toLocaleString()}!`);
+            refreshAdminData();
+          } else {
+            alert(data.error || 'Failed to update balance.');
+          }
+        } catch (e) {
+          alert('Error connecting to server.');
+        }
+      };
+
+      window.quickAdjustSimBalance = async function(delta) {
+        try {
+          const res = await fetch('/api/admin/simulation/balance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'simulation@probinary.com', delta: delta })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            alert(data.message || `Simulation balance adjusted by +$${delta}!`);
+            refreshAdminData();
+          } else {
+            alert(data.error || 'Failed to adjust balance.');
+          }
+        } catch (e) {
+          alert('Error connecting to server.');
+        }
+      };
+
+      window.openBalanceModal = async function(userId, email, currentBalance) {
+        const input = prompt(`Enter new balance in USD for user ${email} (ID: ${userId}):\nCurrent Balance: $${(parseFloat(currentBalance)||0).toFixed(2)}`, currentBalance);
+        if (input === null || input.trim() === '') return;
+        const newBal = parseFloat(input);
+        if (isNaN(newBal) || newBal < 0) {
+          alert('Invalid amount entered.');
+          return;
+        }
+
+        try {
+          const res = await fetch('/api/admin/users/update-balance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, email, balance: newBal })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            alert(data.message || `Balance for ${email} updated to $${newBal.toFixed(2)} in Supabase!`);
+            refreshAdminData();
+          } else {
+            alert(data.error || 'Failed to update balance.');
+          }
+        } catch (e) {
+          alert('Error connecting to server.');
+        }
+      };
+
+      window.toggleMobileDrawer = function() {
+        const d = document.getElementById('mobileDrawer');
+        const b = document.getElementById('drawerBackdrop');
+        if (d.classList.contains('open')) {
+          d.classList.remove('open');
+          b.style.display = 'none';
+        } else {
+          d.classList.add('open');
+          b.style.display = 'block';
+        }
+      };
+
+      window.signOut = function() {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('probinary_user');
+        window.location.href = '/auth/login.html';
+      };
+    })();
+  </script>
+</body>
+</html>
+

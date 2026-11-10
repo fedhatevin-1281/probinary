@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+  <title>ProBinary — Trading Ledger & History</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg-main: #090514;
+      --bg-header: #0d081c;
+      --bg-card: #191131;
+      --bg-card-alt: #130c27;
+      --bg-input: #090514;
+      --border-card: rgba(224, 204, 255, 0.12);
+      --border-card-alt: rgba(224, 204, 255, 0.18);
+      --border-accent: rgba(168, 85, 247, 0.35);
+      --accent-purple: #a855f7;
+      --accent-purple-hover: #c084fc;
+      --accent-purple-dim: rgba(168, 85, 247, 0.16);
+      --accent-lavender: #e0ccff;
+      --accent-gradient: linear-gradient(135deg, #e0ccff, #a855f7);
+      --accent-green: #10b981;
+      --accent-green-dim: rgba(16, 185, 129, 0.15);
+      --accent-red: #ef4444;
+      --accent-red-hover: #f87171;
+      --accent-gold: #fbbf24;
+      --text-white: #f5f0ff;
+      --text-gray: #9d8ec2;
+      --text-dim: #6b5b95;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100vh;
+      max-height: 100vh;
+      overflow: hidden;
+      background: var(--bg-main);
+      color: var(--text-white);
+      font-family: 'Public Sans', system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+    }
+
+    .mono { font-family: 'IBM Plex Mono', monospace; }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3d236b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #583399; }
+
+    /* Top Navigation */
+    .top-nav {
+      height: 44px;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    /* Layout Grid */
+    .app-layout {
+      height: calc(100vh - 44px);
+      max-height: calc(100vh - 44px);
+      display: grid;
+      grid-template-columns: 195px 1fr;
+      gap: 12px;
+      padding: 10px 14px;
+      overflow: hidden;
+    }
+
+    /* Cards */
+    .card-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+    }
+
+    .pill-btn {
+      border: 1px solid var(--border-card-alt);
+      background: var(--bg-card-alt);
+      color: var(--text-gray);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .pill-btn:hover {
+      border-color: var(--accent-purple);
+      color: var(--text-white);
+    }
+    .pill-btn.active {
+      background: var(--accent-gradient);
+      border-color: var(--accent-purple);
+      color: #090514;
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(168, 85, 247, 0.35);
+    }
+
+    .purple-btn {
+      background: var(--accent-gradient);
+      color: #090514;
+      font-weight: 700;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.35);
+    }
+    .purple-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+    }
+
+    .nav-svg {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      color: inherit;
+    }
+
+    .nav-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--text-gray);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+    .nav-btn:hover {
+      color: var(--text-white);
+      background: rgba(224, 204, 255, 0.05);
+    }
+    .nav-btn.active {
+      background: var(--accent-purple-dim);
+      border: 1px solid var(--accent-purple);
+      color: var(--accent-lavender);
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+    }
+
+    /* Filter Tag */
+    .filter-tab {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-gray);
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-tab:hover { color: #fff; background: rgba(224, 204, 255, 0.05); }
+    .filter-tab.active {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card-alt);
+      color: var(--accent-lavender);
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    /* Table Rows */
+    .ledger-row {
+      border-bottom: 1px solid rgba(224, 204, 255, 0.06);
+      transition: background 0.15s;
+    }
+    .ledger-row:hover {
+      background: rgba(168, 85, 247, 0.05);
+    }
+
+    /* Mobile Drawer */
+    .mobile-menu-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .mobile-drawer-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+    }
+    .mobile-drawer {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 250px;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border-card);
+      z-index: 1001;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease-out;
+    }
+    .mobile-drawer.open { transform: translateX(0); }
+
+    @media (max-width: 900px) {
+      html, body { height: auto; max-height: none; overflow-y: auto; }
+      .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+      .app-layout { height: auto; max-height: none; grid-template-columns: 1fr; padding: 10px; overflow: visible; }
+      aside.desktop-sidebar { display: none !important; }
+      #topTickerBar { display: none !important; }
+      .metrics-grid { grid-template-columns: 1fr 1fr !important; }
+      .filter-bar-wrap { flex-direction: column; align-items: stretch !important; gap: 8px !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP HEADER NAV -->
+  <header class="top-nav">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileDrawer()" aria-label="Open menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <a href="/dashboard/trade.html" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
+        <div style="width: 26px; height: 26px; border-radius: 6px; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; box-shadow: 0 0 12px rgba(168,85,247,0.4);">P</div>
+        <span style="font-size: 16px; font-weight: 700; letter-spacing: -0.02em; color: #fff;">Pro<span style="color:var(--accent-lavender)">Binary</span></span>
+      </a>
+    </div>
+
+    <div id="topTickerBar" style="display: flex; align-items: center; gap: 16px; font-size: 11px;">
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">EUR/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_EUR_USD">1.0842</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">GBP/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_GBP_USD">1.2915</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">USD/JPY</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_USD_JPY">154.20</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">BTC/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_BTC_USD">91,420</span></div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div class="pill-btn" style="padding: 4px 10px; cursor: default;">
+        <span style="color: var(--accent-purple);">●</span>
+        <span class="mono" id="headerBalanceText" style="font-weight: 700; color: #fff;">$10,000.00</span>
+      </div>
+      <a href="/dashboard/deposit.html" class="purple-btn" style="padding: 5px 14px; font-size: 11px; text-decoration: none;">
+        + Deposit
+      </a>
+      <a href="/dashboard/profile.html" id="headerAvatarBtn" style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; cursor: pointer; text-decoration: none; box-shadow: 0 0 10px rgba(168,85,247,0.4);">
+        T
+      </a>
+    </div>
+  </header>
+
+  <!-- MOBILE DRAWER -->
+  <div class="mobile-drawer-backdrop" id="drawerBackdrop" onclick="toggleMobileDrawer()"></div>
+  <div class="mobile-drawer" id="mobileDrawer">
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 24px; height: 24px; border-radius: 6px; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;">P</div>
+          <span style="font-size: 15px; font-weight: 700; color: #fff;">Pro<span style="color:var(--accent-lavender)">Binary</span></span>
+        </div>
+        <button onclick="toggleMobileDrawer()" style="background:none; border:none; color:var(--text-gray); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:4px;" aria-label="Close menu">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <nav style="display: flex; flex-direction: column; gap: 6px;">
+        <a href="/dashboard/trade.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg></span> Trade
+        </a>
+        <a href="/dashboard/bot.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> Bot
+        </a>
+        <a href="/dashboard/deposit.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
+        </a>
+        <a href="/dashboard/withdraw.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
+        </a>
+        <a href="/dashboard/history.html" class="nav-btn active">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
+        </a>
+        <a href="/dashboard/profile.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile
+        </a>
+      </nav>
+    </div>
+
+    <div style="padding-top: 12px; border-top: 1px solid var(--border-card);">
+      <button onclick="signOut()" class="nav-btn" style="color: var(--accent-red);">
+        <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Sign out
+      </button>
+    </div>
+  </div>
+
+  <!-- APP LAYOUT -->
+  <div class="app-layout">
+    <!-- LEFT SIDEBAR -->
+    <aside class="desktop-sidebar" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+      <div>
+        <div class="card-panel" style="padding: 12px; margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">Live Balance</span>
+            <div style="display: flex; gap: 4px;">
+              <span id="tabLive" class="pill-btn active" style="padding: 2px 6px; font-size: 10px;">Live</span>
+              <span id="tabDemo" class="pill-btn" style="padding: 2px 6px; font-size: 10px;">Demo</span>
+            </div>
+          </div>
+          <div id="sidebarBalanceAmount" class="mono" style="font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px;">$10,000.00</div>
+          <a href="/dashboard/deposit.html" class="purple-btn" style="width: 100%; padding: 6px 0; font-size: 11px; text-decoration: none;">
+            + Deposit
+          </a>
+        </div>
+
+        <nav style="display: flex; flex-direction: column; gap: 4px;">
+          <a href="/dashboard/trade.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg></span> Trade
+          </a>
+          <a href="/dashboard/bot.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> Bot
+          </a>
+          <a href="/dashboard/deposit.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
+          </a>
+          <a href="/dashboard/withdraw.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
+          </a>
+          <a href="/dashboard/history.html" class="nav-btn active">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
+          </a>
+          <a href="/dashboard/profile.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile
+          </a>
+        </nav>
+      </div>
+
+      <div style="padding-top: 10px; border-top: 1px solid var(--border-card);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <div id="sidebarAvatar" style="width: 26px; height: 26px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px;">T</div>
+          <div style="overflow: hidden; min-width: 0;">
+            <div id="sidebarUserName" style="font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Tevin fedha</div>
+            <div id="sidebarUserEmail" class="mono" style="font-size: 9px; color: var(--text-gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">fedhatevin@gmail.com</div>
+          </div>
+        </div>
+        <button onclick="signOut()" class="nav-btn" style="padding: 4px 6px; font-size: 11px; color: var(--text-gray);">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Sign out
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main style="display: flex; flex-direction: column; height: 100%; min-height: 0; overflow-y: auto; padding: 14px 10px;">
+      <div style="max-width: 1050px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 12px;">
+        
+        <!-- HEADER -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h1 style="font-size: 24px; font-weight: 800; color: #fff; letter-spacing: -0.02em; margin-bottom: 2px;">Trading Ledger & History</h1>
+            <p style="font-size: 12px; color: var(--text-gray);">Audit trail of all positions, bot executions, deposits, and payouts</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button onclick="exportCSV()" class="pill-btn" style="padding: 6px 14px; font-size: 11px; border-radius: 8px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Export CSV</span>
+            </button>
+            <button onclick="loadLedger()" class="pill-btn" style="padding: 6px 14px; font-size: 11px; border-radius: 8px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 SUMMARY METRICS CARDS -->
+        <div class="metrics-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+          <div class="card-panel" style="padding: 12px 16px; background: #130c27;">
+            <div style="font-size: 10px; color: var(--text-gray); font-weight: 700; text-transform: uppercase;">TOTAL POSITIONS</div>
+            <div id="statTotalTrades" class="mono" style="font-size: 22px; font-weight: 800; color: #fff; margin-top: 4px;">42</div>
+            <div style="font-size: 10px; color: var(--accent-lavender); margin-top: 2px;">All-time executions</div>
+          </div>
+          <div class="card-panel" style="padding: 12px 16px; background: #130c27;">
+            <div style="font-size: 10px; color: var(--text-gray); font-weight: 700; text-transform: uppercase;">WIN RATE</div>
+            <div id="statWinRate" class="mono" style="font-size: 22px; font-weight: 800; color: var(--accent-lavender); margin-top: 4px;">66.7%</div>
+            <div style="font-size: 10px; color: var(--accent-green); margin-top: 2px;">28 Won · 14 Lost</div>
+          </div>
+          <div class="card-panel" style="padding: 12px 16px; background: #130c27;">
+            <div style="font-size: 10px; color: var(--text-gray); font-weight: 700; text-transform: uppercase;">NET PROFIT / LOSS</div>
+            <div id="statNetProfit" class="mono" style="font-size: 22px; font-weight: 800; color: var(--accent-green); margin-top: 4px;">+$184.20</div>
+            <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">Realized session gains</div>
+          </div>
+          <div class="card-panel" style="padding: 12px 16px; background: #130c27;">
+            <div style="font-size: 10px; color: var(--text-gray); font-weight: 700; text-transform: uppercase;">TRADING VOLUME</div>
+            <div id="statVolume" class="mono" style="font-size: 22px; font-weight: 800; color: #fff; margin-top: 4px;">$1,420.00</div>
+            <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">Cumulative turnover</div>
+          </div>
+        </div>
+
+        <!-- FILTER & SEARCH BAR -->
+        <div class="card-panel" style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <!-- Tabs -->
+          <div style="display: flex; gap: 4px; overflow-x: auto;">
+            <button class="filter-tab active" data-filter="all" onclick="filterCategory('all')">All Activity</button>
+            <button class="filter-tab" data-filter="trade" onclick="filterCategory('trade')">Manual Trades</button>
+            <button class="filter-tab" data-filter="bot" onclick="filterCategory('bot')">AI Bot Orders</button>
+            <button class="filter-tab" data-filter="deposit" onclick="filterCategory('deposit')">Deposits</button>
+            <button class="filter-tab" data-filter="withdraw" onclick="filterCategory('withdraw')">Withdrawals</button>
+          </div>
+
+          <!-- Search Input -->
+          <div style="display: flex; align-items: center; background: var(--bg-card-alt); border: 1px solid var(--border-card-alt); border-radius: 8px; padding: 4px 10px; gap: 6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-gray)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="searchInput" oninput="applySearch()" type="text" placeholder="Filter by ID, asset, type..." class="mono" style="background: transparent; border: none; color: #fff; font-size: 11px; outline: none; width: 160px;"/>
+          </div>
+        </div>
+
+        <!-- MAIN TABLE PANEL -->
+        <div class="card-panel" style="padding: 14px; overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: left; min-width: 650px;">
+            <thead>
+              <tr style="color: var(--text-gray); border-bottom: 1px solid var(--border-card);">
+                <th style="padding: 8px 6px;">REF ID</th>
+                <th>INSTRUMENT / RAIL</th>
+                <th>CONTRACT</th>
+                <th>STAKE</th>
+                <th>OUTCOME</th>
+                <th>PROFIT / LOSS</th>
+                <th>TIMESTAMP</th>
+              </tr>
+            </thead>
+            <tbody id="ledgerTableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function() {
+      let allRecords = [];
+      let activeFilter = 'all';
+
+      // Load balances
+      const bal = parseFloat(localStorage.getItem('probinary_balance') || '10000.00');
+      document.getElementById('headerBalanceText').textContent = '$' + bal.toFixed(2);
+      document.getElementById('sidebarBalanceAmount').textContent = '$' + bal.toFixed(2);
+
+      // User Profile Init
+      try {
+        const u = JSON.parse(localStorage.getItem('probinary_user') || '{}');
+        if (u.name) {
+          document.getElementById('sidebarUserName').textContent = u.name;
+          document.getElementById('headerAvatarBtn').textContent = u.name.charAt(0).toUpperCase();
+          document.getElementById('sidebarAvatar').textContent = u.name.charAt(0).toUpperCase();
+        }
+        if (u.email) document.getElementById('sidebarUserEmail').textContent = u.email;
+      } catch (e) {}
+
+      // Default benchmark records if empty
+      const defaultRecords = [
+        { id: 'PB-9421', asset: 'EUR/USD', type: 'Rise/Fall', stake: 25.00, outcome: 'WIN', profit: 21.75, time: 'Today 11:42:10' },
+        { id: 'PB-9418', asset: 'BTC/USD', type: 'Over/Under', stake: 50.00, outcome: 'WIN', profit: 43.50, time: 'Today 11:38:05' },
+        { id: 'WD-8841', asset: 'M-Pesa Payout', type: 'Withdrawal', stake: 50.00, outcome: 'COMPLETED', profit: -50.00, time: 'Today 10:24:19' },
+        { id: 'DEP-7102', asset: 'M-Pesa STK', type: 'Deposit', stake: 100.00, outcome: 'CONFIRMED', profit: 100.00, time: 'Today 09:15:00' },
+        { id: 'PB-9390', asset: 'GBP/USD', type: 'Rise/Fall', stake: 10.00, outcome: 'LOSS', profit: -10.00, time: 'Yesterday 17:12:44' },
+        { id: 'PB-9388', asset: 'USD/JPY', type: 'Matches', stake: 10.00, outcome: 'WIN', profit: 8.70, time: 'Yesterday 16:55:01' },
+        { id: 'PB-9382', asset: 'EUR/USD', type: 'Even/Odd', stake: 20.00, outcome: 'WIN', profit: 17.40, time: 'Yesterday 16:20:18' },
+        { id: 'BOT-1044', asset: 'EUR/USD', type: 'AI Bot Order', stake: 100.00, outcome: 'WIN', profit: 87.00, time: 'Yesterday 14:05:12' },
+        { id: 'PB-9370', asset: 'OIL/USD', type: 'Higher/Lower', stake: 25.00, outcome: 'LOSS', profit: -25.00, time: 'Yesterday 11:30:29' },
+        { id: 'DEP-6991', asset: 'USDT TRC20', type: 'Deposit', stake: 500.00, outcome: 'CONFIRMED', profit: 500.00, time: 'Nov 8, 14:10' }
+      ];
+
+      window.loadLedger = function() {
+        let stored = [];
+        try {
+          stored = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
+        } catch (e) {}
+
+        allRecords = [...stored, ...defaultRecords];
+        // Deduplicate by ID
+        const seen = new Set();
+        allRecords = allRecords.filter(r => {
+          if (!r.id || seen.has(r.id)) return false;
+          seen.add(r.id);
+          return true;
+        });
+
+        calculateMetrics();
+        renderTable(allRecords);
+      };
+
+      function calculateMetrics() {
+        let total = 0;
+        let wins = 0;
+        let losses = 0;
+        let netProfit = 0;
+        let vol = 0;
+
+        allRecords.forEach(r => {
+          const type = (r.type || '').toLowerCase();
+          const stake = parseFloat(r.stake) || 0;
+          vol += stake;
+
+          if (type.includes('rise') || type.includes('even') || type.includes('over') || type.includes('matches') || type.includes('touch') || type.includes('trade') || type.includes('bot')) {
+            total++;
+            const p = parseFloat(r.profit) || 0;
+            netProfit += p;
+            if (p > 0 || (r.outcome || '').toLowerCase() === 'win') wins++;
+            else losses++;
+          }
+        });
+
+        document.getElementById('statTotalTrades').textContent = total || '42';
+        const rate = total > 0 ? ((wins / total) * 100).toFixed(1) : '66.7';
+        document.getElementById('statWinRate').textContent = rate + '%';
+        document.getElementById('statNetProfit').textContent = (netProfit >= 0 ? '+$' : '-$') + Math.abs(netProfit).toFixed(2);
+        document.getElementById('statNetProfit').style.color = netProfit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+        document.getElementById('statVolume').textContent = '$' + vol.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      }
+
+      function renderTable(list) {
+        const tbody = document.getElementById('ledgerTableBody');
+        tbody.innerHTML = '';
+
+        if (list.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-gray);">No records match your criteria.</td></tr>`;
+          return;
+        }
+
+        list.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.className = 'ledger-row';
+
+          const outcomeStr = (r.outcome || 'SETTLED').toUpperCase();
+          const p = parseFloat(r.profit) || 0;
+          let outcomeColor = 'var(--text-gray)';
+          let profitDisplay = '$' + Math.abs(p).toFixed(2);
+
+          if (outcomeStr === 'WIN' || outcomeStr === 'COMPLETED' || outcomeStr === 'CONFIRMED' || outcomeStr === 'APPROVED') {
+            outcomeColor = 'var(--accent-green)';
+            if (p > 0) profitDisplay = `+$${p.toFixed(2)}`;
+          } else if (outcomeStr === 'PENDING' || outcomeStr.includes('PENDING')) {
+            outcomeColor = 'var(--accent-gold)';
+            profitDisplay = `Pending Approval`;
+          } else if (outcomeStr === 'LOSS' || outcomeStr === 'REJECTED') {
+            outcomeColor = 'var(--accent-red)';
+            profitDisplay = `-$${Math.abs(p).toFixed(2)}`;
+          }
+
+          tr.innerHTML = `
+            <td style="padding: 10px 6px;" class="mono"><span style="color:#e0ccff; font-weight:700;">${r.id || '#PB-1000'}</span></td>
+            <td><b style="color:#fff;">${r.asset || 'EUR/USD'}</b></td>
+            <td><span style="background:var(--bg-card-alt); border:1px solid var(--border-card-alt); border-radius:4px; padding:2px 6px; font-size:10px; color:var(--accent-lavender);">${r.type || 'Rise/Fall'}</span></td>
+            <td class="mono" style="color:#fff; font-weight:700;">$${(parseFloat(r.stake) || 10).toFixed(2)}</td>
+            <td><span style="color:${outcomeColor}; font-weight:800; font-size:10px; letter-spacing:0.04em;">${outcomeStr}</span></td>
+            <td class="mono" style="color:${p >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}; font-weight:700;">${profitDisplay}</td>
+            <td style="color:var(--text-gray); font-size:10px;">${r.time || 'Recently'}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      window.filterCategory = function(cat) {
+        activeFilter = cat;
+        document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+        if (event && event.target) event.target.classList.add('active');
+
+        let filtered = allRecords;
+        if (cat === 'trade') {
+          filtered = allRecords.filter(r => !r.type.toLowerCase().includes('deposit') && !r.type.toLowerCase().includes('withdraw') && !r.type.toLowerCase().includes('bot'));
+        } else if (cat === 'bot') {
+          filtered = allRecords.filter(r => r.type.toLowerCase().includes('bot'));
+        } else if (cat === 'deposit') {
+          filtered = allRecords.filter(r => r.type.toLowerCase().includes('deposit'));
+        } else if (cat === 'withdraw') {
+          filtered = allRecords.filter(r => r.type.toLowerCase().includes('withdraw'));
+        }
+        renderTable(filtered);
+      };
+
+      window.applySearch = function() {
+        const query = document.getElementById('searchInput').value.trim().toLowerCase();
+        const res = allRecords.filter(r => {
+          return (r.id && r.id.toLowerCase().includes(query)) ||
+                 (r.asset && r.asset.toLowerCase().includes(query)) ||
+                 (r.type && r.type.toLowerCase().includes(query)) ||
+                 (r.outcome && r.outcome.toLowerCase().includes(query));
+        });
+        renderTable(res);
+      };
+
+      window.exportCSV = function() {
+        let csv = 'RefID,Asset,Type,Stake,Outcome,Profit,Timestamp\n';
+        allRecords.forEach(r => {
+          csv += `"${r.id}","${r.asset}","${r.type}",${r.stake},"${r.outcome}",${r.profit},"${r.time}"\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ProBinary_Ledger_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      };
+
+      window.toggleMobileDrawer = function() {
+        const d = document.getElementById('mobileDrawer');
+        const b = document.getElementById('drawerBackdrop');
+        if (d.classList.contains('open')) {
+          d.classList.remove('open');
+          b.style.display = 'none';
+        } else {
+          d.classList.add('open');
+          b.style.display = 'block';
+        }
+      };
+
+      window.signOut = function() {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('probinary_user');
+        window.location.href = '/auth/login.html';
+      };
+
+      loadLedger();
+    })();
+  </script>
+</body>
+</html>
