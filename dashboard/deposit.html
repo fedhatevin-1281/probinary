@@ -828,6 +828,7 @@
       function updateBalances() {
         if (!isDemo && Number.isFinite(window.databaseWalletBalance)) realBalance = window.databaseWalletBalance;
         const bal = getBal();
+        localStorage.setItem('probinary_balance', bal.toFixed(2));
         const str = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         document.getElementById('headerBalanceText').textContent = str;
         document.getElementById('sidebarBalanceAmount').textContent = str;
@@ -851,8 +852,16 @@
         updateBalances();
       };
 
+      window.setDatabaseDemoBalance = function(balance) {
+        demoBalance = balance;
+        updateBalances();
+      };
+
       window.setMode = function(demo) {
-        isDemo = demo;
+        const demoAccount = user.simulation || user.is80WinRate || (user.email && user.email.toLowerCase().includes('simulation'));
+        if (demo && !demoAccount) return;
+        isDemo = Boolean(demo);
+        localStorage.setItem('probinary_account_mode', isDemo ? 'demo' : 'real');
         updateBalances();
       };
 
@@ -935,6 +944,7 @@
             if (statusData.status === 'completed') {
               realBalance = statusData.balance;
               updateBalances();
+              await window.refreshAccountBalance?.();
               currentPendingMpesaOrder = null;
               localStorage.removeItem(pendingMpesaPaymentKey);
               closeModal('mpesaModal');
@@ -1062,6 +1072,7 @@
           if (data.status === 'finished' && data.credited) {
             realBalance = data.balance;
             updateBalances();
+            await window.refreshAccountBalance?.();
             currentPendingOrder = null;
             closeModal('cryptoModal');
             alert(`NOWPayments confirmed the payment. $${Number(data.amountUsd).toFixed(2)} USD has been credited.`);

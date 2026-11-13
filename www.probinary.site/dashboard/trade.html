@@ -941,6 +941,7 @@
       function updateBalances() {
         if (!isDemo && Number.isFinite(window.databaseWalletBalance)) realBalance = window.databaseWalletBalance;
         const bal = getBal();
+        localStorage.setItem('probinary_balance', bal.toFixed(2));
         const str = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         headerBalanceText.textContent = str;
         sidebarBalanceAmount.textContent = str;
@@ -970,8 +971,16 @@
         updateBalances();
       };
 
+      window.setDatabaseDemoBalance = function(balance) {
+        demoBalance = balance;
+        updateBalances();
+      };
+
       window.setMode = function(demo) {
-        isDemo = demo;
+        const demoAccount = user.simulation || user.is80WinRate || (user.email && user.email.toLowerCase().includes('simulation'));
+        if (demo && !demoAccount) return;
+        isDemo = Boolean(demo);
+        localStorage.setItem('probinary_account_mode', isDemo ? 'demo' : 'real');
         updateBalances();
       };
       document.getElementById('realDemoToggle').addEventListener('change', (e) => {
@@ -1340,6 +1349,7 @@
           if (isDemo) { if (isWin) demoBalance += payout; }
           else { if (isWin) realBalance += payout; }
           updateBalances();
+          if (!isDemo) window.refreshAccountBalance?.();
 
           if (martingaleOn) {
             if (isWin) currentStake = martingaleBaseStake;
