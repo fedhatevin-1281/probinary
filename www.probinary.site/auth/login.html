@@ -199,27 +199,7 @@
       const emailInput = document.getElementById('emailInput');
       const passwordInput = document.getElementById('passwordInput');
       const toggleBtn = document.getElementById('togglePasswordBtn');
-      const fillAdminBtn = document.getElementById('fillAdminBtn');
-      const fillSimulationBtn = document.getElementById('fillSimulationBtn');
       const submitBtn = document.getElementById('submitBtn');
-
-      // Auto-fill Admin
-      if (fillAdminBtn) {
-        fillAdminBtn.addEventListener('click', function() {
-          emailInput.value = 'admin@probinary.com';
-          passwordInput.value = 'admin123';
-          showToast('Administrator credentials loaded', 'info');
-        });
-      }
-
-      // Auto-fill 80% Win Rate Simulation
-      if (fillSimulationBtn) {
-        fillSimulationBtn.addEventListener('click', function() {
-          emailInput.value = 'simulation@probinary.com';
-          passwordInput.value = 'simulation123';
-          showToast('80% Win Rate Simulation credentials loaded', 'info');
-        });
-      }
 
       // Show / Hide Password
       toggleBtn.addEventListener('click', function() {
@@ -279,31 +259,10 @@
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalText;
           }
-        } catch (netErr) {
-          // Graceful fallback for offline / static test
-          const isAdmin = email.includes('admin');
-          const isSim = email.includes('simulation') || !isAdmin;
-          const demoUser = {
-            id: isAdmin ? 'usr_admin' : 'usr_simulation',
-            name: isAdmin ? 'System Administrator' : 'Simulation Trader',
-            email: email,
-            role: isAdmin ? 'admin' : 'trader',
-            simulation: isSim,
-            is80WinRate: isSim,
-            winRate: isSim ? 80 : 50,
-            balance: isAdmin ? 25000.00 : 10000.00
-          };
-          localStorage.setItem('auth_token', 'token_local_' + Date.now());
-          localStorage.setItem('probinary_user', JSON.stringify(demoUser));
-          localStorage.setItem('probinary_balance', demoUser.balance);
-          showToast(isAdmin ? 'Signed in as Administrator' : 'Signed in · 80% Win Rate Simulation Active', 'success');
-          setTimeout(function() {
-            if (isAdmin) {
-              window.location.href = '/dashboard/admin.html';
-            } else {
-              window.location.href = '/dashboard/trade.html';
-            }
-          }, 600);
+        } catch {
+          showToast('Cannot reach the account service. Please try again.', 'error');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
         }
       });
 

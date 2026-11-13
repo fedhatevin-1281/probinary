@@ -21,6 +21,12 @@ This project is a Vite + React + Tailwind app and is ready to deploy to Vercel a
 - `APP_BASE_URL`: public HTTPS origin for checkout return URLs and the IPN callback (for example, `https://app.example.com`).
 - `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, and `JWT_SECRET`: required by the API and wallet backend.
 
+### Supabase Login and Registration
+
+The Vercel functions at `/api/auth/login` and `/api/auth/register` use the Supabase REST API with a server-side service key. Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SECRET_KEY`), and a strong `JWT_SECRET` in Vercel's environment settings and in local `.env` for `server.js`. Do not expose either secret with a `VITE_` or `NEXT_PUBLIC_` prefix. Redeploy after setting Vercel variables.
+
+The existing Supabase project must already have `users` (`id`, `email`, `username`, `password_hash`, `account_status`), `wallets`, `roles`, and `user_roles` tables, plus a `roles` row named `client`. The provided `nowpayments.sql` adds the payment tables and wallet-credit functions; it does not create this base authentication schema. Passwords are stored as bcrypt hashes. Login and registration return configuration errors when Supabase is unreachable rather than creating fake local accounts.
+
 ### NOWPayments Setup
 
 1. Run `nowpayments.sql` in the Supabase SQL Editor. Rerun the updated script on existing installations to add the payment-address fields. It creates the private order table and atomic wallet functions used to prevent duplicate credits and balance overwrites.

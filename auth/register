@@ -240,22 +240,10 @@
             submitBtn.disabled = false;
             submitBtn.innerHTML = origText;
           }
-        } catch (err) {
-          // Offline fallback
-          const user = {
-            id: 'usr_' + Date.now().toString(36),
-            name: fullName,
-            email: email,
-            role: 'trader',
-            balance: 1000.00
-          };
-          localStorage.setItem('auth_token', 'token_' + Date.now());
-          localStorage.setItem('probinary_user', JSON.stringify(user));
-          localStorage.setItem('probinary_balance', 1000.00);
-          showToast('Desk opened! Welcome to ProBinary!', 'success');
-          setTimeout(function() {
-            window.location.href = '/dashboard/trade.html';
-          }, 700);
+        } catch {
+          showToast('Cannot reach the account service. Please try again.', 'error');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origText;
         }
       });
 

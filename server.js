@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const bcrypt = require('bcryptjs');
+const { handleAuth } = require('./lib/auth');
 const { handleMakamescoPay } = require('./lib/makamescopay');
 const { handleNowPayments } = require('./lib/nowpayments');
 
@@ -27,7 +27,7 @@ if (fs.existsSync(envPath)) {
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
 const SITE_DIR = path.join(ROOT, 'www.probinary.site');
-const JWT_SECRET = process.env.JWT_SECRET || 'probinary-secret-key-2026';
+const JWT_SECRET = process.env.JWT_SECRET || '';
 const KYC_FILE = path.join(ROOT, '.kyc.json');
 
 // 2. Supabase Integration Layer (Strict Schema Compliance)
@@ -326,18 +326,8 @@ function saveKyc(data) {
   try { fs.writeFileSync(KYC_FILE, JSON.stringify(data, null, 2), 'utf-8'); } catch (err) { console.error('Save KYC error:', err); }
 }
 
-// 4. Lightweight JWT
-function generateJWT(payload) {
-  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
-  const body = Buffer.from(JSON.stringify({
-    ...payload,
-    exp: Math.floor(Date.now() / 1000) + 8 * 3600
-  })).toString('base64url');
-  const signature = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
-  return `${header}.${body}.${signature}`;
-}
-
 function verifyJWT(token) {
+  if (!JWT_SECRET) return null;
   try {
     const [header, body, signature] = token.split('.');
     const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
@@ -396,6 +386,9 @@ const server = http.createServer(async (req, res) => {
   if (reqUrl === '/api/mpesa/config' || reqUrl === '/api/mpesa/create' || reqUrl === '/api/mpesa/status') {
     return handleMakamescoPay(req, res);
   }
+  if (reqUrl === '/api/auth/login' || reqUrl === '/api/auth/register') {
+    return handleAuth(req, res);
+  }
   if ([
     '/api/crypto/create-payment',
     '/api/crypto/status',
@@ -412,172 +405,6 @@ const server = http.createServer(async (req, res) => {
     const token = authHeader.replace(/^Bearer\s+/i, '');
     if (!token) return null;
     return verifyJWT(token);
-  }
-
-  // --- AUTH ENDPOINTS (SUPABASE USERS TABLE) ---
-  if (reqUrl === '/api/auth/login' && req.method === 'POST') {
-    const body = await readBody(req);
-    const email = (body.email || '').trim().toLowerCase();
-    const password = body.password || '';
-
-    if (!email || !password) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: 'Email and password are required' }));
-    }
-
-    // 1. Fetch user directly from Supabase
-    const dbUser = await sbGetUserByEmail(email);
-
-    if (dbUser) {
-      const isSuperAdminEmail = email === 'admin@probinary.com' || email === 'superadmin@probinary.com';
-      const isSimEmail = email === 'simulation@probinary.com' || (dbUser.username && dbUser.username.includes('simulation'));
-
-      // Check password using bcrypt or master credentials
-      let passwordValid = false;
-      if (dbUser.password_hash) {
-        try { passwordValid = bcrypt.compareSync(password, dbUser.password_hash); } catch {}
-      }
-
-      if (!passwordValid) {
-        if (isSuperAdminEmail && (password === 'admin123' || password === 'superadmin123')) {
-          passwordValid = true;
-        } else if (isSimEmail && password === 'simulation123') {
-          passwordValid = true;
-        }
-      }
-
-      if (passwordValid) {
-        const roleName = dbUser.user_roles?.[0]?.roles?.name || '';
-        const isAdmin = roleName === 'super_admin' || roleName === 'admin' || isSuperAdminEmail;
-        const isSimulation = isSimEmail;
-
-        const liveBalance = parseFloat(dbUser.wallets?.current_balance ?? (isAdmin ? 25000.00 : 10000.00));
-
-        const user = {
-          id: dbUser.id,
-          name: dbUser.username || (isAdmin ? 'System Administrator' : (isSimulation ? 'Simulation Trader' : email.split('@')[0])),
-          email: dbUser.email,
-          role: isAdmin ? 'admin' : 'trader',
-          simulation: isSimulation,
-          is80WinRate: isSimulation,
-          winRate: isSimulation ? 80 : null,
-          balance: liveBalance
-        };
-
-        const token = generateJWT(user);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ success: true, token, user }));
-      } else {
-        res.writeHead(401, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ error: 'Invalid password' }));
-      }
-    }
-
-    // Fallbacks for initial startup if database network hiccup
-    if (email === 'admin@probinary.com' || email === 'superadmin@probinary.com') {
-      if (password === 'admin123' || password === 'superadmin123') {
-        const user = {
-          id: 6,
-          name: 'System Administrator',
-          email: email,
-          role: 'admin',
-          simulation: false,
-          is80WinRate: false,
-          balance: 25000.00
-        };
-        const token = generateJWT(user);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ success: true, token, user }));
-      }
-    }
-
-    if (email === 'simulation@probinary.com' && password === 'simulation123') {
-      const user = {
-        id: 59,
-        name: 'Simulation Trader',
-        email: 'simulation@probinary.com',
-        role: 'trader',
-        simulation: true,
-        is80WinRate: true,
-        winRate: 80,
-        balance: 10000.00
-      };
-      const token = generateJWT(user);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ success: true, token, user }));
-    }
-
-    res.writeHead(401, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ error: 'Invalid email or password' }));
-  }
-
-  if (reqUrl === '/api/auth/register' && req.method === 'POST') {
-    const body = await readBody(req);
-    const email = (body.email || '').trim().toLowerCase();
-    const fullName = (body.fullName || body.name || email.split('@')[0]).trim();
-    const password = body.password || '';
-
-    if (!email || !password) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: 'Email and password are required' }));
-    }
-
-    const existing = await sbGetUserByEmail(email);
-    if (existing) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: 'Account already exists. Please sign in.' }));
-    }
-
-    const hash = bcrypt.hashSync(password, 10);
-    const userRes = await supabaseFetch('/rest/v1/users', {
-      method: 'POST',
-      headers: { 'Prefer': 'return=representation' },
-      body: {
-        email,
-        username: fullName,
-        password_hash: hash,
-        account_status: 'active'
-      }
-    });
-
-    const userData = await userRes.json();
-    const newUser = Array.isArray(userData) ? userData[0] : null;
-
-    if (newUser) {
-      // Create wallet with $1,000 initial balance in Supabase
-      await supabaseFetch('/rest/v1/wallets', {
-        method: 'POST',
-        body: {
-          user_id: newUser.id,
-          current_balance: 1000.00,
-          currency: 'USD',
-          total_deposits: 1000.00,
-          total_withdrawals: 0
-        }
-      });
-      // Assign client role (id: 1)
-      await supabaseFetch('/rest/v1/user_roles', {
-        method: 'POST',
-        body: { user_id: newUser.id, role_id: 1 }
-      });
-
-      const user = {
-        id: newUser.id,
-        name: fullName,
-        email: newUser.email,
-        role: 'trader',
-        simulation: false,
-        is80WinRate: false,
-        balance: 1000.00
-      };
-
-      const token = generateJWT(user);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ success: true, token, user }));
-    } else {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: 'Failed to create user in Supabase' }));
-    }
   }
 
   if (reqUrl === '/api/auth/me' && req.method === 'GET') {
