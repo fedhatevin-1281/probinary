@@ -819,7 +819,7 @@
       // 1. STATE & STORAGE
       const USD_KES_RATE = 129.5;
       let isDemo = false;
-      let realBalance = parseFloat(localStorage.getItem('probinary_real_balance') || '10000.00');
+      let realBalance = 0;
       let demoBalance = parseFloat(localStorage.getItem('probinary_demo_balance') || '10000.00');
       
       let botEnabled = true;
@@ -868,6 +868,7 @@
       // 2. BALANCES
       function getBal() { return isDemo ? demoBalance : realBalance; }
       function updateBalances() {
+        if (!isDemo && Number.isFinite(window.databaseWalletBalance)) realBalance = window.databaseWalletBalance;
         const bal = getBal();
         const str = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         document.getElementById('headerBalanceText').textContent = str;
@@ -884,6 +885,12 @@
           document.getElementById('tabDemo').classList.remove('active');
         }
       }
+
+      window.setDatabaseBalance = function(balance) {
+        window.databaseWalletBalance = balance;
+        realBalance = balance;
+        updateBalances();
+      };
 
       window.setMode = function(demo) {
         isDemo = demo;
@@ -1259,5 +1266,6 @@
       updateSummary();
     })();
   </script>
+  <script src="/dashboard/balance.js"></script>
 </body>
 </html>

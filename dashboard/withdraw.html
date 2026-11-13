@@ -687,7 +687,7 @@
       let isDemo = false;
 
       function getLiveBal() {
-        return parseFloat(localStorage.getItem('probinary_balance') || '10000.00');
+        return parseFloat(localStorage.getItem('probinary_balance') || '0');
       }
 
       function updateBalances() {
@@ -881,5 +881,6 @@
       };
     })();
   </script>
+  <script src="/dashboard/balance.js"></script>
 </body>
 </html>

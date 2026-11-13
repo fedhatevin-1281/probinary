@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { handleAuth } = require('./lib/auth');
+const { handleAuth, handleWalletBalance } = require('./lib/auth');
 const { handleMakamescoPay } = require('./lib/makamescopay');
 const { handleNowPayments } = require('./lib/nowpayments');
 
@@ -91,30 +91,38 @@ async function sbGetAllUsers() {
 }
 
 async function sbGetUserBalance(userId) {
-  if (!userId) return 10000.00;
+  if (!userId) throw new Error('A user ID is required to load a wallet balance');
   try {
     const res = await supabaseFetch(`/rest/v1/wallets?user_id=eq.${encodeURIComponent(userId)}&select=current_balance`);
     const data = await res.json();
     if (Array.isArray(data) && data.length > 0 && data[0].current_balance !== undefined) {
-      return parseFloat(data[0].current_balance) || 0;
+      const balance = Number(data[0].current_balance);
+      if (Number.isFinite(balance)) return balance;
     }
   } catch (err) {
     console.error('sbGetUserBalance error:', err.message);
   }
-  return 10000.00;
+  throw new Error('Wallet balance is unavailable');
 }
 
 async function sbUpdateUserBalance(userId, newBalance, reason = 'Balance adjustment') {
-  const balanceNum = parseFloat(parseFloat(newBalance).toFixed(2));
-  const numericId = parseInt(userId) || 59;
+  const balanceNum = Number(Number(newBalance).toFixed(2));
+  if (!userId || !Number.isFinite(balanceNum)) throw new Error('A valid user and balance are required');
   try {
-    await supabaseFetch(`/rest/v1/wallets?user_id=eq.${numericId}`, {
+    const response = await supabaseFetch(`/rest/v1/wallets?user_id=eq.${encodeURIComponent(userId)}`, {
       method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
       body: {
         current_balance: balanceNum,
         updated_at: new Date().toISOString()
       }
     });
+    const updatedWallets = await response.json();
+    if (!response.ok || !Array.isArray(updatedWallets) || !updatedWallets[0]) {
+      throw new Error('Wallet balance update was not confirmed');
+    }
+    const updatedBalance = Number(updatedWallets[0].current_balance);
+    if (!Number.isFinite(updatedBalance)) throw new Error('Supabase returned an invalid wallet balance');
 
     // Record adjustment entry in transaction_history strictly adhering to schema constraints:
     // transaction_type = 'adjustment', status = 'completed'
@@ -122,7 +130,7 @@ async function sbUpdateUserBalance(userId, newBalance, reason = 'Balance adjustm
       await supabaseFetch(`/rest/v1/transaction_history`, {
         method: 'POST',
         body: {
-          user_id: numericId,
+          user_id: parseInt(userId, 10),
           transaction_type: 'adjustment',
           amount: balanceNum,
           currency: 'USD',
@@ -135,10 +143,10 @@ async function sbUpdateUserBalance(userId, newBalance, reason = 'Balance adjustm
       console.error('Transaction history log error:', e.message);
     }
 
-    return balanceNum;
+    return updatedBalance;
   } catch (err) {
     console.error('sbUpdateUserBalance error:', err.message);
-    return balanceNum;
+    throw err;
   }
 }
 
@@ -389,6 +397,9 @@ const server = http.createServer(async (req, res) => {
   if (reqUrl === '/api/auth/login' || reqUrl === '/api/auth/register') {
     return handleAuth(req, res);
   }
+  if (reqUrl === '/api/wallet/balance') {
+    return handleWalletBalance(req, res);
+  }
   if ([
     '/api/crypto/create-payment',
     '/api/crypto/status',
@@ -425,14 +436,6 @@ const server = http.createServer(async (req, res) => {
     return res.end(JSON.stringify({ success: true, message: 'Logged out successfully' }));
   }
 
-  // --- WALLET BALANCE ENDPOINT ---
-  if (reqUrl === '/api/wallet/balance' && req.method === 'GET') {
-    const user = getRequestUser() || { id: 59 };
-    const balance = await sbGetUserBalance(user.id);
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ success: true, balance }));
-  }
-
   // --- TRADING API (binary_trade_records SCHEMA) ---
   if (reqUrl === '/api/market/quotes' && req.method === 'GET') {
     const quotes = {
@@ -451,9 +454,22 @@ const server = http.createServer(async (req, res) => {
 
   if (reqUrl === '/api/trading/order' && req.method === 'POST') {
     const body = await readBody(req);
-    const user = getRequestUser() || { id: 59, email: 'simulation@probinary.com' };
+    const user = getRequestUser();
+    if (!user) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Unauthorized' }));
+    }
     const stake = parseFloat(body.stake) || 0;
     const isDemo = Boolean(body.isDemo);
+    const isSimulationAccount = user.is80WinRate || user.simulation || user.email === 'simulation@probinary.com';
+    if (isDemo && !isSimulationAccount) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Demo mode is unavailable for this account.' }));
+    }
+    if (!isSimulationAccount) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Live order execution is not configured.' }));
+    }
 
     if (stake <= 0) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -530,16 +546,28 @@ const server = http.createServer(async (req, res) => {
 
   if (reqUrl === '/api/trading/settle' && req.method === 'POST') {
     const body = await readBody(req);
-    const user = getRequestUser() || { id: 59, email: 'simulation@probinary.com', simulation: true, is80WinRate: true };
+    const user = getRequestUser();
+    if (!user) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Unauthorized' }));
+    }
     const tradeId = body.tradeId;
     const exitPrice = parseFloat(body.exitPrice) || 1.0845;
     const exitDigit = parseInt(String(exitPrice).replace('.', '').slice(-1)) || 0;
     let outcome = body.outcome; // 'win' or 'loss'
     let payout = parseFloat(body.payout) || 0;
     const isDemo = Boolean(body.isDemo);
+    const isSimulationAccount = user.is80WinRate || user.simulation || user.email === 'simulation@probinary.com';
+    if (isDemo && !isSimulationAccount) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Demo mode is unavailable for this account.' }));
+    }
+    if (!isSimulationAccount) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Live order settlement is not configured.' }));
+    }
 
     // 80% Win Rate Simulation Engine Check
-    const isSimulationAccount = user.is80WinRate || user.simulation || user.email === 'simulation@probinary.com';
     if (isSimulationAccount) {
       if (Math.random() < 0.80) {
         outcome = 'win';
@@ -612,12 +640,25 @@ const server = http.createServer(async (req, res) => {
 
   if (reqUrl === '/api/trading/cashout' && req.method === 'POST') {
     const body = await readBody(req);
-    const user = getRequestUser() || { id: 59 };
+    const user = getRequestUser();
+    if (!user) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Unauthorized' }));
+    }
     const tradeId = body.tradeId;
     const currentPrice = parseFloat(body.currentPrice) || 1.0;
     const stake = parseFloat(body.stake) || 10;
     const cashoutAmount = parseFloat((stake * 0.75).toFixed(2));
     const isDemo = Boolean(body.isDemo);
+    const isSimulationAccount = user.is80WinRate || user.simulation || user.email === 'simulation@probinary.com';
+    if (isDemo && !isSimulationAccount) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Demo mode is unavailable for this account.' }));
+    }
+    if (!isSimulationAccount) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Live order cashout is not configured.' }));
+    }
 
     let newBalance;
     if (!isDemo) {
@@ -649,7 +690,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (reqUrl === '/api/trading/history' && req.method === 'GET') {
-    const user = getRequestUser() || { id: 59 };
+    const user = getRequestUser();
+    if (!user) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Unauthorized' }));
+    }
     try {
       const resTrades = await supabaseFetch(`/rest/v1/binary_trade_records?user_id=eq.${user.id}&order=created_at.desc&limit=50`);
       const trades = await resTrades.json();
@@ -664,9 +709,18 @@ const server = http.createServer(async (req, res) => {
   // --- WALLET DEPOSIT & WITHDRAWAL ---
   if (reqUrl === '/api/wallet/deposit' && req.method === 'POST') {
     const body = await readBody(req);
-    const user = getRequestUser() || { id: 59 };
+    const user = getRequestUser();
+    if (!user) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Unauthorized' }));
+    }
     const amount = parseFloat(body.amount) || 0;
     const isDemo = Boolean(body.isDemo);
+    const isSimulationAccount = user.is80WinRate || user.simulation || user.email === 'simulation@probinary.com';
+    if (isDemo && !isSimulationAccount) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Demo mode is unavailable for this account.' }));
+    }
 
     if (amount <= 0) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -689,9 +743,18 @@ const server = http.createServer(async (req, res) => {
 
   if (reqUrl === '/api/wallet/withdraw' && req.method === 'POST') {
     const body = await readBody(req);
-    const user = getRequestUser() || { id: 59, email: 'simulation@probinary.com', name: 'Simulation Trader' };
+    const user = getRequestUser();
+    if (!user) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Unauthorized' }));
+    }
     const amount = parseFloat(body.amount) || 0;
     const isDemo = Boolean(body.isDemo);
+    const isSimulationAccount = user.is80WinRate || user.simulation || user.email === 'simulation@probinary.com';
+    if (isDemo && !isSimulationAccount) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Demo mode is unavailable for this account.' }));
+    }
 
     if (amount <= 0) {
       res.writeHead(400, { 'Content-Type': 'application/json' });

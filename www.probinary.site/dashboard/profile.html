@@ -598,7 +598,7 @@
   <script>
     (function() {
       // Balance init
-      const bal = parseFloat(localStorage.getItem('probinary_balance') || '10000.00');
+      const bal = parseFloat(localStorage.getItem('probinary_balance') || '0');
       document.getElementById('headerBalanceText').textContent = '$' + bal.toFixed(2);
       document.getElementById('sidebarBalanceAmount').textContent = '$' + bal.toFixed(2);
       document.getElementById('profileBalanceDisplay').textContent = '$' + bal.toFixed(2);
@@ -794,5 +794,6 @@
       };
     })();
   </script>
+  <script src="/dashboard/balance.js"></script>
 </body>
 </html>

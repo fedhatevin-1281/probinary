@@ -476,7 +476,7 @@
       let activeFilter = 'all';
 
       // Load balances
-      const bal = parseFloat(localStorage.getItem('probinary_balance') || '10000.00');
+      const bal = parseFloat(localStorage.getItem('probinary_balance') || '0');
       document.getElementById('headerBalanceText').textContent = '$' + bal.toFixed(2);
       document.getElementById('sidebarBalanceAmount').textContent = '$' + bal.toFixed(2);
 
@@ -492,18 +492,7 @@
       } catch (e) {}
 
       // Default benchmark records if empty
-      const defaultRecords = [
-        { id: 'PB-9421', asset: 'EUR/USD', type: 'Rise/Fall', stake: 25.00, outcome: 'WIN', profit: 21.75, time: 'Today 11:42:10' },
-        { id: 'PB-9418', asset: 'BTC/USD', type: 'Over/Under', stake: 50.00, outcome: 'WIN', profit: 43.50, time: 'Today 11:38:05' },
-        { id: 'WD-8841', asset: 'M-Pesa Payout', type: 'Withdrawal', stake: 50.00, outcome: 'COMPLETED', profit: -50.00, time: 'Today 10:24:19' },
-        { id: 'DEP-7102', asset: 'M-Pesa STK', type: 'Deposit', stake: 100.00, outcome: 'CONFIRMED', profit: 100.00, time: 'Today 09:15:00' },
-        { id: 'PB-9390', asset: 'GBP/USD', type: 'Rise/Fall', stake: 10.00, outcome: 'LOSS', profit: -10.00, time: 'Yesterday 17:12:44' },
-        { id: 'PB-9388', asset: 'USD/JPY', type: 'Matches', stake: 10.00, outcome: 'WIN', profit: 8.70, time: 'Yesterday 16:55:01' },
-        { id: 'PB-9382', asset: 'EUR/USD', type: 'Even/Odd', stake: 20.00, outcome: 'WIN', profit: 17.40, time: 'Yesterday 16:20:18' },
-        { id: 'BOT-1044', asset: 'EUR/USD', type: 'AI Bot Order', stake: 100.00, outcome: 'WIN', profit: 87.00, time: 'Yesterday 14:05:12' },
-        { id: 'PB-9370', asset: 'OIL/USD', type: 'Higher/Lower', stake: 25.00, outcome: 'LOSS', profit: -25.00, time: 'Yesterday 11:30:29' },
-        { id: 'DEP-6991', asset: 'USDT TRC20', type: 'Deposit', stake: 500.00, outcome: 'CONFIRMED', profit: 500.00, time: 'Nov 8, 14:10' }
-      ];
+      const defaultRecords = [];
 
       window.loadLedger = function() {
         let stored = [];
@@ -660,5 +649,6 @@
       loadLedger();
     })();
   </script>
+  <script src="/dashboard/balance.js"></script>
 </body>
 </html>
