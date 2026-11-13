@@ -626,7 +626,7 @@
 
       <div style="margin-bottom: 16px;">
         <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 4px; font-weight: 700;">SAFARICOM PHONE NUMBER</label>
-        <input id="mpesaPhone" type="tel" value="0712345678" class="mono" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:8px; padding:10px 12px; color:#fff; font-size:14px; outline:none;"/>
+        <input id="mpesaPhone" type="tel" placeholder="0712345678" autocomplete="tel" required class="mono" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:8px; padding:10px 12px; color:#fff; font-size:14px; outline:none;"/>
       </div>
 
       <button id="btnSubmitMpesa" onclick="submitMpesaDeposit()" class="purple-btn" style="width:100%; padding:11px 0; font-size:13px; font-weight: 800; border-radius: 8px;">
@@ -710,19 +710,19 @@
         <div>
           <div style="font-size: 10px; color: var(--text-gray); font-weight: 700; margin-bottom: 4px;">DEPOSIT WALLET ADDRESS:</div>
           <div style="display: flex; align-items: center; background: var(--bg-card-alt); border: 1px solid var(--border-card); border-radius: 8px; padding: 8px 10px;">
-            <div id="orderWalletAddress" class="mono" style="font-size: 11px; color: #fff; word-break: break-all; flex: 1;">TYD9K3v1g7hJ8mP2zWqLsXbA5nC4rEe9F2</div>
+            <div id="orderWalletAddress" class="mono" style="font-size: 11px; color: #fff; word-break: break-all; flex: 1;">Waiting for NOWPayments order</div>
             <button onclick="copyWalletAddress()" class="pill-btn" style="padding: 3px 8px; font-size: 10px; margin-left: 6px;">Copy</button>
           </div>
         </div>
 
         <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-gray);">
-          <span>Order ID: <b id="orderIdText" class="mono" style="color: #fff;">NOW-78429</b></span>
-          <span>Status: <b id="orderStatusText" style="color: var(--accent-green);">Awaiting Transfer ●</b></span>
+          <span>Order ID: <b id="orderIdText" class="mono" style="color: #fff;">—</b></span>
+          <span>Status: <b id="orderStatusText" style="color: var(--accent-green);">Not started</b></span>
         </div>
 
         <div style="display: flex; gap: 8px; margin-top: 6px;">
           <button onclick="confirmCryptoDeposit()" class="purple-btn" style="flex: 1; padding: 10px 0; font-size: 12px; font-weight: 800; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Confirm Deposit & Credit Balance</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Check NOWPayments Status</span>
           </button>
           <button onclick="resetCryptoStep()" class="pill-btn" style="padding: 10px 14px; font-size: 11px; border-radius: 8px;">
             Back
@@ -805,7 +805,7 @@
   <!-- APPLICATION LOGIC -->
   <script>
     (function() {
-      const USD_KES_RATE = 129.5;
+      let USD_KES_RATE = 129.5;
       let isDemo = false;
       let realBalance = parseFloat(localStorage.getItem('probinary_real_balance') || '10000.00');
       let demoBalance = parseFloat(localStorage.getItem('probinary_demo_balance') || '10000.00');
@@ -813,6 +813,8 @@
 
       // User Credentials
       let user = JSON.parse(localStorage.getItem('probinary_user') || '{"name":"Tevin fedha","email":"fedhatevin@gmail.com"}');
+      const pendingMpesaPaymentKey = 'probinary_pending_mpesa_order_' + (user.id || user.email || 'guest');
+      let currentPendingMpesaOrder = localStorage.getItem(pendingMpesaPaymentKey);
       document.getElementById('sidebarUserName').textContent = user.name || 'Tevin fedha';
       document.getElementById('sidebarUserEmail').textContent = user.email || 'fedhatevin@gmail.com';
       document.getElementById('profName').textContent = user.name || 'Tevin fedha';
@@ -860,43 +862,95 @@
         });
       };
 
-      document.getElementById('mpesaUsd').addEventListener('input', (e) => {
-        const usd = parseFloat(e.target.value) || 0;
+      function updateMpesaEstimate(usd) {
         document.getElementById('mpesaKesRate').textContent = `≈ KES ${(usd * USD_KES_RATE).toLocaleString()} (1 USD = ${USD_KES_RATE} KES)`;
+      }
+
+      document.getElementById('mpesaUsd').addEventListener('input', (e) => {
+        updateMpesaEstimate(parseFloat(e.target.value) || 0);
       });
+
+      fetch('/api/mpesa/config')
+        .then(response => response.ok ? response.json() : null)
+        .then(data => {
+          const rate = Number(data?.usdKesRate);
+          if (data?.success && Number.isFinite(rate) && rate > 0) {
+            USD_KES_RATE = rate;
+            updateMpesaEstimate(parseFloat(document.getElementById('mpesaUsd').value) || 0);
+          }
+        })
+        .catch(() => {});
 
       window.submitMpesaDeposit = async function() {
         const usd = parseFloat(document.getElementById('mpesaUsd').value) || 0;
         const phone = document.getElementById('mpesaPhone').value.trim();
-        if (usd <= 0) { alert('Please enter a valid amount.'); return; }
-        if (!phone) { alert('Please enter your Safaricom phone number.'); return; }
+        const hasPendingMpesaOrder = Boolean(currentPendingMpesaOrder);
+        if (!hasPendingMpesaOrder && usd <= 0) { alert('Please enter a valid amount.'); return; }
+        if (!hasPendingMpesaOrder && !phone) { alert('Please enter your Safaricom phone number.'); return; }
 
         const btn = document.getElementById('btnSubmitMpesa');
-        btn.textContent = 'Processing STK Push...';
+        if (!hasPendingMpesaOrder && isDemo) {
+          demoBalance += usd;
+          updateBalances();
+          closeModal('mpesaModal');
+          alert(`Demo balance updated by $${usd.toFixed(2)}. No M-Pesa payment was made.`);
+          return;
+        }
+
+        const token = localStorage.getItem('auth_token');
+        if (!token) { alert('Please sign in before making a live deposit.'); return; }
+
+        btn.textContent = hasPendingMpesaOrder ? 'Checking Payment...' : 'Sending STK Push...';
         btn.disabled = true;
 
         try {
-          const res = await fetch('/api/wallet/deposit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount: usd, phone: phone, isDemo: isDemo, currentDemoBalance: demoBalance })
-          });
-          const data = await res.json();
-          if (data.success) {
-            if (isDemo) demoBalance = data.balance; else realBalance = data.balance;
-            updateBalances();
-            closeModal('mpesaModal');
-            alert(`M-Pesa STK push completed! +$${usd.toFixed(2)} USD has been credited to your account.`);
-          } else {
-            alert('Deposit error: ' + (data.error || 'Failed to process M-Pesa STK push'));
+          if (!currentPendingMpesaOrder) {
+            const startResponse = await fetch('/api/mpesa/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ amount: usd, phone })
+            });
+            const startData = await startResponse.json();
+            if (!startResponse.ok || !startData.success) throw new Error(startData.error || 'Unable to start M-Pesa payment.');
+            currentPendingMpesaOrder = startData.reference;
+            localStorage.setItem(pendingMpesaPaymentKey, currentPendingMpesaOrder);
           }
+
+          for (let attempt = 0; attempt < 12; attempt++) {
+            if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 5000));
+            btn.textContent = 'Waiting for M-Pesa confirmation...';
+            const statusResponse = await fetch(`/api/mpesa/status?reference=${encodeURIComponent(currentPendingMpesaOrder)}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const statusData = await statusResponse.json();
+            if (!statusResponse.ok || !statusData.success) throw new Error(statusData.error || 'Unable to verify payment status.');
+
+            if (statusData.status === 'completed') {
+              realBalance = statusData.balance;
+              updateBalances();
+              currentPendingMpesaOrder = null;
+              localStorage.removeItem(pendingMpesaPaymentKey);
+              closeModal('mpesaModal');
+              alert(`M-Pesa payment confirmed. $${Number(statusData.amountUsd).toFixed(2)} USD has been credited.`);
+              return;
+            }
+            if (statusData.status === 'failed' || statusData.status === 'cancelled') {
+              currentPendingMpesaOrder = null;
+              localStorage.removeItem(pendingMpesaPaymentKey);
+              alert('M-Pesa payment was not completed. You can start a new deposit.');
+              return;
+            }
+            if (statusData.status === 'review') {
+              alert('Payment received but could not be matched automatically. Please contact support before retrying.');
+              return;
+            }
+          }
+
+          alert('The M-Pesa request is still pending. Do not start another deposit; use this button to check again shortly.');
         } catch (err) {
-          if (isDemo) demoBalance += usd; else realBalance += usd;
-          updateBalances();
-          closeModal('mpesaModal');
-          alert(`M-Pesa STK push confirmed! +$${usd.toFixed(2)} USD credited to your account.`);
+          alert('Deposit error: ' + (err.message || 'Unable to process M-Pesa payment.'));
         } finally {
-          btn.textContent = 'Send M-Pesa STK Push';
+          btn.textContent = currentPendingMpesaOrder ? 'Check Payment Status' : 'Send M-Pesa STK Push';
           btn.disabled = false;
         }
       };
@@ -939,6 +993,17 @@
         const curr = document.getElementById('cryptoCurrencySelect').value;
         if (usd < 5) { alert('Minimum crypto deposit is $5 USD.'); return; }
 
+        if (isDemo) {
+          demoBalance += usd;
+          updateBalances();
+          closeModal('cryptoModal');
+          alert(`Demo balance updated by $${usd.toFixed(2)}. No cryptocurrency payment was made.`);
+          return;
+        }
+
+        const token = localStorage.getItem('auth_token');
+        if (!token) { alert('Please sign in before making a live crypto deposit.'); return; }
+
         const btn = document.getElementById('btnGenerateCryptoOrder');
         btn.textContent = 'Contacting NOWPayments...';
         btn.disabled = true;
@@ -946,20 +1011,22 @@
         try {
           const res = await fetch('/api/crypto/create-payment', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount: usd, currency: curr, isDemo: isDemo })
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ amount: usd, currency: curr })
           });
           const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.error || 'NOWPayments could not create the payment.');
           currentPendingOrder = data;
 
           document.getElementById('orderCryptoAmount').textContent = `${data.payAmount} ${data.payCurrency}`;
           document.getElementById('orderWalletAddress').textContent = data.payAddress;
           document.getElementById('orderIdText').textContent = data.orderId;
+          document.getElementById('orderStatusText').textContent = data.status || 'waiting';
 
           document.getElementById('cryptoStepInput').style.display = 'none';
           document.getElementById('cryptoStepDetails').style.display = 'flex';
         } catch (err) {
-          alert('Failed to reach NOWPayments API.');
+          alert('Crypto deposit error: ' + (err.message || 'Failed to reach NOWPayments.'));
         } finally {
           btn.textContent = 'Generate Deposit Address →';
           btn.disabled = false;
@@ -975,26 +1042,27 @@
 
       window.confirmCryptoDeposit = async function() {
         if (!currentPendingOrder) return;
-        const usd = currentPendingOrder.amountUsd;
+        const token = localStorage.getItem('auth_token');
+        if (!token) { alert('Please sign in before checking payment status.'); return; }
 
         try {
-          const res = await fetch('/api/crypto/verify-payment', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount: usd, isDemo: isDemo, currentDemoBalance: demoBalance })
+          const res = await fetch(`/api/crypto/status?orderId=${encodeURIComponent(currentPendingOrder.orderId)}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
           });
           const data = await res.json();
-          if (data.success) {
-            if (isDemo) demoBalance = data.balance; else realBalance = data.balance;
+          if (!res.ok || !data.success) throw new Error(data.error || 'Unable to verify NOWPayments status.');
+          document.getElementById('orderStatusText').textContent = data.status || 'pending';
+          if (data.status === 'finished' && data.credited) {
+            realBalance = data.balance;
             updateBalances();
+            currentPendingOrder = null;
             closeModal('cryptoModal');
-            alert(`NOWPayments Crypto Deposit Confirmed! +$${usd.toFixed(2)} USD credited to your balance.`);
+            alert(`NOWPayments confirmed the payment. $${Number(data.amountUsd).toFixed(2)} USD has been credited.`);
+          } else {
+            alert(`NOWPayments payment status: ${data.status || 'pending'}. Your balance has not been credited yet.`);
           }
-        } catch(err) {
-          if (isDemo) demoBalance += usd; else realBalance += usd;
-          updateBalances();
-          closeModal('cryptoModal');
-          alert(`NOWPayments Crypto Deposit Confirmed! +$${usd.toFixed(2)} USD credited.`);
+        } catch (err) {
+          alert('Unable to verify crypto payment: ' + (err.message || 'Please try checking again.'));
         }
       };
 

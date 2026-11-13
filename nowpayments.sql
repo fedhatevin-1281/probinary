@@ -57,11 +57,14 @@ begin
 end;
 $$;
 
+drop function if exists public.complete_nowpayments_order(text, text, numeric, text);
+
 create or replace function public.complete_nowpayments_order(
   p_order_id text,
   p_payment_id text,
   p_amount_usd numeric,
-  p_price_currency text
+  p_price_currency text,
+  p_pay_currency text
 )
 returns table (credited boolean, current_balance numeric)
 language plpgsql
@@ -84,6 +87,10 @@ begin
   if lower(p_price_currency) <> 'usd'
      or p_amount_usd <> payment_order.amount_usd then
     raise exception 'NOWPayments payment amount or currency mismatch';
+  end if;
+
+  if lower(payment_order.pay_currency) <> lower(p_pay_currency) then
+    raise exception 'NOWPayments payment cryptocurrency mismatch';
   end if;
 
   if payment_order.payment_id is not null
@@ -126,9 +133,9 @@ $$;
 revoke all on public.nowpayments_orders from anon, authenticated;
 grant select, insert, update on public.nowpayments_orders to service_role;
 revoke all on function public.apply_wallet_delta(text, numeric) from public, anon, authenticated;
-revoke all on function public.complete_nowpayments_order(text, text, numeric, text) from public, anon, authenticated;
+revoke all on function public.complete_nowpayments_order(text, text, numeric, text, text) from public, anon, authenticated;
 grant execute on function public.apply_wallet_delta(text, numeric) to service_role;
-grant execute on function public.complete_nowpayments_order(text, text, numeric, text) to service_role;
+grant execute on function public.complete_nowpayments_order(text, text, numeric, text, text) to service_role;
 
 create table if not exists public.manual_wallet_deposits (
   id bigint generated always as identity primary key,
@@ -196,3 +203,106 @@ revoke all on public.manual_wallet_deposits from anon, authenticated;
 grant select, insert on public.manual_wallet_deposits to service_role;
 revoke all on function public.apply_manual_wallet_deposit(text, numeric, text, text, text) from public, anon, authenticated;
 grant execute on function public.apply_manual_wallet_deposit(text, numeric, text, text, text) to service_role;
+
+create table if not exists public.makamescopay_orders (
+  order_reference text primary key,
+  user_id text not null,
+  amount_usd numeric(12, 2) not null check (amount_usd >= 1),
+  amount_kes integer not null check (amount_kes >= 1),
+  phone_number text not null,
+  checkout_request_id text unique,
+  merchant_request_id text,
+  mpesa_receipt_number text,
+  status text not null default 'initiating'
+    check (status in ('initiating', 'pending', 'completed', 'failed', 'cancelled', 'review')),
+  credited_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists makamescopay_orders_user_created_idx
+  on public.makamescopay_orders (user_id, created_at desc);
+
+alter table public.makamescopay_orders enable row level security;
+revoke all on public.makamescopay_orders from anon, authenticated;
+grant select, insert, update on public.makamescopay_orders to service_role;
+
+create or replace function public.complete_makamescopay_order(
+  p_order_reference text,
+  p_checkout_request_id text,
+  p_amount_kes integer,
+  p_phone_number text,
+  p_mpesa_receipt_number text
+)
+returns table (credited boolean, current_balance numeric)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  payment_order public.makamescopay_orders%rowtype;
+  new_balance numeric;
+begin
+  select * into payment_order
+  from public.makamescopay_orders
+  where order_reference = p_order_reference
+  for update;
+
+  if not found then
+    raise exception 'MakamescoPay order not found';
+  end if;
+
+  if payment_order.checkout_request_id is distinct from p_checkout_request_id
+     or payment_order.amount_kes <> p_amount_kes
+     or payment_order.phone_number <> p_phone_number then
+    raise exception 'MakamescoPay payment details mismatch';
+  end if;
+
+  if payment_order.credited_at is not null then
+    select wallets.current_balance into new_balance
+    from public.wallets
+    where wallets.user_id::text = payment_order.user_id;
+
+    return query select false, new_balance;
+    return;
+  end if;
+
+  if payment_order.status <> 'pending' then
+    raise exception 'MakamescoPay order is not pending';
+  end if;
+
+  update public.wallets
+  set current_balance = coalesce(current_balance, 0) + payment_order.amount_usd,
+      total_deposits = coalesce(total_deposits, 0) + payment_order.amount_usd,
+      last_updated = now(),
+      updated_at = now()
+  where user_id::text = payment_order.user_id
+  returning current_balance into new_balance;
+
+  if not found then
+    raise exception 'Wallet not found for MakamescoPay order';
+  end if;
+
+  insert into public.manual_wallet_deposits (
+    user_id, amount, reference, note, credited_by
+  ) values (
+    payment_order.user_id,
+    payment_order.amount_usd,
+    payment_order.order_reference,
+    'MakamescoPay M-Pesa deposit (' || payment_order.amount_kes || ' KES)',
+    'MakamescoPay'
+  );
+
+  update public.makamescopay_orders
+  set status = 'completed',
+      mpesa_receipt_number = p_mpesa_receipt_number,
+      credited_at = now(),
+      updated_at = now()
+  where order_reference = p_order_reference;
+
+  return query select true, new_balance;
+end;
+$$;
+
+revoke all on function public.complete_makamescopay_order(text, text, integer, text, text) from public, anon, authenticated;
+grant execute on function public.complete_makamescopay_order(text, text, integer, text, text) to service_role;

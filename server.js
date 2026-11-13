@@ -1,9 +1,10 @@
 const http = require('http');
-const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const { handleMakamescoPay } = require('./lib/makamescopay');
+const { handleNowPayments } = require('./lib/nowpayments');
 
 // 1. Auto-load .env
 const envPath = path.join(__dirname, '.env');
@@ -390,6 +391,19 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200);
       return res.end();
     }
+  }
+
+  if (reqUrl === '/api/mpesa/config' || reqUrl === '/api/mpesa/create' || reqUrl === '/api/mpesa/status') {
+    return handleMakamescoPay(req, res);
+  }
+  if ([
+    '/api/crypto/create-payment',
+    '/api/crypto/status',
+    '/api/crypto/verify-payment',
+    '/api/crypto/webhook',
+    '/api/payments/nowpayments/webhook'
+  ].includes(reqUrl)) {
+    return handleNowPayments(req, res);
   }
 
   // Helper to extract authenticated user from Authorization header
@@ -832,42 +846,11 @@ const server = http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ error: 'Invalid deposit amount' }));
     }
 
-    let newBalance;
-    if (isDemo) {
-      newBalance = (body.currentDemoBalance || 0) + amount;
-    } else {
-      newBalance = await sbAdjustUserBalance(user.id, amount, `Deposit via ${body.method || 'M-Pesa Safaricom'}`);
-      const depRef = 'DP-' + Date.now().toString(36).toUpperCase();
-      // Record in manual_wallet_deposits
-      try {
-        await supabaseFetch('/rest/v1/manual_wallet_deposits', {
-          method: 'POST',
-          body: {
-            user_id: String(user.id),
-            amount: amount,
-            reference: depRef,
-            note: body.method || 'M-Pesa Instant Deposit',
-            credited_by: '1'
-          }
-        });
-      } catch {}
-
-      // Record in transaction_history (transaction_type = 'deposit', status = 'completed')
-      try {
-        await supabaseFetch('/rest/v1/transaction_history', {
-          method: 'POST',
-          body: {
-            user_id: parseInt(user.id) || 59,
-            transaction_type: 'deposit',
-            amount: amount,
-            currency: 'USD',
-            status: 'completed',
-            payment_reference: depRef,
-            description: `Deposit via ${body.method || 'M-Pesa Safaricom'}`
-          }
-        });
-      } catch {}
+    if (!isDemo) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Live deposits must use the verified MakamescoPay payment flow' }));
     }
+    const newBalance = (body.currentDemoBalance || 0) + amount;
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({
@@ -1269,185 +1252,6 @@ const server = http.createServer(async (req, res) => {
     }
     res.writeHead(404, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: 'KYC record not found' }));
-  }
-
-  // --- NOWPAYMENTS CRYPTO DEPOSIT ENDPOINTS (nowpayments_orders SCHEMA) ---
-  if (reqUrl === '/api/crypto/create-payment' && req.method === 'POST') {
-    const body = await readBody(req);
-    const user = getRequestUser() || { id: 6, email: 'superadmin@probinary.com' };
-    const amount = parseFloat(body.amount) || 50;
-    const currency = (body.currency || 'usdttrc20').toLowerCase();
-    const isDemo = Boolean(body.isDemo);
-
-    const apiKey = process.env.NOWPAYMENTS_API_KEY;
-    const orderId = 'NOW-' + Date.now().toString(36).toUpperCase();
-
-    if (apiKey) {
-      try {
-        const postData = JSON.stringify({
-          price_amount: amount,
-          price_currency: 'usd',
-          pay_currency: currency,
-          order_id: orderId,
-          order_description: `ProBinary Deposit $${amount} USD`,
-          ipn_callback_url: (process.env.VITE_API_URL || 'https://probinary.site') + '/api/crypto/webhook'
-        });
-
-        const npRes = await new Promise((resolve) => {
-          const req = https.request('https://api.nowpayments.io/v1/payment', {
-            method: 'POST',
-            headers: {
-              'x-api-key': apiKey,
-              'Content-Type': 'application/json',
-              'Content-Length': Buffer.byteLength(postData)
-            },
-            timeout: 6000
-          }, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-              try { resolve(JSON.parse(data)); } catch { resolve(null); }
-            });
-          });
-          req.on('error', () => resolve(null));
-          req.on('timeout', () => { req.destroy(); resolve(null); });
-          req.write(postData);
-          req.end();
-        });
-
-        if (npRes && npRes.pay_address) {
-          // Record in nowpayments_orders table in Supabase
-          try {
-            await supabaseFetch('/rest/v1/nowpayments_orders', {
-              method: 'POST',
-              body: {
-                order_id: orderId,
-                user_id: String(user.id),
-                amount_usd: amount,
-                payment_id: String(npRes.payment_id || ''),
-                payment_status: 'creating',
-                pay_address: npRes.pay_address,
-                pay_amount: parseFloat(npRes.pay_amount) || amount,
-                pay_currency: (npRes.pay_currency || currency).toUpperCase()
-              }
-            });
-          } catch (e) {}
-
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({
-            success: true,
-            orderId: npRes.order_id || orderId,
-            paymentId: npRes.payment_id,
-            payAddress: npRes.pay_address,
-            payAmount: npRes.pay_amount,
-            payCurrency: npRes.pay_currency,
-            amountUsd: amount
-          }));
-        }
-      } catch (err) {
-        console.error('NOWPayments error:', err);
-      }
-    }
-
-    // Direct / Sandbox Fallback Address (TRC20 / ERC20 / BTC / ETH)
-    const addresses = {
-      'usdttrc20': 'TYD9K3v1g7hJ8mP2zWqLsXbA5nC4rEe9F2',
-      'usdterc20': '0x71C8395562725832E506B898d00E6eC1f4eDE8F3',
-      'btc': 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-      'eth': '0x71C8395562725832E506B898d00E6eC1f4eDE8F3',
-      'sol': '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-      'ltc': 'ltc1qrg9a56q2j4t7d5u450kdfq97vj7f8n7z2j4p3q'
-    };
-
-    const cryptoRates = {
-      'usdttrc20': 1.0,
-      'usdterc20': 1.0,
-      'btc': 0.0000109,
-      'eth': 0.000318,
-      'sol': 0.0048,
-      'ltc': 0.0125
-    };
-
-    const payAddr = addresses[currency] || addresses['usdttrc20'];
-    const rate = cryptoRates[currency] || 1.0;
-    const cryptoAmt = parseFloat((amount * rate).toFixed(6));
-
-    // Record order in Supabase nowpayments_orders table
-    try {
-      await supabaseFetch('/rest/v1/nowpayments_orders', {
-        method: 'POST',
-        body: {
-          order_id: orderId,
-          user_id: String(user.id),
-          amount_usd: amount,
-          payment_status: 'creating',
-          pay_address: payAddr,
-          pay_amount: cryptoAmt,
-          pay_currency: currency.toUpperCase()
-        }
-      });
-    } catch {}
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({
-      success: true,
-      orderId: orderId,
-      payAddress: payAddr,
-      payAmount: cryptoAmt,
-      payCurrency: currency.toUpperCase(),
-      amountUsd: amount,
-      isSandbox: true,
-      instructions: 'Send exact amount to the address above. Credits automatically upon confirmation.'
-    }));
-  }
-
-  if (reqUrl === '/api/crypto/verify-payment' && req.method === 'POST') {
-    const body = await readBody(req);
-    const user = getRequestUser() || { id: 59 };
-    const amount = parseFloat(body.amount) || 0;
-    const isDemo = Boolean(body.isDemo);
-
-    if (amount <= 0) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: 'Invalid deposit amount' }));
-    }
-
-    let newBalance;
-    if (isDemo) {
-      newBalance = (body.currentDemoBalance || 0) + amount;
-    } else {
-      newBalance = await sbAdjustUserBalance(user.id, amount, `Deposit via Crypto (USDT)`);
-      if (body.orderId) {
-        try {
-          await supabaseFetch(`/rest/v1/nowpayments_orders?order_id=eq.${body.orderId}`, {
-            method: 'PATCH',
-            body: { payment_status: 'finished', credited_at: new Date().toISOString() }
-          });
-        } catch {}
-      }
-    }
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({
-      success: true,
-      balance: newBalance,
-      message: `Deposit of $${amount.toFixed(2)} USD via Crypto confirmed successfully.`
-    }));
-  }
-
-  if (reqUrl === '/api/crypto/webhook' && req.method === 'POST') {
-    const body = await readBody(req);
-    console.log('[NOWPayments Webhook]', body);
-    if (body.order_id && (body.payment_status === 'finished' || body.payment_status === 'confirmed')) {
-      try {
-        await supabaseFetch(`/rest/v1/nowpayments_orders?order_id=eq.${body.order_id}`, {
-          method: 'PATCH',
-          body: { payment_status: 'finished', credited_at: new Date().toISOString() }
-        });
-      } catch {}
-    }
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ received: true }));
   }
 
   // --- STATIC ROUTING & REWRITES ---

@@ -24,14 +24,23 @@ This project is a Vite + React + Tailwind app and is ready to deploy to Vercel a
 ### NOWPayments Setup
 
 1. Run `nowpayments.sql` in the Supabase SQL Editor. Rerun the updated script on existing installations to add the payment-address fields. It creates the private order table and atomic wallet functions used to prevent duplicate credits and balance overwrites.
-2. Add `NOWPAYMENTS_API_KEY`, `NOWPAYMENTS_IPN_SECRET`, and `APP_BASE_URL` to the auth API environment. Keep these values server-side; do not use `VITE_` prefixes.
+2. Add `NOWPAYMENTS_API_KEY`, `NOWPAYMENTS_IPN_SECRET`, and `APP_BASE_URL` to the Vercel server-side environment. Keep these values server-side; do not use `VITE_` prefixes.
 3. The app sends `${APP_BASE_URL}/api/payments/nowpayments/webhook` as the IPN callback URL when it creates each invoice. Keep that route publicly reachable over HTTPS.
 4. Enable the supported coins and networks you want to offer in your NOWPayments account. Customers choose an available currency in the deposit panel and receive its payment address and QR code in the app.
 5. For local development, expose the app and auth API through one public HTTPS origin (with `/api` routed to the auth API) and set `APP_BASE_URL` to that origin. NOWPayments cannot send IPNs to localhost.
 
-Wallet credit is granted only for a signed `finished` IPN whose order, payment ID, and USD amount match the stored payment. A browser redirect alone never credits funds.
+Wallet credit is granted only for a signed `finished` IPN whose order, payment ID, USD amount, and requested cryptocurrency match the stored payment. A browser action or redirect alone never credits funds. The old client-callable crypto verification endpoint is rejected.
 
 If `VITE_API_URL` is not set, HTTP calls use the current browser origin. Set `VITE_WS_URL` to the separately deployed WebSocket server URL to enable live backend connections; without it, the app uses local simulation.
+
+### MakamescoPay M-Pesa Deposits
+
+1. Run the updated `nowpayments.sql` in the Supabase SQL Editor. It creates the private MakamescoPay order table and the atomic, idempotent wallet-credit function.
+2. Set `MAKAMESCOPAY_API_KEY`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY` (or `SUPABASE_SERVICE_ROLE_KEY`), `JWT_SECRET`, and `USD_KES_RATE` in Vercel's server-side environment variables. Never add the MakamescoPay secret key to a `VITE_` variable or browser code.
+3. Configure a settlement account in MakamescoPay and activate the merchant account for live payments. The provider's sandbox allows two test transactions.
+4. Redeploy. The `/api/mpesa/create` and `/api/mpesa/status` Vercel functions send the STK prompt and verify its server-side status. A wallet is credited only after MakamescoPay reports `completed` and the KES amount and phone number match the stored order.
+
+The displayed USD amount is converted to KES using `USD_KES_RATE` (defaults to `129.5`). Demo-mode deposits only change the local demo balance and do not initiate an M-Pesa payment.
 
 ## Important Backend Note
 
