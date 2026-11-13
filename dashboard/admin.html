@@ -711,6 +711,13 @@
         document.getElementById('headerAvatarBtn').textContent = initial;
       }
 
+      function adminFetch(url, options = {}) {
+        const headers = { ...(options.headers || {}) };
+        const token = localStorage.getItem('auth_token');
+        if (token) headers.Authorization = `Bearer ${token}`;
+        return fetch(url, { ...options, headers });
+      }
+
       // Initial Data Load
       refreshAdminData();
 
@@ -737,11 +744,11 @@
       window.refreshAdminData = async function() {
         try {
           const [overviewRes, wdRes, depRes, usersRes, kycRes] = await Promise.all([
-            fetch('/api/admin/overview').then(r => r.json()).catch(() => ({})),
-            fetch('/api/admin/withdrawals').then(r => r.json()).catch(() => ({})),
-            fetch('/api/admin/deposits').then(r => r.json()).catch(() => ({})),
-            fetch('/api/admin/users').then(r => r.json()).catch(() => ({})),
-            fetch('/api/admin/kyc/queue').then(r => r.json()).catch(() => ({}))
+            adminFetch('/api/admin/overview').then(r => r.json()).catch(error => ({ error: error.message })),
+            adminFetch('/api/admin/withdrawals').then(r => r.json()).catch(error => ({ error: error.message })),
+            adminFetch('/api/admin/deposits').then(r => r.json()).catch(error => ({ error: error.message })),
+            adminFetch('/api/admin/users').then(r => r.json()).catch(error => ({ error: error.message })),
+            adminFetch('/api/admin/kyc/queue').then(r => r.json()).catch(error => ({ error: error.message }))
           ]);
 
           // 1. Overview Cards
@@ -757,7 +764,9 @@
             document.getElementById('tabCountWd').textContent = s.pendingWithdrawalsCount || 0;
 
             document.getElementById('statTotalUsers').textContent = s.totalUsers || 0;
-            document.getElementById('statKycReviewCount').textContent = (s.kycReviewCount || 0) + ' Under 12h Review';
+            document.getElementById('statKycReviewCount').textContent = Number.isFinite(s.kycReviewCount)
+              ? s.kycReviewCount + ' Under 12h Review'
+              : 'Unavailable in database';
           }
 
           // 2. Render Withdrawals Table
@@ -800,6 +809,8 @@
                 </tr>
               `;
             }).join('');
+          } else if (wdRes.error) {
+            wdTable.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--accent-red);">Unable to load withdrawals from the database.</td></tr>`;
           } else {
             wdTable.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">No withdrawal requests recorded yet.</td></tr>`;
           }
@@ -829,6 +840,8 @@
                 </tr>
               `;
             }).join('');
+          } else if (depRes.error) {
+            depTable.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--accent-red);">Unable to load deposits from the database.</td></tr>`;
           } else {
             depTable.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">No deposits recorded yet.</td></tr>`;
           }
@@ -885,6 +898,10 @@
                 </tr>
               `;
             }).join('');
+          } else if (usersRes.error) {
+            usersTable.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 24px; color: var(--accent-red);">Unable to load users from the database.</td></tr>`;
+          } else {
+            usersTable.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 24px; color: var(--text-gray);">No users found.</td></tr>`;
           }
 
           // 5. Render KYC Queue
@@ -923,6 +940,8 @@
                 </tr>
               `;
             }).join('');
+          } else if (kycRes.error) {
+            kycTable.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--accent-gold);">KYC submissions are stored locally, not in Supabase, and are unavailable on this deployment.</td></tr>`;
           } else {
             kycTable.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">No KYC submissions pending.</td></tr>`;
           }
@@ -936,7 +955,7 @@
       window.approveWithdrawal = async function(tradeId, amount) {
         if (!confirm(`Confirm approval and disbursement of $${amount.toFixed(2)} for request ${tradeId}?`)) return;
         try {
-          const res = await fetch('/api/admin/withdrawals/approve', {
+          const res = await adminFetch('/api/admin/withdrawals/approve', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tradeId })
@@ -957,7 +976,7 @@
         const reason = prompt(`Enter rejection reason for request ${tradeId}. (The $${amount.toFixed(2)} will be refunded back to user):`, 'Document validation mismatch');
         if (!reason) return;
         try {
-          const res = await fetch('/api/admin/withdrawals/reject', {
+          const res = await adminFetch('/api/admin/withdrawals/reject', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tradeId, reason })
@@ -977,7 +996,7 @@
       window.manualApproveKyc = async function(userId) {
         if (!confirm(`Manually approve KYC Level 2 for user ${userId}?`)) return;
         try {
-          const res = await fetch('/api/admin/kyc/approve', {
+          const res = await adminFetch('/api/admin/kyc/approve', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId })
@@ -997,7 +1016,7 @@
       window.triggerKycFastForward = async function() {
         if (!confirm('Simulate 12 hours passing? This will test the automated 12-hour compliance clearance engine and automatically verify pending KYC submissions.')) return;
         try {
-          const res = await fetch('/api/admin/kyc/fastforward', {
+          const res = await adminFetch('/api/admin/kyc/fastforward', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: 'usr_simulation' })
@@ -1024,7 +1043,7 @@
         }
 
         try {
-          const res = await fetch('/api/admin/simulation/balance', {
+          const res = await adminFetch('/api/admin/simulation/balance', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: 'simulation@probinary.com', balance: val })
@@ -1045,7 +1064,7 @@
       window.quickSetSimBalance = async function(amount) {
         if (!confirm(`Set Simulation Account balance to $${amount.toLocaleString()} in Supabase?`)) return;
         try {
-          const res = await fetch('/api/admin/simulation/balance', {
+          const res = await adminFetch('/api/admin/simulation/balance', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: 'simulation@probinary.com', balance: amount })
@@ -1064,7 +1083,7 @@
 
       window.quickAdjustSimBalance = async function(delta) {
         try {
-          const res = await fetch('/api/admin/simulation/balance', {
+          const res = await adminFetch('/api/admin/simulation/balance', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: 'simulation@probinary.com', delta: delta })
@@ -1091,7 +1110,7 @@
         }
 
         try {
-          const res = await fetch('/api/admin/users/update-balance', {
+          const res = await adminFetch('/api/admin/users/update-balance', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, email, balance: newBal })
