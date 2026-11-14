@@ -105,11 +105,18 @@ async function sbGetUserBalance(userId) {
   throw new Error('Wallet balance is unavailable');
 }
 
+function toDatabaseUserId(userId) {
+  const value = String(userId ?? '');
+  if (!/^[1-9]\d*$/.test(value)) throw new Error('A valid database user ID is required');
+  return value;
+}
+
 async function sbUpdateUserBalance(userId, newBalance, reason = 'Balance adjustment') {
   const balanceNum = Number(Number(newBalance).toFixed(2));
-  if (!userId || !Number.isFinite(balanceNum)) throw new Error('A valid user and balance are required');
+  const databaseUserId = toDatabaseUserId(userId);
+  if (!Number.isFinite(balanceNum)) throw new Error('A valid user and balance are required');
   try {
-    const response = await supabaseFetch(`/rest/v1/wallets?user_id=eq.${encodeURIComponent(userId)}`, {
+    const response = await supabaseFetch(`/rest/v1/wallets?user_id=eq.${encodeURIComponent(databaseUserId)}`, {
       method: 'PATCH',
       headers: { Prefer: 'return=representation' },
       body: {
@@ -130,7 +137,7 @@ async function sbUpdateUserBalance(userId, newBalance, reason = 'Balance adjustm
       await supabaseFetch(`/rest/v1/transaction_history`, {
         method: 'POST',
         body: {
-          user_id: parseInt(userId, 10),
+          user_id: databaseUserId,
           transaction_type: 'adjustment',
           amount: balanceNum,
           currency: 'USD',
@@ -486,7 +493,7 @@ const server = http.createServer(async (req, res) => {
     // Deduct stake from Supabase wallet
     let newBalance = isDemo ? (currentBalance - stake) : await sbAdjustUserBalance(user.id, -stake, `Trade opened: ${body.asset || 'EUR/USD'}`);
 
-    const tradeId = 'PB-' + Math.floor(100000 + Math.random() * 900000);
+    const tradeId = `PB-${crypto.randomUUID()}`;
     const duration = parseInt(body.duration) || 5;
     const entryPrice = parseFloat(body.entryPrice) || 1.0842;
     const entryDigit = parseInt(String(entryPrice).replace('.', '').slice(-1)) || 0;
@@ -591,7 +598,7 @@ const server = http.createServer(async (req, res) => {
 
       // Update Supabase binary_trade_records (status: 'won'|'lost', result: 'won'|'lost')
       try {
-        await supabaseFetch(`/rest/v1/binary_trade_records?trade_id=eq.${tradeId}`, {
+        await supabaseFetch(`/rest/v1/binary_trade_records?user_id=eq.${encodeURIComponent(toDatabaseUserId(user.id))}&trade_id=eq.${encodeURIComponent(tradeId)}`, {
           method: 'PATCH',
           body: {
             status: outcome === 'win' ? 'won' : 'lost',
@@ -608,7 +615,7 @@ const server = http.createServer(async (req, res) => {
         await supabaseFetch(`/rest/v1/transaction_history`, {
           method: 'POST',
           body: {
-            user_id: parseInt(user.id) || 59,
+            user_id: toDatabaseUserId(user.id),
             transaction_type: 'trade',
             amount: Math.abs(profit),
             currency: 'USD',
@@ -664,7 +671,7 @@ const server = http.createServer(async (req, res) => {
     if (!isDemo) {
       newBalance = await sbAdjustUserBalance(user.id, cashoutAmount, `Trade cashout: ${tradeId}`);
       try {
-        await supabaseFetch(`/rest/v1/binary_trade_records?trade_id=eq.${tradeId}`, {
+        await supabaseFetch(`/rest/v1/binary_trade_records?user_id=eq.${encodeURIComponent(toDatabaseUserId(user.id))}&trade_id=eq.${encodeURIComponent(tradeId)}`, {
           method: 'PATCH',
           body: {
             status: 'break_even',
@@ -780,7 +787,7 @@ const server = http.createServer(async (req, res) => {
         await supabaseFetch('/rest/v1/transaction_history', {
           method: 'POST',
           body: {
-            user_id: parseInt(user.id) || 59,
+            user_id: toDatabaseUserId(user.id),
             transaction_type: 'withdrawal',
             amount: amount,
             currency: 'USD',
@@ -874,7 +881,7 @@ const server = http.createServer(async (req, res) => {
         const roleName = u.user_roles?.[0]?.roles?.name || '';
         const isAdmin = roleName === 'super_admin' || roleName === 'admin' || u.email === 'admin@probinary.com' || u.email === 'superadmin@probinary.com';
         const isSimulation = u.email === 'simulation@probinary.com' || (u.username && u.username.includes('simulation'));
-        const bal = parseFloat(u.wallets?.current_balance ?? (isAdmin ? 25000.00 : (isSimulation ? 10000.00 : 0)));
+        const bal = Number(u.wallets?.current_balance ?? 0);
 
         return {
           id: u.id,
@@ -900,28 +907,46 @@ const server = http.createServer(async (req, res) => {
 
   // --- ADMIN BALANCE MODIFICATION ENDPOINT FOR SIMULATION ACCOUNT ---
   if ((reqUrl === '/api/admin/simulation/balance' || reqUrl === '/api/admin/users/update-balance') && req.method === 'POST') {
+    const adminUser = getRequestUser();
+    if (!adminUser) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Unauthorized' }));
+    }
+    if (adminUser.role !== 'admin' && adminUser.role !== 'superadmin') {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Administrator access required' }));
+    }
+
     const body = await readBody(req);
     const targetEmail = (body.email || 'simulation@probinary.com').trim().toLowerCase();
-    let targetUserId = body.userId;
-
-    if (!targetUserId) {
-      const targetUser = await sbGetUserByEmail(targetEmail);
-      targetUserId = targetUser ? targetUser.id : 59;
+    const targetUser = body.userId
+      ? await sbGetUserById(body.userId)
+      : await sbGetUserByEmail(targetEmail);
+    if (!targetUser) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Target user not found' }));
     }
+    const targetUserId = toDatabaseUserId(targetUser.id);
 
     let newBalance;
     if (body.balance !== undefined) {
       newBalance = parseFloat(body.balance);
     } else if (body.delta !== undefined) {
+      const delta = Number(body.delta);
+      if (!Number.isFinite(delta)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ error: 'Invalid balance adjustment' }));
+      }
       const current = await sbGetUserBalance(targetUserId);
-      newBalance = Math.max(0, current + parseFloat(body.delta));
+      newBalance = Math.max(0, current + delta);
     } else if (body.amount !== undefined) {
       newBalance = parseFloat(body.amount);
     } else {
-      newBalance = 10000.00;
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'A balance or adjustment amount is required' }));
     }
 
-    if (isNaN(newBalance) || newBalance < 0) {
+    if (!Number.isFinite(newBalance) || newBalance < 0) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ error: 'Invalid balance amount specified' }));
     }
@@ -933,10 +958,10 @@ const server = http.createServer(async (req, res) => {
     return res.end(JSON.stringify({
       success: true,
       userId: targetUserId,
-      email: targetEmail,
+      email: targetUser.email,
       balance: updated,
       formattedBalance: '$' + updated.toLocaleString('en-US', { minimumFractionDigits: 2 }),
-      message: `Balance for ${targetEmail} updated to $${updated.toLocaleString('en-US', { minimumFractionDigits: 2 })} in Supabase.`
+      message: `Balance for ${targetUser.email} updated to $${updated.toLocaleString('en-US', { minimumFractionDigits: 2 })} in Supabase.`
     }));
   }
 
@@ -962,11 +987,6 @@ const server = http.createServer(async (req, res) => {
         method: 'PATCH',
         body: { status: 'completed', updated_at: new Date().toISOString() }
       });
-      await supabaseFetch(`/rest/v1/transaction_history?id=eq.${tradeId}`, {
-        method: 'PATCH',
-        body: { status: 'completed', updated_at: new Date().toISOString() }
-      });
-
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({
         success: true,
@@ -989,11 +1009,15 @@ const server = http.createServer(async (req, res) => {
       const wdData = await resWd.json();
       const wd = Array.isArray(wdData) && wdData.length > 0 ? wdData[0] : null;
 
-      let refundAmount = 100;
-      let targetUserId = 59;
-      if (wd) {
-        refundAmount = parseFloat(wd.amount) || 0;
-        targetUserId = wd.user_id;
+      if (!wd) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ error: 'Withdrawal request not found' }));
+      }
+      const refundAmount = Number(wd.amount);
+      const targetUserId = toDatabaseUserId(wd.user_id);
+      if (!Number.isFinite(refundAmount) || refundAmount <= 0 || wd.status !== 'pending') {
+        res.writeHead(409, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ error: 'Withdrawal is not pending or has an invalid amount' }));
       }
 
       // In transaction_history schema: status = 'failed'
@@ -1025,7 +1049,11 @@ const server = http.createServer(async (req, res) => {
   // --- KYC VERIFICATION ENDPOINTS (12-Hour Automated Clearance Engine) ---
   if (reqUrl === '/api/kyc/submit' && req.method === 'POST') {
     const body = await readBody(req);
-    const user = getRequestUser() || { id: 59, email: 'simulation@probinary.com', name: 'Simulation Trader' };
+    const user = getRequestUser();
+    if (!user) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Unauthorized' }));
+    }
     const kycStore = loadKyc();
     const now = Date.now();
     const autoApproveAt = new Date(now + 12 * 3600 * 1000).toISOString();
@@ -1052,10 +1080,14 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (reqUrl === '/api/kyc/status' && req.method === 'GET') {
-    const user = getRequestUser() || { id: 59 };
+    const user = getRequestUser();
+    if (!user) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Unauthorized' }));
+    }
     const kycStore = loadKyc();
     const entry = kycStore[user.id];
-    const status = entry ? entry.status : 'verified';
+    const status = entry ? entry.status : 'pending';
     const now = Date.now();
     let remainingSeconds = 0;
     if (entry && entry.status === 'review') {
@@ -1074,7 +1106,15 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (reqUrl === '/api/kyc/approve-demo' && req.method === 'POST') {
-    const user = getRequestUser() || { id: 59 };
+    const user = getRequestUser();
+    if (!user) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Unauthorized' }));
+    }
+    if (!(user.simulation || user.is80WinRate || user.email === 'simulation@probinary.com')) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Demo verification is unavailable for this account.' }));
+    }
     const kycStore = loadKyc();
     kycStore[user.id] = {
       ...(kycStore[user.id] || {}),
@@ -1089,9 +1129,17 @@ const server = http.createServer(async (req, res) => {
 
   if ((reqUrl === '/api/kyc/fastforward' || reqUrl === '/api/admin/kyc/fastforward') && req.method === 'POST') {
     const body = await readBody(req);
-    const user = getRequestUser() || { id: 59 };
+    const user = getRequestUser();
+    if (!user) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Unauthorized' }));
+    }
+    if (reqUrl === '/api/admin/kyc/fastforward' && user.role !== 'admin' && user.role !== 'superadmin') {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Administrator access required' }));
+    }
     const kycStore = loadKyc();
-    const targetId = body.userId || user.id || 59;
+    const targetId = body.userId || user.id;
     if (kycStore[targetId]) {
       // Simulate 12.5 hours passing
       kycStore[targetId].submittedAt = new Date(Date.now() - 13 * 3600 * 1000).toISOString();
@@ -1105,8 +1153,8 @@ const server = http.createServer(async (req, res) => {
         message: 'Fast-forward complete: 12-hour review period elapsed. KYC status automatically verified!'
       }));
     }
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ success: true, status: 'verified', message: 'Fast-forward complete.' }));
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: false, error: 'KYC submission not found.' }));
   }
 
   if (reqUrl === '/api/admin/kyc/queue' && req.method === 'GET') {
