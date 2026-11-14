@@ -857,7 +857,7 @@
       // 1. STATE & STORAGE
       const USD_KES_RATE = 129.5;
       let isDemo = false;
-      let realBalance = parseFloat(localStorage.getItem('probinary_real_balance') || '10000.00');
+      let realBalance = 0;
       let demoBalance = parseFloat(localStorage.getItem('probinary_demo_balance') || '10000.00');
       let currentAsset = 'EUR/USD';
       let currentTradeType = 'Rise/Fall';
@@ -939,7 +939,9 @@
       // 3. BALANCE & MODE SWITCHER
       function getBal() { return isDemo ? demoBalance : realBalance; }
       function updateBalances() {
+        if (!isDemo && Number.isFinite(window.databaseWalletBalance)) realBalance = window.databaseWalletBalance;
         const bal = getBal();
+        localStorage.setItem('probinary_balance', bal.toFixed(2));
         const str = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         headerBalanceText.textContent = str;
         sidebarBalanceAmount.textContent = str;
@@ -963,8 +965,20 @@
         }
       }
 
+      window.setDatabaseBalance = function(balance) {
+        window.databaseWalletBalance = balance;
+        realBalance = balance;
+        updateBalances();
+      };
+
+      window.setDatabaseDemoBalance = function(balance) {
+        demoBalance = balance;
+        updateBalances();
+      };
+
       window.setMode = function(demo) {
-        isDemo = demo;
+        isDemo = Boolean(demo);
+        localStorage.setItem('probinary_account_mode', isDemo ? 'demo' : 'real');
         updateBalances();
       };
       document.getElementById('realDemoToggle').addEventListener('change', (e) => {
@@ -1262,7 +1276,7 @@
         } catch(e) {}
       }
 
-      function placeOrder(dir) {
+      async function placeOrder(dir) {
         const bal = getBal();
         if (sessionTradeCount >= maxTrades) {
           alert('Session trade limit reached.');
@@ -1273,23 +1287,80 @@
           return;
         }
 
-        if (isDemo) demoBalance -= currentStake; else realBalance -= currentStake;
-        updateBalances();
-        sessionTradeCount++;
+        const tradeId = 'PB-' + Math.floor(100000 + Math.random() * 900000);
+        const entryP = ASSETS[currentAsset].price;
 
-        const trade = {
-          id: 'PB-' + Math.floor(100000 + Math.random() * 900000),
-          asset: currentAsset,
-          type: currentTradeType,
-          dir: dir,
-          stake: currentStake,
-          entryPrice: ASSETS[currentAsset].price,
-          ticks: 5,
-          totalTicks: 5
-        };
-        activeTrades.push(trade);
+        if (isDemo) {
+          demoBalance -= currentStake;
+          updateBalances();
+          sessionTradeCount++;
+          activeTrades.push({
+            id: tradeId,
+            asset: currentAsset,
+            type: currentTradeType,
+            dir: dir,
+            stake: currentStake,
+            entryPrice: entryP,
+            ticks: 5,
+            totalTicks: 5,
+            isDemo: true
+          });
+          document.getElementById('tradeStatusPrompt').innerHTML = `<span style="color:var(--accent-purple); font-weight:700;">DEMO ORDER OPEN: ${dir.toUpperCase()} (5s)</span>`;
+        } else {
+          const token = localStorage.getItem('auth_token');
+          if (!token) {
+            alert('Please sign in to place real trades.');
+            return;
+          }
 
-        document.getElementById('tradeStatusPrompt').innerHTML = `<span style="color:var(--accent-purple); font-weight:700;">ORDER OPEN: ${dir.toUpperCase()} (5s)</span>`;
+          document.getElementById('tradeStatusPrompt').innerHTML = `<span style="color:var(--accent-gold); font-weight:700;">TRANSMITTING ORDER TO SUPABASE...</span>`;
+          try {
+            const res = await fetch('/api/trading/order', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                id: tradeId,
+                stake: currentStake,
+                asset: currentAsset,
+                tradeType: currentTradeType,
+                direction: dir.toLowerCase(),
+                entryPrice: entryP,
+                duration: 5,
+                isDemo: false
+              })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+              alert(data.error || 'Failed to place order.');
+              document.getElementById('tradeStatusPrompt').innerHTML = `<span style="color:var(--accent-red); font-weight:700;">ORDER FAILED</span>`;
+              return;
+            }
+
+            realBalance = Number(data.balance);
+            window.databaseWalletBalance = realBalance;
+            updateBalances();
+            sessionTradeCount++;
+
+            activeTrades.push({
+              id: data.trade?.id || tradeId,
+              asset: currentAsset,
+              type: currentTradeType,
+              dir: dir,
+              stake: currentStake,
+              entryPrice: entryP,
+              ticks: 5,
+              totalTicks: 5,
+              isDemo: false
+            });
+            document.getElementById('tradeStatusPrompt').innerHTML = `<span style="color:var(--accent-green); font-weight:700;">REAL ORDER CONFIRMED: ${dir.toUpperCase()} (5s)</span>`;
+          } catch (e) {
+            alert('Network error connecting to trading desk.');
+            document.getElementById('tradeStatusPrompt').innerHTML = `<span style="color:var(--accent-red); font-weight:700;">CONNECTION ERROR</span>`;
+          }
+        }
       }
 
       document.getElementById('btnActionRise').addEventListener('click', () => placeOrder('Rise'));
@@ -1305,7 +1376,7 @@
           if (t.ticks <= 0) settled.push(t);
         });
 
-        settled.forEach(t => {
+        settled.forEach(async t => {
           activeTrades = activeTrades.filter(x => x.id !== t.id);
           const exit = ASSETS[t.asset].price;
           let isWin = false;
@@ -1330,9 +1401,40 @@
           const profit = isWin ? (t.stake * 0.87) : -t.stake;
           const payout = isWin ? (t.stake + profit) : 0;
 
-          if (isDemo) { if (isWin) demoBalance += payout; }
-          else { if (isWin) realBalance += payout; }
-          updateBalances();
+          if (t.isDemo) {
+            if (isWin) demoBalance += payout;
+            updateBalances();
+          } else {
+            const token = localStorage.getItem('auth_token');
+            if (token) {
+              try {
+                const res = await fetch('/api/trading/settle', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                  },
+                  body: JSON.stringify({
+                    tradeId: t.id,
+                    exitPrice: exit,
+                    outcome: isWin ? 'win' : 'loss',
+                    payout,
+                    stake: t.stake,
+                    isDemo: false
+                  })
+                });
+                const data = await res.json();
+                if (data.success && Number.isFinite(Number(data.balance))) {
+                  realBalance = Number(data.balance);
+                  window.databaseWalletBalance = realBalance;
+                  updateBalances();
+                }
+              } catch (e) {
+                console.error('Failed to settle real trade on server:', e);
+              }
+            }
+            window.refreshAccountBalance?.();
+          }
 
           if (martingaleOn) {
             if (isWin) currentStake = martingaleBaseStake;
@@ -1508,5 +1610,6 @@
       calcAnalytics();
     })();
   </script>
+  <script src="/dashboard/balance.js"></script>
 </body>
 </html>

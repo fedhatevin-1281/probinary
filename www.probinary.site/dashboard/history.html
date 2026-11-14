@@ -494,16 +494,66 @@
       // Default benchmark records if empty
       const defaultRecords = [];
 
-      window.loadLedger = function() {
-        let stored = [];
-        try {
-          stored = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
-        } catch (e) {}
+      window.loadLedger = async function() {
+        const token = localStorage.getItem('auth_token');
+        let records = [];
 
-        allRecords = [...stored, ...defaultRecords];
-        // Deduplicate by ID
+        if (token) {
+          try {
+            const [txRes, tradeRes] = await Promise.all([
+              fetch('/api/wallet/transactions', { headers: { 'Authorization': 'Bearer ' + token } }).then(r => r.ok ? r.json() : null).catch(() => null),
+              fetch('/api/trading/history', { headers: { 'Authorization': 'Bearer ' + token } }).then(r => r.ok ? r.json() : null).catch(() => null)
+            ]);
+
+            if (txRes && txRes.success && Array.isArray(txRes.transactions)) {
+              txRes.transactions.forEach(tx => {
+                const isDeposit = tx.transaction_type === 'deposit' || tx.transaction_type === 'mpesa_deposit';
+                const isWithdrawal = tx.transaction_type === 'withdrawal';
+                const isAdjustment = tx.transaction_type === 'adjustment';
+
+                let typeLabel = isDeposit ? 'Deposit' : (isWithdrawal ? 'Withdrawal' : (isAdjustment ? 'Adjustment' : 'Trade'));
+                let outcomeLabel = (tx.status || 'completed').toUpperCase();
+                let profitVal = isDeposit || isAdjustment ? Number(tx.amount) : (isWithdrawal ? -Number(tx.amount) : 0);
+
+                records.push({
+                  id: tx.payment_reference || `TX-${tx.id}`,
+                  asset: tx.description || typeLabel,
+                  type: typeLabel,
+                  stake: Number(tx.amount || 0),
+                  outcome: outcomeLabel,
+                  profit: profitVal,
+                  time: tx.created_at ? new Date(tx.created_at).toLocaleString() : 'Recent'
+                });
+              });
+            }
+
+            if (tradeRes && tradeRes.success && Array.isArray(tradeRes.trades)) {
+              tradeRes.trades.forEach(tr => {
+                const isWin = tr.status === 'won' || tr.result === 'won';
+                records.push({
+                  id: tr.trade_id,
+                  asset: tr.symbol || 'EUR/USD',
+                  type: tr.contract_type || 'Rise/Fall',
+                  stake: Number(tr.stake || 0),
+                  outcome: isWin ? 'WIN' : (tr.status === 'open' ? 'OPEN' : 'LOSS'),
+                  profit: Number(tr.profit || (isWin ? tr.stake * 0.87 : -tr.stake)),
+                  time: tr.created_at ? new Date(tr.created_at).toLocaleString() : 'Recent'
+                });
+              });
+            }
+          } catch (e) {
+            console.error('Failed to load ledger from Supabase:', e);
+          }
+        }
+
+        if (records.length === 0) {
+          try {
+            records = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
+          } catch (e) {}
+        }
+
         const seen = new Set();
-        allRecords = allRecords.filter(r => {
+        allRecords = records.filter(r => {
           if (!r.id || seen.has(r.id)) return false;
           seen.add(r.id);
           return true;

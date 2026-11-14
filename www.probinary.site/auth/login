@@ -200,6 +200,24 @@
       const passwordInput = document.getElementById('passwordInput');
       const toggleBtn = document.getElementById('togglePasswordBtn');
       const submitBtn = document.getElementById('submitBtn');
+      const fillAdminBtn = document.getElementById('fillAdminBtn');
+      const fillSimulationBtn = document.getElementById('fillSimulationBtn');
+
+      if (fillAdminBtn) {
+        fillAdminBtn.addEventListener('click', function() {
+          emailInput.value = 'admin@probinary.com';
+          passwordInput.value = 'AdminPass123!';
+          showToast('Admin credentials loaded', 'info');
+        });
+      }
+
+      if (fillSimulationBtn) {
+        fillSimulationBtn.addEventListener('click', function() {
+          emailInput.value = 'simulation@probinary.com';
+          passwordInput.value = 'SimPass123!';
+          showToast('Simulation credentials loaded', 'info');
+        });
+      }
 
       // Show / Hide Password
       toggleBtn.addEventListener('click', function() {

@@ -807,7 +807,7 @@
     (function() {
       let USD_KES_RATE = 129.5;
       let isDemo = false;
-      let realBalance = parseFloat(localStorage.getItem('probinary_real_balance') || '10000.00');
+      let realBalance = 0;
       let demoBalance = parseFloat(localStorage.getItem('probinary_demo_balance') || '10000.00');
       let currentPendingOrder = null;
 
@@ -826,7 +826,9 @@
       // 1. BALANCES
       function getBal() { return isDemo ? demoBalance : realBalance; }
       function updateBalances() {
+        if (!isDemo && Number.isFinite(window.databaseWalletBalance)) realBalance = window.databaseWalletBalance;
         const bal = getBal();
+        localStorage.setItem('probinary_balance', bal.toFixed(2));
         const str = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         document.getElementById('headerBalanceText').textContent = str;
         document.getElementById('sidebarBalanceAmount').textContent = str;
@@ -844,8 +846,22 @@
         }
       }
 
+      window.setDatabaseBalance = function(balance) {
+        window.databaseWalletBalance = balance;
+        realBalance = balance;
+        updateBalances();
+      };
+
+      window.setDatabaseDemoBalance = function(balance) {
+        demoBalance = balance;
+        updateBalances();
+      };
+
       window.setMode = function(demo) {
-        isDemo = demo;
+        const demoAccount = user.simulation || user.is80WinRate || (user.email && user.email.toLowerCase().includes('simulation'));
+        if (demo && !demoAccount) return;
+        isDemo = Boolean(demo);
+        localStorage.setItem('probinary_account_mode', isDemo ? 'demo' : 'real');
         updateBalances();
       };
 
@@ -900,7 +916,7 @@
         const token = localStorage.getItem('auth_token');
         if (!token) { alert('Please sign in before making a live deposit.'); return; }
 
-        btn.textContent = hasPendingMpesaOrder ? 'Checking Payment...' : 'Sending STK Push...';
+        btn.textContent = currentPendingMpesaOrder ? 'Checking Payment...' : 'Sending STK Push...';
         btn.disabled = true;
 
         try {
@@ -928,6 +944,7 @@
             if (statusData.status === 'completed') {
               realBalance = statusData.balance;
               updateBalances();
+              await window.refreshAccountBalance?.();
               currentPendingMpesaOrder = null;
               localStorage.removeItem(pendingMpesaPaymentKey);
               closeModal('mpesaModal');
@@ -1055,6 +1072,7 @@
           if (data.status === 'finished' && data.credited) {
             realBalance = data.balance;
             updateBalances();
+            await window.refreshAccountBalance?.();
             currentPendingOrder = null;
             closeModal('cryptoModal');
             alert(`NOWPayments confirmed the payment. $${Number(data.amountUsd).toFixed(2)} USD has been credited.`);
@@ -1148,10 +1166,7 @@
         const usd = parseFloat(document.getElementById('withUsd').value) || 0;
         if (getBal() < usd) { alert('Insufficient funds'); return; }
         if (isDemo) { alert('Cannot withdraw virtual demo funds'); return; }
-        realBalance -= usd;
-        updateBalances();
-        closeModal('withdrawModal');
-        alert(`Withdrawal of $${usd.toFixed(2)} sent to M-Pesa.`);
+        alert('Submit a verified withdrawal request before funds can be debited.');
       });
 
       window.signOut = function() {
@@ -1165,5 +1180,6 @@
       updateCryptoEstimate();
     })();
   </script>
+  <script src="/dashboard/balance.js"></script>
 </body>
 </html>

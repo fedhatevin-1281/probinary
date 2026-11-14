@@ -635,68 +635,67 @@
       fetchKycStatus();
 
       async function fetchKycStatus() {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
         try {
-          const res = await fetch('/api/kyc/status');
+          const res = await fetch('/api/kyc/status', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
           const data = await res.json();
           if (data && data.success) {
             localStorage.setItem('probinary_kyc_status', data.status);
-            updateKycUI(data.status, data.remainingSeconds, data.remainingHoursFormatted);
+            updateKycUI(data.status, data.rejectionReason);
           }
         } catch(e) {
           const fallback = localStorage.getItem('probinary_kyc_status') || 'pending';
-          updateKycUI(fallback, 43200, '12h 0m');
+          updateKycUI(fallback);
         }
       }
 
-      let timerInterval = null;
-      function updateKycUI(status, remainingSeconds, remainingHoursFormatted) {
+      function updateKycUI(status, rejectionReason) {
         const badge = document.getElementById('badgeKycStatus');
         const pill = document.getElementById('kycStatusPill');
         const btn = document.getElementById('btnSubmitKyc');
-        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 
-        if (status === 'verified') {
-          badge.textContent = 'KYC Verified Tier 2 (Cleared)';
+        if (status === 'approved' || status === 'verified') {
+          badge.textContent = 'KYC Verified Tier 2 (Approved)';
           badge.style.background = 'rgba(16, 185, 129, 0.15)';
           badge.style.color = 'var(--accent-green)';
           badge.style.borderColor = 'rgba(16, 185, 129, 0.35)';
 
-          pill.textContent = 'Verified Level 2 (12h Auto-Cleared)';
+          pill.textContent = 'Verified Level 2 (Full Access)';
           pill.style.borderColor = 'rgba(16, 185, 129, 0.4)';
           pill.style.color = 'var(--accent-green)';
 
           btn.textContent = 'Documents Verified Tier 2';
           btn.disabled = true;
           btn.style.opacity = '0.7';
-        } else if (status === 'review') {
-          badge.textContent = 'Under 12h Regulatory Review';
-          badge.style.background = 'rgba(168, 85, 247, 0.15)';
-          badge.style.color = 'var(--accent-lavender)';
-          badge.style.borderColor = 'rgba(168, 85, 247, 0.35)';
+        } else if (status === 'rejected') {
+          badge.textContent = 'KYC Verification Rejected';
+          badge.style.background = 'rgba(239, 68, 68, 0.15)';
+          badge.style.color = 'var(--accent-red)';
+          badge.style.borderColor = 'rgba(239, 68, 68, 0.35)';
 
-          let sec = remainingSeconds || 43200;
-          function renderTimer() {
-            const h = Math.floor(sec / 3600);
-            const m = Math.floor((sec % 3600) / 60);
-            const s = sec % 60;
-            pill.textContent = `Auto-Clears in: ${h}h ${m}m ${s}s`;
-            btn.textContent = `Under Review · Auto-Approves in ${h}h ${m}m`;
-          }
-          pill.style.borderColor = 'rgba(168, 85, 247, 0.4)';
-          pill.style.color = 'var(--accent-lavender)';
+          pill.textContent = 'Rejected: ' + (rejectionReason || 'Please resubmit valid ID');
+          pill.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+          pill.style.color = 'var(--accent-red)';
+
+          btn.textContent = 'Resubmit KYC Documents →';
+          btn.disabled = false;
+          btn.style.opacity = '1';
+        } else if (status === 'review' || status === 'pending') {
+          badge.textContent = 'KYC Under Administrator Review';
+          badge.style.background = 'rgba(251, 191, 36, 0.15)';
+          badge.style.color = 'var(--accent-gold)';
+          badge.style.borderColor = 'rgba(251, 191, 36, 0.35)';
+
+          pill.textContent = 'Pending Verification';
+          pill.style.borderColor = 'rgba(251, 191, 36, 0.4)';
+          pill.style.color = 'var(--accent-gold)';
+
+          btn.textContent = 'Under Review · Awaiting Approval';
           btn.disabled = true;
           btn.style.opacity = '0.75';
-          renderTimer();
-
-          timerInterval = setInterval(() => {
-            sec--;
-            if (sec <= 0) {
-              clearInterval(timerInterval);
-              fetchKycStatus();
-            } else {
-              renderTimer();
-            }
-          }, 1000);
         } else {
           badge.textContent = 'KYC Pending';
           badge.style.background = 'rgba(251, 191, 36, 0.15)';
@@ -707,7 +706,7 @@
           pill.style.borderColor = 'rgba(251, 191, 36, 0.4)';
           pill.style.color = 'var(--accent-gold)';
 
-          btn.textContent = 'Submit KYC for 12h Verification →';
+          btn.textContent = 'Submit KYC for Verification →';
           btn.disabled = false;
           btn.style.opacity = '1';
         }
@@ -717,18 +716,32 @@
         document.getElementById(id).click();
       };
 
+      let frontFileBase64 = null;
+      let backFileBase64 = null;
+      let selfieFileBase64 = null;
+
       window.handleFileSelected = function(input, previewId) {
         if (input.files && input.files[0]) {
           const f = input.files[0];
           document.getElementById(previewId).innerHTML = `<b style="color:var(--accent-lavender);">${f.name}</b> (${(f.size / 1024).toFixed(0)} KB)`;
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            if (previewId.includes('Front')) frontFileBase64 = e.target.result;
+            else if (previewId.includes('Back')) backFileBase64 = e.target.result;
+            else if (previewId.includes('Selfie')) selfieFileBase64 = e.target.result;
+          };
+          reader.readAsDataURL(f);
         }
       };
 
       window.submitKYC = async function(e) {
         e.preventDefault();
+        const token = localStorage.getItem('auth_token');
+        if (!token) return alert('Please sign in to submit KYC.');
+
         const btn = document.getElementById('btnSubmitKyc');
         btn.disabled = true;
-        btn.textContent = 'Submitting & Registering 12h Clearance...';
+        btn.textContent = 'Submitting Documents...';
 
         const fullName = document.getElementById('kycFullName').value;
         const dob = document.getElementById('kycDob').value;
@@ -738,17 +751,34 @@
         try {
           const res = await fetch('/api/kyc/submit', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fullName, dob, docType, docNumber })
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+              fullName,
+              dob,
+              docType,
+              docNumber,
+              frontUrl: frontFileBase64 || 'https://probinary.app/docs/id-front-doc.png',
+              backUrl: backFileBase64 || 'https://probinary.app/docs/id-back-doc.png',
+              selfieUrl: selfieFileBase64 || 'https://probinary.app/docs/id-selfie.png'
+            })
           });
           const data = await res.json();
-          localStorage.setItem('probinary_kyc_status', 'review');
-          updateKycUI('review', 12 * 3600, '12h 0m');
-          alert('KYC Documents Received! Your 12-hour automated regulatory clearance timer is active. Your account clears automatically.');
+          if (res.ok && data.success) {
+            localStorage.setItem('probinary_kyc_status', 'pending');
+            updateKycUI('pending');
+            alert('KYC Documents Received! Your submission is now in the administrator queue for verification.');
+          } else {
+            alert(data.error || 'Failed to submit KYC.');
+            btn.disabled = false;
+            btn.textContent = 'Submit KYC for Verification →';
+          }
         } catch(err) {
-          localStorage.setItem('probinary_kyc_status', 'review');
-          updateKycUI('review', 12 * 3600, '12h 0m');
-          alert('KYC Documents Received! Auto-approval countdown active.');
+          alert('Network error submitting KYC documents.');
+          btn.disabled = false;
+          btn.textContent = 'Submit KYC for Verification →';
         }
       };
 

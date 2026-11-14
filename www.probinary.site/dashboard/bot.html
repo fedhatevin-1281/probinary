@@ -1123,6 +1123,33 @@
         const tradeId = 'PB-' + Math.floor(100000 + Math.random() * 900000);
         logBot(`Signal fired on <b>${asset}</b>: Placed <b>${dir}</b> order (${tradeId}) for $${tradeAmount}`);
 
+        let dbTradeId = null;
+        if (!isDemo) {
+          const token = localStorage.getItem('auth_token');
+          if (token) {
+            fetch('/api/trading/order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({
+                asset: asset,
+                type: 'AI Bot ' + selectedStrategy,
+                dir: dir,
+                stake: tradeAmount,
+                entryPrice: 1.0850,
+                durationSeconds: 2
+              })
+            }).then(r => r.json()).then(d => {
+              if (d && d.order) {
+                dbTradeId = d.order.id;
+                if (typeof d.balance === 'number') {
+                  realBalance = d.balance;
+                  updateBalances();
+                }
+              }
+            }).catch(() => {});
+          }
+        }
+
         setTimeout(() => {
           if (!botDeployed && botDailyCount === 0) return;
           const stratCfg = STRATEGIES[selectedStrategy];
@@ -1141,6 +1168,27 @@
           else { if (isWin) realBalance += payout; }
           updateBalances();
           if (!isDemo) window.refreshAccountBalance?.();
+
+          if (!isDemo && dbTradeId) {
+            const token = localStorage.getItem('auth_token');
+            if (token) {
+              fetch('/api/trading/settle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                  orderId: dbTradeId,
+                  exitPrice: isWin ? (dir === 'Rise' ? 1.0860 : 1.0840) : (dir === 'Rise' ? 1.0840 : 1.0860),
+                  isWin: isWin,
+                  payout: payout
+                })
+              }).then(r => r.json()).then(d => {
+                if (d && typeof d.balance === 'number') {
+                  realBalance = d.balance;
+                  updateBalances();
+                }
+              }).catch(() => {});
+            }
+          }
 
           if (isWin) botWins++; else botLosses++;
           botSessionProfit += net;
@@ -1242,26 +1290,44 @@
         document.getElementById('depUsdRate').textContent = `≈ $${(kes / USD_KES_RATE).toFixed(2)} USD (1 USD = 129.5 KES)`;
       });
       document.getElementById('btnSubmitDep').addEventListener('click', () => {
-        const kes = parseFloat(document.getElementById('depKes').value) || 0;
-        const usd = parseFloat((kes / USD_KES_RATE).toFixed(2));
-        if (isDemo) demoBalance += usd; else realBalance += usd;
-        updateBalances();
         closeModal('depositModal');
-        alert(`M-Pesa STK push confirmed! +$${usd.toFixed(2)} credited.`);
+        window.location.href = '/dashboard/deposit.html';
       });
 
       document.getElementById('withUsd').addEventListener('input', (e) => {
         const usd = parseFloat(e.target.value) || 0;
         document.getElementById('withKesRate').textContent = `≈ KES ${Math.round(usd * USD_KES_RATE).toLocaleString('en-US')}`;
       });
-      document.getElementById('btnSubmitWith').addEventListener('click', () => {
+      document.getElementById('btnSubmitWith').addEventListener('click', async () => {
         const usd = parseFloat(document.getElementById('withUsd').value) || 0;
-        if (getBal() < usd) { alert('Insufficient funds'); return; }
+        if (usd <= 0) { alert('Enter a valid amount'); return; }
         if (isDemo) { alert('Cannot withdraw virtual demo funds'); return; }
-        realBalance -= usd;
-        updateBalances();
-        closeModal('withdrawModal');
-        alert(`Withdrawal of $${usd.toFixed(2)} sent to M-Pesa.`);
+        if (getBal() < usd) { alert('Insufficient funds'); return; }
+        const token = localStorage.getItem('auth_token');
+        if (!token) { window.location.href = '/dashboard/withdraw.html'; return; }
+
+        try {
+          const res = await fetch('/api/wallet/withdraw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+              amount: usd,
+              currency: 'USD',
+              paymentMethod: 'mpesa',
+              destinationDetails: { note: 'Withdrawal from bot dashboard' }
+            })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.success) {
+            closeModal('withdrawModal');
+            alert(`Withdrawal request of $${usd.toFixed(2)} submitted for admin review! Reference: ${data.reference || ''}`);
+            await window.refreshAccountBalance?.();
+          } else {
+            alert(data.error || 'Failed to submit withdrawal request.');
+          }
+        } catch {
+          window.location.href = '/dashboard/withdraw.html';
+        }
       });
 
       window.signOut = function() {

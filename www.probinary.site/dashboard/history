@@ -476,7 +476,7 @@
       let activeFilter = 'all';
 
       // Load balances
-      const bal = parseFloat(localStorage.getItem('probinary_balance') || '10000.00');
+      const bal = parseFloat(localStorage.getItem('probinary_balance') || '0');
       document.getElementById('headerBalanceText').textContent = '$' + bal.toFixed(2);
       document.getElementById('sidebarBalanceAmount').textContent = '$' + bal.toFixed(2);
 
@@ -492,29 +492,68 @@
       } catch (e) {}
 
       // Default benchmark records if empty
-      const defaultRecords = [
-        { id: 'PB-9421', asset: 'EUR/USD', type: 'Rise/Fall', stake: 25.00, outcome: 'WIN', profit: 21.75, time: 'Today 11:42:10' },
-        { id: 'PB-9418', asset: 'BTC/USD', type: 'Over/Under', stake: 50.00, outcome: 'WIN', profit: 43.50, time: 'Today 11:38:05' },
-        { id: 'WD-8841', asset: 'M-Pesa Payout', type: 'Withdrawal', stake: 50.00, outcome: 'COMPLETED', profit: -50.00, time: 'Today 10:24:19' },
-        { id: 'DEP-7102', asset: 'M-Pesa STK', type: 'Deposit', stake: 100.00, outcome: 'CONFIRMED', profit: 100.00, time: 'Today 09:15:00' },
-        { id: 'PB-9390', asset: 'GBP/USD', type: 'Rise/Fall', stake: 10.00, outcome: 'LOSS', profit: -10.00, time: 'Yesterday 17:12:44' },
-        { id: 'PB-9388', asset: 'USD/JPY', type: 'Matches', stake: 10.00, outcome: 'WIN', profit: 8.70, time: 'Yesterday 16:55:01' },
-        { id: 'PB-9382', asset: 'EUR/USD', type: 'Even/Odd', stake: 20.00, outcome: 'WIN', profit: 17.40, time: 'Yesterday 16:20:18' },
-        { id: 'BOT-1044', asset: 'EUR/USD', type: 'AI Bot Order', stake: 100.00, outcome: 'WIN', profit: 87.00, time: 'Yesterday 14:05:12' },
-        { id: 'PB-9370', asset: 'OIL/USD', type: 'Higher/Lower', stake: 25.00, outcome: 'LOSS', profit: -25.00, time: 'Yesterday 11:30:29' },
-        { id: 'DEP-6991', asset: 'USDT TRC20', type: 'Deposit', stake: 500.00, outcome: 'CONFIRMED', profit: 500.00, time: 'Nov 8, 14:10' }
-      ];
+      const defaultRecords = [];
 
-      window.loadLedger = function() {
-        let stored = [];
-        try {
-          stored = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
-        } catch (e) {}
+      window.loadLedger = async function() {
+        const token = localStorage.getItem('auth_token');
+        let records = [];
 
-        allRecords = [...stored, ...defaultRecords];
-        // Deduplicate by ID
+        if (token) {
+          try {
+            const [txRes, tradeRes] = await Promise.all([
+              fetch('/api/wallet/transactions', { headers: { 'Authorization': 'Bearer ' + token } }).then(r => r.ok ? r.json() : null).catch(() => null),
+              fetch('/api/trading/history', { headers: { 'Authorization': 'Bearer ' + token } }).then(r => r.ok ? r.json() : null).catch(() => null)
+            ]);
+
+            if (txRes && txRes.success && Array.isArray(txRes.transactions)) {
+              txRes.transactions.forEach(tx => {
+                const isDeposit = tx.transaction_type === 'deposit' || tx.transaction_type === 'mpesa_deposit';
+                const isWithdrawal = tx.transaction_type === 'withdrawal';
+                const isAdjustment = tx.transaction_type === 'adjustment';
+
+                let typeLabel = isDeposit ? 'Deposit' : (isWithdrawal ? 'Withdrawal' : (isAdjustment ? 'Adjustment' : 'Trade'));
+                let outcomeLabel = (tx.status || 'completed').toUpperCase();
+                let profitVal = isDeposit || isAdjustment ? Number(tx.amount) : (isWithdrawal ? -Number(tx.amount) : 0);
+
+                records.push({
+                  id: tx.payment_reference || `TX-${tx.id}`,
+                  asset: tx.description || typeLabel,
+                  type: typeLabel,
+                  stake: Number(tx.amount || 0),
+                  outcome: outcomeLabel,
+                  profit: profitVal,
+                  time: tx.created_at ? new Date(tx.created_at).toLocaleString() : 'Recent'
+                });
+              });
+            }
+
+            if (tradeRes && tradeRes.success && Array.isArray(tradeRes.trades)) {
+              tradeRes.trades.forEach(tr => {
+                const isWin = tr.status === 'won' || tr.result === 'won';
+                records.push({
+                  id: tr.trade_id,
+                  asset: tr.symbol || 'EUR/USD',
+                  type: tr.contract_type || 'Rise/Fall',
+                  stake: Number(tr.stake || 0),
+                  outcome: isWin ? 'WIN' : (tr.status === 'open' ? 'OPEN' : 'LOSS'),
+                  profit: Number(tr.profit || (isWin ? tr.stake * 0.87 : -tr.stake)),
+                  time: tr.created_at ? new Date(tr.created_at).toLocaleString() : 'Recent'
+                });
+              });
+            }
+          } catch (e) {
+            console.error('Failed to load ledger from Supabase:', e);
+          }
+        }
+
+        if (records.length === 0) {
+          try {
+            records = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
+          } catch (e) {}
+        }
+
         const seen = new Set();
-        allRecords = allRecords.filter(r => {
+        allRecords = records.filter(r => {
           if (!r.id || seen.has(r.id)) return false;
           seen.add(r.id);
           return true;
@@ -660,5 +699,6 @@
       loadLedger();
     })();
   </script>
+  <script src="/dashboard/balance.js"></script>
 </body>
 </html>

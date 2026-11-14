@@ -38,7 +38,6 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      user-select: none;
       -webkit-tap-highlight-color: transparent;
     }
 
@@ -77,7 +76,7 @@
       height: calc(100vh - 44px);
       max-height: calc(100vh - 44px);
       display: grid;
-      grid-template-columns: 195px 1fr;
+      grid-template-columns: 200px 1fr;
       gap: 12px;
       padding: 10px 14px;
       overflow: hidden;
@@ -104,6 +103,7 @@
       gap: 6px;
       transition: all 0.15s ease;
       text-decoration: none;
+      white-space: nowrap;
     }
     .pill-btn:hover {
       border-color: var(--accent-purple);
@@ -156,7 +156,7 @@
       color: #090514;
       border: none;
       border-radius: 6px;
-      padding: 5px 10px;
+      padding: 4px 10px;
       font-size: 11px;
       font-weight: 700;
       cursor: pointer;
@@ -188,6 +188,35 @@
       background: rgba(239, 68, 68, 0.15);
     }
 
+    .btn-action {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-accent);
+      color: var(--accent-lavender);
+      border-radius: 6px;
+      padding: 4px 9px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-action:hover {
+      border-color: var(--accent-purple);
+      color: #fff;
+    }
+
+    .purple-btn {
+      background: var(--accent-gradient);
+      color: #090514;
+      border: none;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .purple-btn:hover { opacity: 0.9; }
+
     /* Table */
     .ledger-table {
       width: 100%;
@@ -198,33 +227,57 @@
       text-align: left;
       padding: 9px 12px;
       font-size: 10px;
-      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--text-gray);
       background: var(--bg-card-alt);
-      border-bottom: 1px solid var(--border-card);
       position: sticky;
       top: 0;
       z-index: 10;
+      border-bottom: 1px solid var(--border-card);
     }
     .ledger-table td {
       padding: 10px 12px;
-      border-bottom: 1px solid rgba(224, 204, 255, 0.06);
-      color: #e5def5;
+      border-bottom: 1px solid rgba(224, 204, 255, 0.05);
+      vertical-align: middle;
     }
     .ledger-table tr:hover td {
       background: rgba(224, 204, 255, 0.03);
+    }
+
+    /* Modal Overlay */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(9, 5, 20, 0.85);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+    .modal-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-accent);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 580px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
     }
 
     /* Mobile Drawer */
     .mobile-drawer {
       position: fixed;
       top: 0;
-      left: -260px;
-      width: 250px;
-      height: 100vh;
-      background: var(--bg-card);
+      left: -280px;
+      width: 280px;
+      height: 100%;
+      background: var(--bg-header);
       border-right: 1px solid var(--border-card);
       z-index: 100;
       transition: left 0.25s ease;
@@ -233,31 +286,13 @@
       justify-content: space-between;
       padding: 16px;
     }
-    .mobile-drawer.open {
-      left: 0;
-    }
+    .mobile-drawer.open { left: 0; }
     .drawer-backdrop {
       position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.65);
-      backdrop-filter: blur(4px);
-      z-index: 99;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 90;
       display: none;
-    }
-
-    /* Pulse animation */
-    @keyframes pulseGlow {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.7; transform: scale(1.05); }
-    }
-    .pulse-amber {
-      display: inline-block;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--accent-gold);
-      box-shadow: 0 0 8px var(--accent-gold);
-      animation: pulseGlow 1.8s infinite;
     }
 
     @media (max-width: 900px) {
@@ -274,96 +309,62 @@
 
   <!-- TOP HEADER -->
   <header class="top-nav">
-    <!-- Left: Hamburger + Logo + Admin Badge -->
     <div style="display: flex; align-items: center; gap: 10px;">
-      <button onclick="toggleMobileDrawer()" style="background: none; border: none; color: var(--text-gray); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;" aria-label="Open menu">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <button class="pill-btn mobile-menu-btn" onclick="toggleMobileDrawer()" style="padding: 4px 8px; display: none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
 
-      <a href="/dashboard/trade.html" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
-        <span style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background: var(--accent-gradient); color: #090514; font-weight: 800; font-size: 13px;">P</span>
-        <span style="font-size: 15px; font-weight: 800; color: #fff; letter-spacing: -0.02em;">Pro<span style="color: var(--accent-lavender)">Binary</span></span>
+      <!-- Brand Logo -->
+      <a href="/dashboard/trade.html" style="text-decoration: none; display: flex; align-items: center; gap: 8px;">
+        <div style="width: 26px; height: 26px; border-radius: 6px; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; box-shadow: 0 0 12px rgba(168,85,247,0.4);">P</div>
+        <div style="font-weight: 800; font-size: 15px; letter-spacing: -0.02em; color: #fff;">
+          PRO<span style="color: var(--accent-purple);">BINARY</span>
+        </div>
       </a>
 
-      <span style="padding: 2px 8px; border-radius: 6px; background: rgba(168,85,247,0.22); border: 1px solid var(--accent-purple); color: var(--accent-lavender); font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
-        Admin Control Console
+      <span style="font-size: 10px; padding: 2px 8px; border-radius: 12px; background: rgba(168,85,247,0.2); border: 1px solid var(--accent-purple); color: var(--accent-lavender); font-weight: 700; margin-left: 6px;">
+        ADMIN CONTROL CENTER
       </span>
     </div>
 
-    <!-- Center: Live Stats Overview Pill -->
-    <div style="display: flex; align-items: center; gap: 14px; font-size: 11px;">
-      <div style="display: flex; align-items: center; gap: 6px;">
-        <span class="pulse-amber"></span>
-        <span style="color: var(--text-gray);">Pending Approvals:</span>
-        <span id="headerPendingCount" class="mono" style="color: var(--accent-gold); font-weight: 700;">0</span>
-      </div>
-      <div style="width: 1px; height: 14px; background: var(--border-card);"></div>
-      <div style="display: flex; align-items: center; gap: 6px;">
-        <span style="color: var(--text-gray);">Total Deposits:</span>
-        <span id="headerDepositsVol" class="mono" style="color: var(--accent-green); font-weight: 700;">$0.00</span>
-      </div>
-    </div>
-
-    <!-- Right: Quick Jump to Trader Desk + Admin Avatar -->
+    <!-- Right Header Controls -->
     <div style="display: flex; align-items: center; gap: 10px;">
-      <a href="/dashboard/trade.html" class="pill-btn" style="background: rgba(168,85,247,0.14); border-color: rgba(168,85,247,0.4); color: var(--accent-lavender); font-size: 11px; padding: 4px 10px;">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg>
-        Open Trader Desk →
-      </a>
+      <div style="display: flex; align-items: center; gap: 6px; background: var(--bg-card-alt); border: 1px solid var(--border-card); border-radius: 20px; padding: 3px 10px;">
+        <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green);"></span>
+        <span style="font-size: 11px; font-weight: 600; color: var(--text-gray);">Supabase Live</span>
+      </div>
 
-      <a href="/dashboard/profile.html" id="headerAvatarBtn" style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; cursor: pointer; text-decoration: none; box-shadow: 0 0 10px rgba(168,85,247,0.4);">
-        A
-      </a>
+      <button onclick="refreshAdminData()" class="pill-btn" style="padding: 4px 10px;" title="Refresh Data">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        <span>Refresh</span>
+      </button>
+
+      <div id="headerAvatarBtn" style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px;">A</div>
     </div>
   </header>
 
   <!-- MOBILE DRAWER -->
-  <div id="drawerBackdrop" class="drawer-backdrop" onclick="toggleMobileDrawer()"></div>
-  <div id="mobileDrawer" class="mobile-drawer">
+  <div class="drawer-backdrop" id="drawerBackdrop" onclick="toggleMobileDrawer()"></div>
+  <div class="mobile-drawer" id="mobileDrawer">
     <div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; background: var(--accent-gradient); color: #090514; font-weight: 800; font-size: 14px;">P</span>
-          <span style="font-size: 15px; font-weight: 800; color: #fff;">Pro<span style="color: var(--accent-lavender)">Binary</span></span>
-        </div>
-        <button onclick="toggleMobileDrawer()" style="background:none; border:none; color:var(--text-gray); cursor:pointer; padding:4px;" aria-label="Close menu">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <span style="font-weight: 800; font-size: 14px; color: #fff;">Navigation</span>
+        <button onclick="toggleMobileDrawer()" style="background: none; border: none; color: var(--text-gray); cursor: pointer;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
 
       <nav style="display: flex; flex-direction: column; gap: 6px;">
-        <a href="/dashboard/admin.html" class="nav-btn active" onclick="toggleMobileDrawer()">
-          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> Admin Portal
-        </a>
-        <a href="/dashboard/trade.html" class="nav-btn" onclick="toggleMobileDrawer()">
-          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg></span> Trade
-        </a>
-        <a href="/dashboard/bot.html" class="nav-btn" onclick="toggleMobileDrawer()">
-          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> Bot
-        </a>
-        <a href="/dashboard/history.html" class="nav-btn" onclick="toggleMobileDrawer()">
-          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span> Portfolio
-        </a>
-        <a href="/dashboard/deposit.html" class="nav-btn" onclick="toggleMobileDrawer()">
-          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
-        </a>
-        <a href="/dashboard/withdraw.html" class="nav-btn" onclick="toggleMobileDrawer()">
-          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
-        </a>
-        <a href="/dashboard/history.html" class="nav-btn" onclick="toggleMobileDrawer()">
-          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
-        </a>
-        <a href="/dashboard/profile.html" class="nav-btn" onclick="toggleMobileDrawer()">
-          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile
-        </a>
+        <a href="/dashboard/admin.html" class="nav-btn active" onclick="toggleMobileDrawer()">Admin Portal</a>
+        <a href="/dashboard/trade.html" class="nav-btn" onclick="toggleMobileDrawer()">Trade Desk</a>
+        <a href="/dashboard/deposit.html" class="nav-btn" onclick="toggleMobileDrawer()">Deposit</a>
+        <a href="/dashboard/withdraw.html" class="nav-btn" onclick="toggleMobileDrawer()">Withdraw</a>
+        <a href="/dashboard/history.html" class="nav-btn" onclick="toggleMobileDrawer()">History</a>
+        <a href="/dashboard/profile.html" class="nav-btn" onclick="toggleMobileDrawer()">Profile & KYC</a>
       </nav>
     </div>
 
-    <div style="padding-top: 12px; border-top: 1px solid var(--border-card);">
-      <button onclick="signOut()" class="nav-btn" style="color: var(--accent-red);">
-        <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Sign out
-      </button>
-    </div>
+    <button onclick="signOut()" class="nav-btn" style="color: var(--accent-red);">Sign out</button>
   </div>
 
   <!-- MAIN APP LAYOUT -->
@@ -372,17 +373,15 @@
     <!-- DESKTOP SIDEBAR -->
     <aside class="sidebar-panel card-panel" style="display: flex; flex-direction: column; justify-content: space-between; padding: 12px; height: 100%;">
       <div>
-        <!-- Role Identifier Box -->
         <div style="background: var(--bg-card-alt); border: 1px solid rgba(168,85,247,0.3); border-radius: 10px; padding: 10px; margin-bottom: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <span style="font-size: 10px; font-weight: 700; color: var(--accent-lavender); text-transform: uppercase; letter-spacing: 0.05em;">Role Active</span>
-            <span style="font-size: 9px; padding: 1px 6px; border-radius: 4px; background: rgba(16,185,129,0.15); color: var(--accent-green); font-weight: 700;">Super Admin</span>
+            <span style="font-size: 10px; font-weight: 700; color: var(--accent-lavender); text-transform: uppercase;">Admin Custody</span>
+            <span style="font-size: 9px; padding: 1px 6px; border-radius: 4px; background: rgba(16,185,129,0.15); color: var(--accent-green); font-weight: 700;">Authoritative</span>
           </div>
-          <div class="mono" style="font-size: 16px; font-weight: 800; color: #fff;" id="sidebarBalanceAmount">$25,000.00</div>
-          <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">Treasury & Custody Pool</div>
+          <div class="mono" style="font-size: 16px; font-weight: 800; color: #fff;" id="sidebarBalanceAmount">$0.00</div>
+          <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">Total Platform Balances</div>
         </div>
 
-        <!-- Navigation -->
         <nav style="display: flex; flex-direction: column; gap: 4px;">
           <a href="/dashboard/admin.html" class="nav-btn active">
             <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> Admin Portal
@@ -390,20 +389,14 @@
           <a href="/dashboard/trade.html" class="nav-btn">
             <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg></span> Trade Desk
           </a>
-          <a href="/dashboard/bot.html" class="nav-btn">
-            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> AI Bot
-          </a>
-          <a href="/dashboard/history.html" class="nav-btn">
-            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span> Portfolio
-          </a>
           <a href="/dashboard/deposit.html" class="nav-btn">
-            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit Page
           </a>
           <a href="/dashboard/withdraw.html" class="nav-btn">
-            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdrawal Page
           </a>
           <a href="/dashboard/history.html" class="nav-btn">
-            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> Ledger
           </a>
           <a href="/dashboard/profile.html" class="nav-btn">
             <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile & KYC
@@ -427,96 +420,131 @@
     </aside>
 
     <!-- MAIN ADMIN CONTENT AREA -->
-    <main style="display: flex; flex-direction: column; gap: 12px; height: 100%; overflow: hidden;">
+    <main style="display: flex; flex-direction: column; gap: 10px; height: 100%; overflow: hidden;">
 
-      <!-- 4 TOP SUMMARY METRICS -->
+      <!-- TOP SUMMARY METRICS (4 CARDS) -->
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; flex-shrink: 0;">
-
-        <!-- Card 1: Completed Deposits -->
-        <div class="card-panel" style="padding: 12px 14px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">Completed Deposits</span>
-            <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: rgba(16,185,129,0.15); color: var(--accent-green);">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg>
-            </span>
-          </div>
-          <div class="mono" style="font-size: 18px; font-weight: 800; color: var(--accent-green);" id="statCompletedDeposits">$0.00</div>
-          <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;" id="statDepositsCount">0 Transactions</div>
-        </div>
-
-        <!-- Card 2: Pending Withdrawals -->
-        <div class="card-panel" style="padding: 12px 14px; border-color: rgba(251,191,36,0.25);">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">Pending Withdrawals</span>
-            <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: var(--accent-gold-dim); color: var(--accent-gold);">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            </span>
-          </div>
-          <div class="mono" style="font-size: 18px; font-weight: 800; color: var(--accent-gold);" id="statPendingWithdrawals">$0.00</div>
-          <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;" id="statPendingWdCount">0 Requests Awaiting Action</div>
-        </div>
-
-        <!-- Card 3: Registered Traders -->
-        <div class="card-panel" style="padding: 12px 14px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">Registered Traders</span>
-            <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: rgba(168,85,247,0.15); color: var(--accent-lavender);">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </span>
+        <div class="card-panel" style="padding: 10px 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">Total Users</span>
+            <span style="font-size: 10px; color: var(--accent-lavender);" id="statActiveUsers">0 active</span>
           </div>
           <div class="mono" style="font-size: 18px; font-weight: 800; color: #fff;" id="statTotalUsers">0</div>
-          <div style="font-size: 10px; color: var(--accent-lavender); margin-top: 2px;">Simulation & Real Desks</div>
+          <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">Registered Accounts</div>
         </div>
 
-        <!-- Card 4: KYC 12h Auto-Review Queue -->
-        <div class="card-panel" style="padding: 12px 14px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">KYC 12h Auto-Review</span>
-            <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: rgba(224,204,255,0.12); color: var(--accent-lavender);">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-            </span>
+        <div class="card-panel" style="padding: 10px 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">Completed Deposits</span>
+            <span style="font-size: 10px; color: var(--accent-green);" id="statDepositsCount">0 tx</span>
+          </div>
+          <div class="mono" style="font-size: 18px; font-weight: 800; color: var(--accent-green);" id="statCompletedDeposits">$0.00</div>
+          <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">M-Pesa + Crypto + Treasury</div>
+        </div>
+
+        <div class="card-panel" style="padding: 10px 14px; border-color: rgba(251,191,36,0.25);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">Pending Withdrawals</span>
+            <span style="font-size: 10px; color: var(--accent-gold);" id="statPendingWdCount">0 requests</span>
+          </div>
+          <div class="mono" style="font-size: 18px; font-weight: 800; color: var(--accent-gold);" id="statPendingWithdrawals">$0.00</div>
+          <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">Awaiting Admin Review</div>
+        </div>
+
+        <div class="card-panel" style="padding: 10px 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">KYC Pending Review</span>
+            <span style="font-size: 10px; color: var(--accent-lavender);" id="statKycApprovedCount">0 approved</span>
           </div>
           <div class="mono" style="font-size: 18px; font-weight: 800; color: var(--accent-lavender);" id="statKycReviewCount">0</div>
-          <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">12-Hour Automated Clearance</div>
+          <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">Identity Verification Queue</div>
         </div>
-
       </div>
 
-      <!-- TABS CONTROLLER & FILTER BAR -->
-      <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; flex-shrink: 0;">
-        <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;">
-          <button class="pill-btn active" id="tabBtnWithdrawals" onclick="switchAdminTab('withdrawals')">
+      <!-- TABS CONTROLLER (8 SECTIONS) -->
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-shrink: 0; overflow-x: auto; padding-bottom: 2px;">
+        <div style="display: flex; gap: 6px;">
+          <button class="pill-btn active" id="tabBtnUsers" onclick="switchAdminTab('users')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            Users Management
+          </button>
+          <button class="pill-btn" id="tabBtnWithdrawals" onclick="switchAdminTab('withdrawals')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg>
             Withdrawal Approvals (<span id="tabCountWd">0</span>)
           </button>
-          <button class="pill-btn" id="tabBtnDeposits" onclick="switchAdminTab('deposits')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg>
-            Completed Deposits
-          </button>
-          <button class="pill-btn" id="tabBtnUsers" onclick="switchAdminTab('users')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-            Traders Directory
-          </button>
           <button class="pill-btn" id="tabBtnKyc" onclick="switchAdminTab('kyc')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            KYC 12h Auto-Approval Queue
+            KYC Verification (<span id="tabCountKyc">0</span>)
+          </button>
+          <button class="pill-btn" id="tabBtnAdjustments" onclick="switchAdminTab('adjustments')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Adjust Balance
+          </button>
+          <button class="pill-btn" id="tabBtnDeposits" onclick="switchAdminTab('deposits')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg>
+            Deposits Feed
+          </button>
+          <button class="pill-btn" id="tabBtnTransactions" onclick="switchAdminTab('transactions')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Transactions Ledger
+          </button>
+          <button class="pill-btn" id="tabBtnTrades" onclick="switchAdminTab('trades')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg>
+            Trading Records
           </button>
         </div>
-
-        <button onclick="refreshAdminData()" class="pill-btn" style="font-size: 10px; padding: 4px 10px;">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-          Refresh Feed
-        </button>
       </div>
 
-      <!-- TAB 1: WITHDRAWAL APPROVALS -->
-      <section id="panelWithdrawals" class="card-panel" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-card); background: var(--bg-card-alt); display: flex; justify-content: space-between; align-items: center;">
+      <!-- SECTION 1: USERS MANAGEMENT TAB -->
+      <section id="panelUsers" class="card-panel" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-card); background: var(--bg-card-alt); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
           <div>
-            <h2 style="font-size: 13px; font-weight: 700; color: #fff;">Payout Clearance & Approval Engine</h2>
-            <p style="font-size: 11px; color: var(--text-gray);">Review trader withdrawal requests. Click Approve to disburse or Reject to refund funds.</p>
+            <h2 style="font-size: 13px; font-weight: 700; color: #fff;">Registered Users & Wallets</h2>
+            <p style="font-size: 11px; color: var(--text-gray);">Authoritative records from Supabase public.users and public.wallets.</p>
           </div>
-          <span style="font-size: 11px; color: var(--accent-gold); font-weight: 600;" id="wdStatusNote">● Live Approval Queue</span>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="text" id="userSearchInput" oninput="filterUsersTable()" placeholder="Search user ID, email, name..." style="padding: 4px 10px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-card-alt); color: #fff; font-size: 11px; width: 200px; outline: none;"/>
+            <button onclick="openBalanceModal(null, '', 0)" class="btn-action" style="color: var(--accent-green); border-color: rgba(16,185,129,0.3);">+ Credit Balance</button>
+          </div>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto;">
+          <table class="ledger-table">
+            <thead>
+              <tr>
+                <th>User ID</th>
+                <th>Username & Identity</th>
+                <th>Email Address</th>
+                <th>Status</th>
+                <th>Wallet Balance</th>
+                <th>Total Deposits</th>
+                <th>Total Withdrawals</th>
+                <th>KYC Tier</th>
+                <th>Registered</th>
+                <th style="text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr><td colspan="10" style="text-align: center; padding: 24px; color: var(--text-gray);">Loading users from database...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECTION 2: WITHDRAWAL APPROVALS TAB -->
+      <section id="panelWithdrawals" class="card-panel" style="flex: 1; display: none; flex-direction: column; overflow: hidden;">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-card); background: var(--bg-card-alt); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <h2 style="font-size: 13px; font-weight: 700; color: #fff;">Withdrawal Clearance & Approval Engine</h2>
+            <p style="font-size: 11px; color: var(--text-gray);">Funds are held upon submission. Approving clears for payout; Rejecting releases funds back to user.</p>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button class="pill-btn active" id="wdFilterAll" onclick="filterWithdrawals('all')">All</button>
+            <button class="pill-btn" id="wdFilterPending" onclick="filterWithdrawals('pending')">Pending</button>
+            <button class="pill-btn" id="wdFilterApproved" onclick="filterWithdrawals('approved')">Approved</button>
+            <button class="pill-btn" id="wdFilterCompleted" onclick="filterWithdrawals('completed')">Completed</button>
+            <button class="pill-btn" id="wdFilterRejected" onclick="filterWithdrawals('rejected')">Rejected</button>
+          </div>
         </div>
 
         <div style="flex: 1; overflow-y: auto;">
@@ -528,26 +556,130 @@
                 <th>Payout Rail</th>
                 <th>Amount (USD)</th>
                 <th>Destination / Account</th>
-                <th>Requested At</th>
+                <th>Submitted At</th>
                 <th>Status</th>
-                <th style="text-align: right;">Action</th>
+                <th style="text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody id="withdrawalsTableBody">
-              <tr>
-                <td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">Loading withdrawal requests...</td>
-              </tr>
+              <tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">Loading withdrawal requests...</td></tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <!-- TAB 2: COMPLETED DEPOSITS -->
+      <!-- SECTION 3: KYC VERIFICATION TAB -->
+      <section id="panelKyc" class="card-panel" style="flex: 1; display: none; flex-direction: column; overflow: hidden;">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-card); background: var(--bg-card-alt); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <h2 style="font-size: 13px; font-weight: 700; color: #fff;">KYC Identity Verification Queue</h2>
+            <p style="font-size: 11px; color: var(--text-gray);">Secure regulatory review of identity documents and selfies stored in Supabase.</p>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button class="pill-btn active" id="kycFilterAll" onclick="filterKyc('all')">All</button>
+            <button class="pill-btn" id="kycFilterPending" onclick="filterKyc('pending')">Pending</button>
+            <button class="pill-btn" id="kycFilterApproved" onclick="filterKyc('approved')">Approved</button>
+            <button class="pill-btn" id="kycFilterRejected" onclick="filterKyc('rejected')">Rejected</button>
+          </div>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto;">
+          <table class="ledger-table">
+            <thead>
+              <tr>
+                <th>Sub ID</th>
+                <th>Trader & Email</th>
+                <th>Legal Full Name</th>
+                <th>Doc Type</th>
+                <th>Document No.</th>
+                <th>Submitted</th>
+                <th>Status</th>
+                <th style="text-align: right;">Review Actions</th>
+              </tr>
+            </thead>
+            <tbody id="kycTableBody">
+              <tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">Loading compliance queue...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECTION 4: MANUAL ADJUST BALANCE TAB -->
+      <section id="panelAdjustments" class="card-panel" style="flex: 1; display: none; flex-direction: column; overflow: hidden;">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-card); background: var(--bg-card-alt);">
+          <h2 style="font-size: 13px; font-weight: 700; color: #fff;">Adjust User Balance (Atomic Credit / Debit)</h2>
+          <p style="font-size: 11px; color: var(--text-gray);">Executes secure atomic balance changes in public.wallets with an immutable audit entry in public.transaction_history.</p>
+        </div>
+
+        <div style="padding: 14px; display: grid; grid-template-columns: 320px 1fr; gap: 14px; height: 100%; overflow: hidden;">
+          <!-- Left form -->
+          <div style="background: var(--bg-card-alt); border: 1px solid var(--border-card-alt); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="font-weight: 700; color: #fff; font-size: 12px; margin-bottom: 4px;">Manual Balance Adjustment</div>
+
+            <div>
+              <label style="font-size: 10px; color: var(--text-gray); font-weight: 600;">SELECT USER</label>
+              <select id="adjUserSelect" onchange="onAdjUserSelected()" style="width: 100%; padding: 7px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-accent); color: #fff; font-size: 12px; outline: none; margin-top: 3px;">
+                <option value="">-- Choose User --</option>
+              </select>
+            </div>
+
+            <div style="background: rgba(224,204,255,0.04); border: 1px solid var(--border-card); border-radius: 6px; padding: 8px;">
+              <div style="font-size: 10px; color: var(--text-gray);">Current Wallet Balance</div>
+              <div class="mono" id="adjCurrentBalDisplay" style="font-size: 16px; font-weight: 800; color: var(--accent-green);">$0.00</div>
+            </div>
+
+            <div>
+              <label style="font-size: 10px; color: var(--text-gray); font-weight: 600;">AMOUNT (USD)</label>
+              <input type="number" id="adjAmountInput" min="0.01" step="0.01" placeholder="e.g. 50.00" style="width: 100%; padding: 7px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-accent); color: #fff; font-size: 12px; font-weight: 700; font-family: monospace; outline: none; margin-top: 3px;"/>
+            </div>
+
+            <div>
+              <label style="font-size: 10px; color: var(--text-gray); font-weight: 600;">ADJUSTMENT REASON / AUDIT NOTE</label>
+              <input type="text" id="adjReasonInput" placeholder="e.g. Treasury top-up / Promotional credit" style="width: 100%; padding: 7px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-accent); color: #fff; font-size: 11px; outline: none; margin-top: 3px;"/>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+              <input type="checkbox" id="adjClassifyDeposit" checked style="accent-color: var(--accent-purple);"/>
+              <label for="adjClassifyDeposit" style="font-size: 11px; color: var(--text-gray); cursor: pointer;">Increment Total Deposits</label>
+            </div>
+
+            <button onclick="submitManualAdjustment()" class="purple-btn" style="padding: 9px; font-size: 12px; margin-top: 6px;">
+              Confirm Balance Adjustment →
+            </button>
+          </div>
+
+          <!-- Right side: Recent Adjustments Feed -->
+          <div style="background: var(--bg-card-alt); border: 1px solid var(--border-card-alt); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="padding: 8px 12px; border-bottom: 1px solid var(--border-card); font-weight: 700; font-size: 11px; color: var(--accent-lavender);">
+              Recent Manual Adjustments Ledger
+            </div>
+            <div style="flex: 1; overflow-y: auto;">
+              <table class="ledger-table">
+                <thead>
+                  <tr>
+                    <th>Ref ID</th>
+                    <th>Trader Account</th>
+                    <th>Amount</th>
+                    <th>Reason / Description</th>
+                    <th>Admin / Operator</th>
+                    <th>Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody id="adjustmentsTableBody">
+                  <tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-gray);">Loading adjustments...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 5: COMPLETED DEPOSITS TAB -->
       <section id="panelDeposits" class="card-panel" style="flex: 1; display: none; flex-direction: column; overflow: hidden;">
         <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-card); background: var(--bg-card-alt); display: flex; justify-content: space-between; align-items: center;">
           <div>
             <h2 style="font-size: 13px; font-weight: 700; color: #fff;">Completed Deposits Activity Feed</h2>
-            <p style="font-size: 11px; color: var(--text-gray);">Live ledger of all incoming funds cleared via M-Pesa, USDT Crypto (TRC20/ERC20), and Treasury.</p>
+            <p style="font-size: 11px; color: var(--text-gray);">Verified payments from M-Pesa Safaricom, NOWPayments crypto, and Manual credits.</p>
           </div>
           <span class="mono" style="font-size: 11px; color: var(--accent-green); font-weight: 700;" id="depositsTotalBanner">Total: $0.00</span>
         </div>
@@ -556,77 +688,46 @@
           <table class="ledger-table">
             <thead>
               <tr>
-                <th>Deposit ID</th>
+                <th>Reference ID</th>
                 <th>Trader Account</th>
-                <th>Deposit Method</th>
+                <th>Method / Rail</th>
                 <th>Amount</th>
-                <th>Transaction Reference / Hash</th>
-                <th>Destination Account</th>
+                <th>Provider Tx / Receipt</th>
+                <th>Destination</th>
                 <th>Confirmed Time</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody id="depositsTableBody">
-              <tr>
-                <td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">Loading deposits...</td>
-              </tr>
+              <tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">Loading deposits...</td></tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <!-- TAB 3: TRADERS DIRECTORY -->
-      <section id="panelUsers" class="card-panel" style="flex: 1; display: none; flex-direction: column; overflow: hidden;">
-        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-card); background: var(--bg-card-alt); display: flex; justify-content: space-between; align-items: center;">
+      <!-- SECTION 6: TRANSACTIONS CENTRAL LEDGER TAB -->
+      <section id="panelTransactions" class="card-panel" style="flex: 1; display: none; flex-direction: column; overflow: hidden;">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-card); background: var(--bg-card-alt); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
           <div>
-            <h2 style="font-size: 13px; font-weight: 700; color: #fff;">Registered Traders & User Roles (Supabase Sync)</h2>
-            <p style="font-size: 11px; color: var(--text-gray);">Directory of platform users, active balances, role credentials, and simulation flags directly from Supabase.</p>
+            <h2 style="font-size: 13px; font-weight: 700; color: #fff;">Platform Financial Transaction Ledger</h2>
+            <p style="font-size: 11px; color: var(--text-gray);">Central financial records from public.transaction_history.</p>
           </div>
-          <span style="font-size: 11px; color: var(--accent-lavender); font-weight: 600;" id="usersTotalBanner">Loading Users...</span>
-        </div>
-
-        <!-- DEDICATED SIMULATION ACCOUNT BALANCE MANAGER -->
-        <div style="padding: 12px 14px; border-bottom: 1px solid var(--border-card); background: linear-gradient(135deg, rgba(25,17,49,0.95), rgba(45,20,80,0.65)); display: flex; flex-direction: column; gap: 10px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: rgba(168,85,247,0.2); border: 1px solid var(--accent-purple); color: var(--accent-lavender);">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-              </span>
-              <div>
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <span style="font-weight: 800; font-size: 13px; color: #fff;">Simulation Account Control</span>
-                  <span style="font-size: 9px; padding: 2px 6px; border-radius: 10px; background: rgba(168,85,247,0.25); border: 1px solid var(--accent-purple); color: var(--accent-lavender); font-weight: 700;">80% WIN RATE · SUPABASE SYNCED</span>
-                </div>
-                <span class="mono" style="font-size: 11px; color: #baa4e8;">simulation@probinary.com (ID: <span id="simUserId">59</span>)</span>
-              </div>
-            </div>
-
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 11px; color: var(--text-gray);">Live Supabase Balance:</span>
-              <span class="mono" id="simCardBalance" style="font-size: 17px; font-weight: 800; color: var(--accent-green); text-shadow: 0 0 8px rgba(16,185,129,0.3);">$10,000.00</span>
-            </div>
-          </div>
-
-          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <div style="position: relative; width: 160px;">
-              <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-gray); font-weight: 700; font-size: 12px;">$</span>
-              <input type="number" id="simBalanceInput" step="50" min="0" placeholder="New Balance" style="width: 100%; padding: 6px 8px 6px 22px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-accent); color: #fff; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 700; outline: none;" />
-            </div>
-
-            <button onclick="updateSimulationBalance()" class="purple-btn" style="padding: 6px 14px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-              Set Balance
-            </button>
-
-            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-              <button onclick="quickSetSimBalance(1000)" class="pill-btn" style="font-size: 10px; padding: 4px 8px;">$1k</button>
-              <button onclick="quickSetSimBalance(5000)" class="pill-btn" style="font-size: 10px; padding: 4px 8px;">$5k</button>
-              <button onclick="quickSetSimBalance(10000)" class="pill-btn" style="font-size: 10px; padding: 4px 8px;">$10k</button>
-              <button onclick="quickSetSimBalance(25000)" class="pill-btn" style="font-size: 10px; padding: 4px 8px;">$25k</button>
-              <button onclick="quickAdjustSimBalance(500)" class="pill-btn" style="font-size: 10px; padding: 4px 8px; border-color: rgba(16,185,129,0.3); color: var(--accent-green);">+ $500</button>
-              <button onclick="quickAdjustSimBalance(1000)" class="pill-btn" style="font-size: 10px; padding: 4px 8px; border-color: rgba(16,185,129,0.3); color: var(--accent-green);">+ $1,000</button>
-              <button onclick="quickAdjustSimBalance(5000)" class="pill-btn" style="font-size: 10px; padding: 4px 8px; border-color: rgba(16,185,129,0.3); color: var(--accent-green);">+ $5,000</button>
-            </div>
+          <div style="display: flex; gap: 6px;">
+            <select id="txFilterType" onchange="filterTxTable()" style="padding: 4px 8px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-card-alt); color: #fff; font-size: 11px; outline: none;">
+              <option value="all">All Types</option>
+              <option value="deposit">Deposit</option>
+              <option value="mpesa_deposit">M-Pesa Deposit</option>
+              <option value="withdrawal">Withdrawal</option>
+              <option value="trade">Trade</option>
+              <option value="adjustment">Adjustment</option>
+            </select>
+            <select id="txFilterStatus" onchange="filterTxTable()" style="padding: 4px 8px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-card-alt); color: #fff; font-size: 11px; outline: none;">
+              <option value="all">All Statuses</option>
+              <option value="completed">Completed</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="failed">Failed / Rejected</option>
+            </select>
           </div>
         </div>
 
@@ -634,57 +735,51 @@
           <table class="ledger-table">
             <thead>
               <tr>
-                <th>User ID</th>
-                <th>Name & Identity</th>
-                <th>Email Address</th>
-                <th>Account Role</th>
-                <th>Available Balance</th>
-                <th>Win Rate Engine</th>
-                <th>KYC Clearance</th>
-                <th>Created Date</th>
-                <th style="text-align: right;">Balance Action</th>
-              </tr>
-            </thead>
-            <tbody id="usersTableBody">
-              <tr>
-                <td colspan="9" style="text-align: center; padding: 24px; color: var(--text-gray);">Loading users from Supabase...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- TAB 4: KYC 12H AUTOMATION QUEUE -->
-      <section id="panelKyc" class="card-panel" style="flex: 1; display: none; flex-direction: column; overflow: hidden;">
-        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-card); background: var(--bg-card-alt); display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <h2 style="font-size: 13px; font-weight: 700; color: #fff;">KYC 12-Hour Automated Compliance Clearance</h2>
-            <p style="font-size: 11px; color: var(--text-gray);">Submissions automatically approve 12 hours after upload. Admins can inspect documents or override approval.</p>
-          </div>
-          <button onclick="triggerKycFastForward()" class="btn-approve" style="font-size: 10px; padding: 4px 8px; background: rgba(168,85,247,0.2); border: 1px solid var(--accent-purple); color: var(--accent-lavender);">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
-            Simulate 12h Fast-Forward
-          </button>
-        </div>
-
-        <div style="flex: 1; overflow-y: auto;">
-          <table class="ledger-table">
-            <thead>
-              <tr>
-                <th>Trader ID</th>
-                <th>Full Legal Name</th>
-                <th>Document Type</th>
-                <th>Document Number</th>
-                <th>Submitted Timestamp</th>
-                <th>Auto-Clearance Timer</th>
+                <th>Tx ID</th>
+                <th>Reference</th>
+                <th>Trader Account</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Description</th>
+                <th>Timestamp</th>
                 <th>Status</th>
-                <th style="text-align: right;">Manual Action</th>
               </tr>
             </thead>
-            <tbody id="kycTableBody">
+            <tbody id="txTableBody">
+              <tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">Loading transactions...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECTION 7: TRADING RECORDS TAB -->
+      <section id="panelTrades" class="card-panel" style="flex: 1; display: none; flex-direction: column; overflow: hidden;">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-card); background: var(--bg-card-alt); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h2 style="font-size: 13px; font-weight: 700; color: #fff;">Binary Trading Engine Execution Records</h2>
+            <p style="font-size: 11px; color: var(--text-gray);">Synchronized order ledger from public.binary_trade_records.</p>
+          </div>
+          <span style="font-size: 11px; color: var(--accent-lavender);" id="tradesTotalBanner">0 Trades Recorded</span>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto;">
+          <table class="ledger-table">
+            <thead>
               <tr>
-                <td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">Loading compliance queue...</td>
+                <th>Trade ID</th>
+                <th>Trader</th>
+                <th>Market Symbol</th>
+                <th>Contract</th>
+                <th>Direction</th>
+                <th>Stake</th>
+                <th>Payout</th>
+                <th>Net Profit</th>
+                <th>Outcome</th>
+                <th>Settled At</th>
               </tr>
+            </thead>
+            <tbody id="tradesTableBody">
+              <tr><td colspan="10" style="text-align: center; padding: 24px; color: var(--text-gray);">Loading trades...</td></tr>
             </tbody>
           </table>
         </div>
@@ -693,16 +788,110 @@
     </main>
   </div>
 
+  <!-- MODAL 1: ADJUST BALANCE MODAL -->
+  <div class="modal-overlay" id="modalAdjustBalance">
+    <div class="modal-box">
+      <div style="padding: 14px; border-bottom: 1px solid var(--border-card); display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 13px; font-weight: 700; color: #fff;">Adjust User Balance</h3>
+        <button onclick="closeModal('modalAdjustBalance')" style="background: none; border: none; color: var(--text-gray); cursor: pointer; font-size: 16px;">✕</button>
+      </div>
+      <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div>
+          <label style="font-size: 11px; color: var(--text-gray); font-weight: 600;">TARGET USER</label>
+          <div style="font-size: 13px; font-weight: 700; color: #fff; margin-top: 2px;" id="modalAdjUserLabel">User #</div>
+          <div class="mono" style="font-size: 11px; color: var(--accent-lavender);" id="modalAdjEmailLabel">email</div>
+        </div>
+
+        <div style="background: var(--bg-card-alt); border: 1px solid var(--border-card); border-radius: 8px; padding: 10px;">
+          <div style="font-size: 11px; color: var(--text-gray);">Available Wallet Balance</div>
+          <div class="mono" id="modalAdjCurrentBal" style="font-size: 18px; font-weight: 800; color: var(--accent-green);">$0.00</div>
+        </div>
+
+        <div>
+          <label style="font-size: 11px; color: var(--text-gray); font-weight: 600;">AMOUNT TO CREDIT (USD)</label>
+          <input type="number" id="modalAdjAmount" min="0.01" step="0.01" placeholder="Enter amount" style="width: 100%; padding: 8px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-accent); color: #fff; font-family: monospace; font-size: 13px; font-weight: 700; outline: none; margin-top: 4px;"/>
+        </div>
+
+        <div>
+          <label style="font-size: 11px; color: var(--text-gray); font-weight: 600;">REASON OR AUDIT NOTE</label>
+          <input type="text" id="modalAdjReason" placeholder="e.g. Treasury Deposit / VIP Bonus" style="width: 100%; padding: 8px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-accent); color: #fff; font-size: 12px; outline: none; margin-top: 4px;"/>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <input type="checkbox" id="modalAdjDeposit" checked style="accent-color: var(--accent-purple);"/>
+          <label for="modalAdjDeposit" style="font-size: 11px; color: var(--text-gray); cursor: pointer;">Count towards Total Deposits</label>
+        </div>
+
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
+          <button onclick="closeModal('modalAdjustBalance')" class="pill-btn" style="padding: 7px 14px;">Cancel</button>
+          <button onclick="submitModalAdjustment()" class="purple-btn" style="padding: 7px 18px; font-size: 12px;">Confirm Adjustment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: KYC DOCUMENT INSPECTOR MODAL -->
+  <div class="modal-overlay" id="modalKycInspect">
+    <div class="modal-box" style="max-width: 680px;">
+      <div style="padding: 14px; border-bottom: 1px solid var(--border-card); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h3 style="font-size: 13px; font-weight: 700; color: #fff;">KYC Document Inspector</h3>
+          <span style="font-size: 10px; color: var(--accent-lavender);" id="modalKycUserTag">User #</span>
+        </div>
+        <button onclick="closeModal('modalKycInspect')" style="background: none; border: none; color: var(--text-gray); cursor: pointer; font-size: 16px;">✕</button>
+      </div>
+
+      <div style="padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: var(--bg-card-alt); padding: 10px; border-radius: 8px; border: 1px solid var(--border-card);">
+          <div>
+            <div style="font-size: 10px; color: var(--text-gray);">FULL LEGAL NAME</div>
+            <div style="font-size: 12px; font-weight: 700; color: #fff;" id="modalKycName">-</div>
+          </div>
+          <div>
+            <div style="font-size: 10px; color: var(--text-gray);">DOCUMENT DETAILS</div>
+            <div style="font-size: 12px; font-weight: 700; color: #fff;"><span id="modalKycDocType">-</span> (<span id="modalKycDocNum" class="mono">-</span>)</div>
+          </div>
+        </div>
+
+        <!-- Document Views -->
+        <div>
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-gray); margin-bottom: 6px;">SUBMITTED DOCUMENTS & IDENTITY PROOF</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="background: var(--bg-card-alt); border: 1px solid var(--border-card-alt); border-radius: 8px; padding: 10px; text-align: center;">
+              <div style="font-size: 10px; color: var(--text-gray); margin-bottom: 6px; font-weight: 600;">Document Front</div>
+              <img id="modalKycImgFront" src="" alt="Doc Front" style="max-height: 140px; width: auto; max-width: 100%; border-radius: 4px; object-fit: contain; background: #000;"/>
+            </div>
+            <div style="background: var(--bg-card-alt); border: 1px solid var(--border-card-alt); border-radius: 8px; padding: 10px; text-align: center;">
+              <div style="font-size: 10px; color: var(--text-gray); margin-bottom: 6px; font-weight: 600;">Selfie / Document Back</div>
+              <img id="modalKycImgBack" src="" alt="Doc Back" style="max-height: 140px; width: auto; max-width: 100%; border-radius: 4px; object-fit: contain; background: #000;"/>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size: 10px; color: var(--text-gray); font-weight: 600;">REJECTION REASON (REQUIRED IF REJECTING)</label>
+          <input type="text" id="modalKycRejectionReason" placeholder="e.g. Image blurry or document expired" style="width: 100%; padding: 7px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border-accent); color: #fff; font-size: 11px; outline: none; margin-top: 4px;"/>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+          <button onclick="closeModal('modalKycInspect')" class="pill-btn">Close Inspector</button>
+          <div style="display: flex; gap: 8px;">
+            <button onclick="submitKycAction('reject')" class="btn-reject" style="padding: 6px 14px;">Reject Application</button>
+            <button onclick="submitKycAction('approve')" class="btn-approve" style="padding: 6px 16px;">Approve Tier 2 Verification</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- SCRIPT -->
   <script>
     (function() {
-      // 1. Verify User Role
       let currentUser = null;
       try {
         currentUser = JSON.parse(localStorage.getItem('probinary_user') || '{}');
       } catch (e) {}
 
-      // Display Admin name/email
       if (currentUser && currentUser.name) {
         document.getElementById('sidebarUserName').textContent = currentUser.name;
         document.getElementById('sidebarUserEmail').textContent = currentUser.email || 'admin@probinary.com';
@@ -718,14 +907,8 @@
         return fetch(url, { ...options, headers });
       }
 
-      // Initial Data Load
-      refreshAdminData();
-
-      // Polling every 10 seconds for real-time compliance updates
-      setInterval(refreshAdminData, 10000);
-
       window.switchAdminTab = function(tabId) {
-        const tabs = ['withdrawals', 'deposits', 'users', 'kyc'];
+        const tabs = ['users', 'withdrawals', 'kyc', 'adjustments', 'deposits', 'transactions', 'trades'];
         tabs.forEach(t => {
           const btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
           const panel = document.getElementById('panel' + t.charAt(0).toUpperCase() + t.slice(1));
@@ -741,391 +924,613 @@
         });
       };
 
+      let cachedUsers = [];
+      let cachedWithdrawals = [];
+      let cachedKyc = [];
+      let cachedTransactions = [];
+      let activeKycSubmission = null;
+      let targetAdjUserId = null;
+
+      window.openModal = function(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'flex';
+      };
+      window.closeModal = function(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      };
+
+      // 1. REFRESH ADMIN DATA
       window.refreshAdminData = async function() {
         try {
-          const [overviewRes, wdRes, depRes, usersRes, kycRes] = await Promise.all([
-            adminFetch('/api/admin/overview').then(r => r.json()).catch(error => ({ error: error.message })),
-            adminFetch('/api/admin/withdrawals').then(r => r.json()).catch(error => ({ error: error.message })),
-            adminFetch('/api/admin/deposits').then(r => r.json()).catch(error => ({ error: error.message })),
-            adminFetch('/api/admin/users').then(r => r.json()).catch(error => ({ error: error.message })),
-            adminFetch('/api/admin/kyc/queue').then(r => r.json()).catch(error => ({ error: error.message }))
+          const [overviewRes, wdRes, depRes, usersRes, kycRes, txRes, tradesRes] = await Promise.all([
+            adminFetch('/api/admin/overview').then(r => r.json()).catch(() => ({})),
+            adminFetch('/api/admin/withdrawals').then(r => r.json()).catch(() => ({})),
+            adminFetch('/api/admin/deposits').then(r => r.json()).catch(() => ({})),
+            adminFetch('/api/admin/users').then(r => r.json()).catch(() => ({})),
+            adminFetch('/api/admin/kyc/queue').then(r => r.json()).catch(() => ({})),
+            adminFetch('/api/admin/transactions').then(r => r.json()).catch(() => ({})),
+            adminFetch('/api/admin/trades').then(r => r.json()).catch(() => ({}))
           ]);
 
-          // 1. Overview Cards
+          // Overview Stats
           if (overviewRes.stats) {
             const s = overviewRes.stats;
-            document.getElementById('statCompletedDeposits').textContent = '$' + (s.totalDepositsAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('statDepositsCount').textContent = (s.totalDepositsCount || 0) + ' Completed Deposits';
-            document.getElementById('headerDepositsVol').textContent = '$' + (s.totalDepositsAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
-
-            document.getElementById('statPendingWithdrawals').textContent = '$' + (s.pendingWithdrawalsAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('statPendingWdCount').textContent = (s.pendingWithdrawalsCount || 0) + ' Requests Awaiting Action';
-            document.getElementById('headerPendingCount').textContent = s.pendingWithdrawalsCount || 0;
-            document.getElementById('tabCountWd').textContent = s.pendingWithdrawalsCount || 0;
-
             document.getElementById('statTotalUsers').textContent = s.totalUsers || 0;
-            document.getElementById('statKycReviewCount').textContent = Number.isFinite(s.kycReviewCount)
-              ? s.kycReviewCount + ' Under 12h Review'
-              : 'Unavailable in database';
+            document.getElementById('statActiveUsers').textContent = `${s.activeUsers || s.totalUsers || 0} active`;
+            document.getElementById('statCompletedDeposits').textContent = '$' + (s.totalDepositsAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('statDepositsCount').textContent = `${s.totalDepositsCount || 0} tx`;
+            document.getElementById('statPendingWithdrawals').textContent = '$' + (s.pendingWithdrawalsAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('statPendingWdCount').textContent = `${s.pendingWithdrawalsCount || 0} requests`;
+            document.getElementById('tabCountWd').textContent = s.pendingWithdrawalsCount || 0;
+            document.getElementById('statKycReviewCount').textContent = s.pendingKycCount || 0;
+            document.getElementById('tabCountKyc').textContent = s.pendingKycCount || 0;
+            document.getElementById('statKycApprovedCount').textContent = `${s.approvedKycCount || 0} approved`;
+            document.getElementById('sidebarBalanceAmount').textContent = '$' + (s.totalWalletBalances || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
           }
 
-          // 2. Render Withdrawals Table
-          const wdTable = document.getElementById('withdrawalsTableBody');
-          if (wdRes.withdrawals && wdRes.withdrawals.length > 0) {
-            wdTable.innerHTML = wdRes.withdrawals.map(w => {
-              const isPending = w.status === 'pending';
-              const statusBadge = isPending
-                ? `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(251,191,36,0.15); color: var(--accent-gold); font-size: 10px; font-weight: 700; border: 1px solid rgba(251,191,36,0.3);">● Awaiting Approval</span>`
-                : (w.status === 'completed' || w.outcome === 'approved'
-                  ? `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(16,185,129,0.15); color: var(--accent-green); font-size: 10px; font-weight: 700; border: 1px solid rgba(16,185,129,0.3);">Approved</span>`
-                  : `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(239,68,68,0.15); color: var(--accent-red); font-size: 10px; font-weight: 700; border: 1px solid rgba(239,68,68,0.3);">Rejected</span>`);
+          // Users Table
+          if (usersRes.users) {
+            cachedUsers = usersRes.users;
+            renderUsersTable(cachedUsers);
+            populateUserDropdown(cachedUsers);
+          }
 
-              const actions = isPending ? `
-                <div style="display: flex; gap: 6px; justify-content: flex-end;">
-                  <button class="btn-approve" onclick="approveWithdrawal('${w.id}', ${w.stake})">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Approve
+          // Withdrawals Table
+          if (wdRes.withdrawals) {
+            cachedWithdrawals = wdRes.withdrawals;
+            renderWithdrawalsTable(cachedWithdrawals);
+          }
+
+          // KYC Table
+          if (kycRes.queue || kycRes.submissions) {
+            cachedKyc = kycRes.queue || kycRes.submissions || [];
+            renderKycTable(cachedKyc);
+          }
+
+          // Deposits Table
+          if (depRes.deposits) {
+            renderDepositsTable(depRes.deposits);
+          }
+
+          // Transactions Table
+          if (txRes.transactions) {
+            cachedTransactions = txRes.transactions;
+            renderTransactionsTable(cachedTransactions);
+            renderAdjustmentsTable(cachedTransactions.filter(t => t.transaction_type === 'adjustment'));
+          }
+
+          // Trades Table
+          if (tradesRes.trades) {
+            renderTradesTable(tradesRes.trades);
+          }
+
+        } catch (e) {
+          console.error('Failed refreshing admin data:', e);
+        }
+      };
+
+      // 2. RENDER USERS
+      function renderUsersTable(users) {
+        const tbody = document.getElementById('usersTableBody');
+        if (!users || users.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 24px; color: var(--text-gray);">No users found.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = users.map(u => {
+          const isActive = u.accountStatus === 'active';
+          const statusBadge = isActive
+            ? `<span style="padding: 2px 7px; border-radius: 4px; background: rgba(16,185,129,0.15); color: var(--accent-green); font-size: 10px; font-weight: 700;">Active</span>`
+            : `<span style="padding: 2px 7px; border-radius: 4px; background: rgba(239,68,68,0.15); color: var(--accent-red); font-size: 10px; font-weight: 700;">Suspended</span>`;
+
+          const kycBadge = u.kycStatus === 'approved' || u.kycStatus === 'verified'
+            ? `<span style="color: var(--accent-green); font-weight: 700; font-size: 11px;">● Tier 2 Verified</span>`
+            : (u.kycStatus === 'rejected'
+              ? `<span style="color: var(--accent-red); font-weight: 700; font-size: 11px;">● Rejected</span>`
+              : `<span style="color: var(--accent-gold); font-weight: 600; font-size: 11px;">● Pending</span>`);
+
+          const dateStr = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'Active';
+
+          return `
+            <tr>
+              <td class="mono" style="color: var(--accent-lavender); font-weight: 700;">#${u.id}</td>
+              <td style="font-weight: 700; color: #fff;">${u.name}</td>
+              <td class="mono" style="font-size: 11px; color: #baa4e8;">${u.email}</td>
+              <td>${statusBadge}</td>
+              <td class="mono" style="font-weight: 800; color: #fff;">$${(Number(u.balance)||0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+              <td class="mono" style="color: var(--accent-green); font-weight: 600;">$${(Number(u.totalDeposits)||0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+              <td class="mono" style="color: var(--text-gray);">$${(Number(u.totalWithdrawals)||0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+              <td>${kycBadge}</td>
+              <td style="font-size: 11px; color: var(--text-gray);">${dateStr}</td>
+              <td style="text-align: right;">
+                <div style="display: flex; gap: 4px; justify-content: flex-end;">
+                  <button onclick="openBalanceModal(${u.id}, '${u.email}', ${u.balance})" class="btn-action" style="font-size: 10px; padding: 2px 8px;">
+                    Adjust Bal
                   </button>
-                  <button class="btn-reject" onclick="rejectWithdrawal('${w.id}', ${w.stake})">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Reject
-                  </button>
-                </div>
-              ` : `<span style="color: var(--text-gray); font-size: 11px;">Processed</span>`;
-
-              const dateStr = new Date(w.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
-
-              return `
-                <tr>
-                  <td class="mono" style="color: var(--accent-lavender); font-weight: 700;">${w.id}</td>
-                  <td>
-                    <div style="font-weight: 700; color: #fff;">${w.userName || w.userEmail || 'Trader'}</div>
-                    <div class="mono" style="font-size: 10px; color: var(--text-gray);">${w.userEmail || ''}</div>
-                  </td>
-                  <td><span style="font-weight: 600;">${w.asset || w.method || 'M-Pesa'}</span></td>
-                  <td class="mono" style="font-weight: 800; font-size: 13px; color: #fff;">$${(parseFloat(w.stake) || 0).toFixed(2)}</td>
-                  <td class="mono" style="font-size: 11px; color: var(--text-gray);">${w.destination || 'N/A'}</td>
-                  <td style="font-size: 11px; color: var(--text-gray);">${dateStr}</td>
-                  <td>${statusBadge}</td>
-                  <td style="text-align: right;">${actions}</td>
-                </tr>
-              `;
-            }).join('');
-          } else if (wdRes.error) {
-            wdTable.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--accent-red);">Unable to load withdrawals from the database.</td></tr>`;
-          } else {
-            wdTable.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">No withdrawal requests recorded yet.</td></tr>`;
-          }
-
-          // 3. Render Completed Deposits Table
-          const depTable = document.getElementById('depositsTableBody');
-          if (depRes.deposits && depRes.deposits.length > 0) {
-            depTable.innerHTML = depRes.deposits.map(d => {
-              const dateStr = new Date(d.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
-              return `
-                <tr>
-                  <td class="mono" style="color: var(--accent-lavender); font-weight: 700;">${d.id}</td>
-                  <td>
-                    <div style="font-weight: 700; color: #fff;">${d.userName || d.userEmail || 'Trader'}</div>
-                    <div class="mono" style="font-size: 10px; color: var(--text-gray);">${d.userEmail || ''}</div>
-                  </td>
-                  <td><span style="font-weight: 600; color: #fff;">${d.asset || d.method || 'M-Pesa'}</span></td>
-                  <td class="mono" style="font-weight: 800; color: var(--accent-green); font-size: 13px;">+$${(parseFloat(d.stake) || 0).toFixed(2)}</td>
-                  <td class="mono" style="font-size: 11px; color: var(--accent-purple);">${d.txHash || 'CONFIRMED'}</td>
-                  <td class="mono" style="font-size: 11px; color: var(--text-gray);">${d.destination || 'Platform Custody'}</td>
-                  <td style="font-size: 11px; color: var(--text-gray);">${dateStr}</td>
-                  <td>
-                    <span style="padding: 2px 8px; border-radius: 4px; background: rgba(16,185,129,0.15); color: var(--accent-green); font-size: 10px; font-weight: 700; border: 1px solid rgba(16,185,129,0.3);">
-                      Completed
-                    </span>
-                  </td>
-                </tr>
-              `;
-            }).join('');
-          } else if (depRes.error) {
-            depTable.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--accent-red);">Unable to load deposits from the database.</td></tr>`;
-          } else {
-            depTable.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">No deposits recorded yet.</td></tr>`;
-          }
-
-          // 4. Render Users Table
-          const usersTable = document.getElementById('usersTableBody');
-          if (usersRes.users && usersRes.users.length > 0) {
-            // Update Simulation Account Control Card
-            const simUser = usersRes.users.find(u => u.simulation || u.email === 'simulation@probinary.com');
-            if (simUser) {
-              const cardBal = document.getElementById('simCardBalance');
-              if (cardBal) cardBal.textContent = `$${(parseFloat(simUser.balance) || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-              const simUid = document.getElementById('simUserId');
-              if (simUid) simUid.textContent = simUser.id;
-            }
-
-            const banner = document.getElementById('usersTotalBanner');
-            if (banner) banner.textContent = `${usersRes.users.length} Registered Traders (Supabase)`;
-
-            usersTable.innerHTML = usersRes.users.map(u => {
-              const roleBadge = u.role === 'admin' || u.role === 'superadmin'
-                ? `<span style="padding: 2px 7px; border-radius: 4px; background: rgba(168,85,247,0.2); color: var(--accent-lavender); font-size: 10px; font-weight: 700; border: 1px solid rgba(168,85,247,0.4);">Administrator</span>`
-                : (u.simulation || u.is80WinRate
-                  ? `<span style="padding: 2px 7px; border-radius: 4px; background: rgba(16,185,129,0.18); color: var(--accent-green); font-size: 10px; font-weight: 700; border: 1px solid rgba(16,185,129,0.4);">Simulation (80% Win)</span>`
-                  : `<span style="padding: 2px 7px; border-radius: 4px; background: rgba(224,204,255,0.08); color: #fff; font-size: 10px; font-weight: 600;">Trader Desk</span>`);
-
-              const winRateLabel = (u.simulation || u.is80WinRate)
-                ? `<span class="mono" style="color: var(--accent-green); font-weight: 800;">80% Target</span>`
-                : `<span class="mono" style="color: var(--text-gray);">Market Dynamic</span>`;
-
-              const kycBadge = u.kycStatus === 'verified'
-                ? `<span style="color: var(--accent-green); font-weight: 700; font-size: 11px;">● Verified Tier 2</span>`
-                : (u.kycStatus === 'review'
-                  ? `<span style="color: var(--accent-gold); font-weight: 700; font-size: 11px;">● Under 12h Review</span>`
-                  : `<span style="color: var(--text-gray); font-size: 11px;">Pending</span>`);
-
-              const dateStr = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'Active';
-
-              return `
-                <tr>
-                  <td class="mono" style="color: var(--accent-lavender); font-weight: 700;">${u.id}</td>
-                  <td style="font-weight: 700; color: #fff;">${u.name}</td>
-                  <td class="mono" style="font-size: 11px; color: #baa4e8;">${u.email}</td>
-                  <td>${roleBadge}</td>
-                  <td class="mono" style="font-weight: 800; color: #fff;">$${(parseFloat(u.balance) || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                  <td>${winRateLabel}</td>
-                  <td>${kycBadge}</td>
-                  <td style="font-size: 11px; color: var(--text-gray);">${dateStr}</td>
-                  <td style="text-align: right;">
-                    <button onclick="openBalanceModal(${u.id}, '${u.email}', ${u.balance})" class="pill-btn" style="font-size: 10px; padding: 3px 8px; border-color: rgba(168,85,247,0.4); color: var(--accent-lavender);">
-                      Adjust Balance
-                    </button>
-                  </td>
-                </tr>
-              `;
-            }).join('');
-          } else if (usersRes.error) {
-            usersTable.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 24px; color: var(--accent-red);">Unable to load users from the database.</td></tr>`;
-          } else {
-            usersTable.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 24px; color: var(--text-gray);">No users found.</td></tr>`;
-          }
-
-          // 5. Render KYC Queue
-          const kycTable = document.getElementById('kycTableBody');
-          if (kycRes.queue && kycRes.queue.length > 0) {
-            kycTable.innerHTML = kycRes.queue.map(k => {
-              const isReview = k.status === 'review';
-              const statusPill = k.status === 'verified'
-                ? `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(16,185,129,0.15); color: var(--accent-green); font-size: 10px; font-weight: 700;">Verified Level 2</span>`
-                : `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(251,191,36,0.15); color: var(--accent-gold); font-size: 10px; font-weight: 700;">Under 12h Review</span>`;
-
-              const timerDisplay = isReview
-                ? `<span class="mono" style="color: var(--accent-gold); font-weight: 700;">${k.remainingHoursFormatted} (<span id="sec_${k.userId}">${k.remainingSeconds}s</span>)</span>`
-                : `<span class="mono" style="color: var(--accent-green); font-weight: 700;">Auto-Cleared</span>`;
-
-              const manualAction = isReview ? `
-                <div style="display: flex; gap: 6px; justify-content: flex-end;">
-                  <button class="btn-approve" onclick="manualApproveKyc('${k.userId}')">
-                    Approve Now
+                  <button onclick="toggleUserStatus(${u.id}, '${u.accountStatus}')" class="btn-action" style="font-size: 10px; padding: 2px 6px; color: ${isActive ? 'var(--accent-red)' : 'var(--accent-green)'};">
+                    ${isActive ? 'Suspend' : 'Activate'}
                   </button>
                 </div>
-              ` : `<span style="color: var(--text-gray); font-size: 11px;">Cleared</span>`;
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
 
-              const submittedStr = k.submittedAt ? new Date(k.submittedAt).toLocaleString() : 'N/A';
-
-              return `
-                <tr>
-                  <td class="mono" style="color: var(--accent-lavender); font-weight: 700;">${k.userId}</td>
-                  <td style="font-weight: 700; color: #fff;">${k.fullName}</td>
-                  <td>${k.docType || 'National ID'}</td>
-                  <td class="mono" style="color: var(--accent-lavender);">${k.docNumber || 'ID-SIM-889102'}</td>
-                  <td style="font-size: 11px; color: var(--text-gray);">${submittedStr}</td>
-                  <td>${timerDisplay}</td>
-                  <td>${statusPill}</td>
-                  <td style="text-align: right;">${manualAction}</td>
-                </tr>
-              `;
-            }).join('');
-          } else if (kycRes.error) {
-            kycTable.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--accent-gold);">KYC submissions are stored locally, not in Supabase, and are unavailable on this deployment.</td></tr>`;
-          } else {
-            kycTable.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">No KYC submissions pending.</td></tr>`;
-          }
-
-        } catch (e) {
-          console.error('Error refreshing admin data:', e);
-        }
+      window.filterUsersTable = function() {
+        const query = document.getElementById('userSearchInput').value.trim().toLowerCase();
+        if (!query) return renderUsersTable(cachedUsers);
+        const filtered = cachedUsers.filter(u =>
+          String(u.id).includes(query) ||
+          (u.email && u.email.toLowerCase().includes(query)) ||
+          (u.name && u.name.toLowerCase().includes(query))
+        );
+        renderUsersTable(filtered);
       };
 
-      // Admin Actions
-      window.approveWithdrawal = async function(tradeId, amount) {
-        if (!confirm(`Confirm approval and disbursement of $${amount.toFixed(2)} for request ${tradeId}?`)) return;
+      window.toggleUserStatus = async function(userId, currentStatus) {
+        const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+        if (!confirm(`Are you sure you want to mark User #${userId} as ${newStatus}?`)) return;
         try {
-          const res = await adminFetch('/api/admin/withdrawals/approve', {
-            method: 'POST',
+          const res = await adminFetch(`/api/admin/users/${userId}/status`, {
+            method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tradeId })
+            body: JSON.stringify({ status: newStatus })
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            alert(data.message || 'Withdrawal approved successfully!');
+            alert(data.message || 'Status updated successfully.');
             refreshAdminData();
           } else {
-            alert(data.error || 'Failed to approve withdrawal.');
+            alert(data.error || 'Failed to update user status.');
           }
-        } catch (e) {
+        } catch {
           alert('Error connecting to server.');
         }
       };
 
-      window.rejectWithdrawal = async function(tradeId, amount) {
-        const reason = prompt(`Enter rejection reason for request ${tradeId}. (The $${amount.toFixed(2)} will be refunded back to user):`, 'Document validation mismatch');
-        if (!reason) return;
-        try {
-          const res = await adminFetch('/api/admin/withdrawals/reject', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tradeId, reason })
-          });
-          const data = await res.json();
-          if (res.ok && data.success) {
-            alert(data.message || 'Withdrawal rejected and funds refunded.');
-            refreshAdminData();
-          } else {
-            alert(data.error || 'Failed to reject withdrawal.');
-          }
-        } catch (e) {
-          alert('Error connecting to server.');
+      // 3. WITHDRAWALS
+      function renderWithdrawalsTable(withdrawals) {
+        const tbody = document.getElementById('withdrawalsTableBody');
+        if (!withdrawals || withdrawals.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">No withdrawal requests recorded.</td></tr>`;
+          return;
         }
+
+        tbody.innerHTML = withdrawals.map(w => {
+          const isPending = w.status === 'pending';
+          const isApproved = w.status === 'approved' || w.status === 'processing';
+          const isCompleted = w.status === 'completed';
+          const isRejected = w.status === 'rejected' || w.status === 'failed';
+
+          let statusBadge = `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(251,191,36,0.15); color: var(--accent-gold); font-size: 10px; font-weight: 700; border: 1px solid rgba(251,191,36,0.3);">● Pending</span>`;
+          if (isCompleted) {
+            statusBadge = `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(16,185,129,0.15); color: var(--accent-green); font-size: 10px; font-weight: 700; border: 1px solid rgba(16,185,129,0.3);">Completed</span>`;
+          } else if (isApproved) {
+            statusBadge = `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(168,85,247,0.15); color: var(--accent-lavender); font-size: 10px; font-weight: 700; border: 1px solid rgba(168,85,247,0.3);">Approved (Clearing)</span>`;
+          } else if (isRejected) {
+            statusBadge = `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(239,68,68,0.15); color: var(--accent-red); font-size: 10px; font-weight: 700; border: 1px solid rgba(239,68,68,0.3);">Rejected & Refunded</span>`;
+          }
+
+          let actions = `<span style="color: var(--text-gray); font-size: 11px;">Finalized</span>`;
+          if (isPending) {
+            actions = `
+              <div style="display: flex; gap: 4px; justify-content: flex-end;">
+                <button onclick="reviewWithdrawal('${w.id}', 'approve', ${w.amount})" class="btn-approve">Approve</button>
+                <button onclick="reviewWithdrawal('${w.id}', 'reject', ${w.amount})" class="btn-reject">Reject</button>
+              </div>
+            `;
+          } else if (isApproved) {
+            actions = `
+              <div style="display: flex; gap: 4px; justify-content: flex-end;">
+                <button onclick="reviewWithdrawal('${w.id}', 'complete', ${w.amount})" class="btn-approve" style="background: var(--accent-purple); color: #fff;">Mark Paid</button>
+                <button onclick="reviewWithdrawal('${w.id}', 'fail', ${w.amount})" class="btn-reject">Fail/Refund</button>
+              </div>
+            `;
+          }
+
+          const dateStr = w.createdAt ? new Date(w.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : 'N/A';
+
+          return `
+            <tr>
+              <td class="mono" style="color: var(--accent-lavender); font-weight: 700;">${w.id}</td>
+              <td>
+                <div style="font-weight: 700; color: #fff;">${w.userName}</div>
+                <div class="mono" style="font-size: 10px; color: var(--text-gray);">${w.userEmail}</div>
+              </td>
+              <td><span style="font-weight: 600;">${w.method}</span></td>
+              <td class="mono" style="font-weight: 800; font-size: 13px; color: #fff;">$${(Number(w.amount)||0).toFixed(2)}</td>
+              <td class="mono" style="font-size: 11px; color: var(--text-gray);">${w.destination}</td>
+              <td style="font-size: 11px; color: var(--text-gray);">${dateStr}</td>
+              <td>${statusBadge}</td>
+              <td style="text-align: right;">${actions}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      window.filterWithdrawals = function(filter) {
+        document.querySelectorAll('#panelWithdrawals .pill-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.getElementById('wdFilter' + filter.charAt(0).toUpperCase() + filter.slice(1));
+        if (btn) btn.classList.add('active');
+
+        if (filter === 'all') return renderWithdrawalsTable(cachedWithdrawals);
+        const filtered = cachedWithdrawals.filter(w => {
+          if (filter === 'pending') return w.status === 'pending';
+          if (filter === 'approved') return w.status === 'approved' || w.status === 'processing';
+          if (filter === 'completed') return w.status === 'completed';
+          if (filter === 'rejected') return w.status === 'rejected' || w.status === 'failed';
+          return true;
+        });
+        renderWithdrawalsTable(filtered);
       };
 
-      window.manualApproveKyc = async function(userId) {
-        if (!confirm(`Manually approve KYC Level 2 for user ${userId}?`)) return;
-        try {
-          const res = await adminFetch('/api/admin/kyc/approve', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId })
-          });
-          const data = await res.json();
-          if (res.ok && data.success) {
-            alert(data.message || 'KYC approved successfully!');
-            refreshAdminData();
-          } else {
-            alert(data.error || 'Failed to approve KYC.');
-          }
-        } catch (e) {
-          alert('Error connecting to server.');
-        }
-      };
-
-      window.triggerKycFastForward = async function() {
-        if (!confirm('Simulate 12 hours passing? This will test the automated 12-hour compliance clearance engine and automatically verify pending KYC submissions.')) return;
-        try {
-          const res = await adminFetch('/api/admin/kyc/fastforward', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: 'usr_simulation' })
-          });
-          const data = await res.json();
-          if (res.ok && data.success) {
-            alert(data.message || '12-Hour simulation complete! KYC auto-approved.');
-            refreshAdminData();
-          } else {
-            alert(data.error || 'Failed to trigger fast-forward.');
-          }
-        } catch (e) {
-          alert('Error connecting to server.');
-        }
-      };
-
-      // Simulation & User Balance Modification (Supabase Sync)
-      window.updateSimulationBalance = async function() {
-        const input = document.getElementById('simBalanceInput');
-        const val = parseFloat(input?.value);
-        if (isNaN(val) || val < 0) {
-          alert('Please enter a valid positive dollar amount.');
+      window.reviewWithdrawal = async function(id, action, amount) {
+        let note = null;
+        if (action === 'reject' || action === 'fail') {
+          note = prompt(`Enter reason for declining ${id} ($${Number(amount).toFixed(2)} will be refunded back to user):`, 'Document validation mismatch');
+          if (!note) return;
+        } else if (!confirm(`Confirm ${action.toUpperCase()} for withdrawal request ${id} ($${Number(amount).toFixed(2)})?`)) {
           return;
         }
 
         try {
-          const res = await adminFetch('/api/admin/simulation/balance', {
+          const res = await adminFetch(`/api/admin/withdrawals/${action}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: 'simulation@probinary.com', balance: val })
+            body: JSON.stringify({ id, tradeId: id, action, reason: note, adminNote: note })
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            alert(data.message || `Simulation balance successfully updated to $${val.toFixed(2)} in Supabase!`);
-            if (input) input.value = '';
+            alert(data.message || `Withdrawal ${action} confirmed!`);
             refreshAdminData();
           } else {
-            alert(data.error || 'Failed to update simulation balance.');
+            alert(data.error || 'Failed to review withdrawal.');
           }
-        } catch (e) {
-          alert('Error connecting to server.');
+        } catch {
+          alert('Network error connecting to server.');
         }
       };
 
-      window.quickSetSimBalance = async function(amount) {
-        if (!confirm(`Set Simulation Account balance to $${amount.toLocaleString()} in Supabase?`)) return;
+      // 4. KYC VERIFICATION
+      function renderKycTable(kycList) {
+        const tbody = document.getElementById('kycTableBody');
+        if (!kycList || kycList.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">No KYC submissions recorded.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = kycList.map(k => {
+          const isPending = k.status === 'pending';
+          const isApproved = k.status === 'approved' || k.status === 'verified';
+          const statusPill = isApproved
+            ? `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(16,185,129,0.15); color: var(--accent-green); font-size: 10px; font-weight: 700;">Approved</span>`
+            : (k.status === 'rejected'
+              ? `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(239,68,68,0.15); color: var(--accent-red); font-size: 10px; font-weight: 700;">Rejected</span>`
+              : `<span style="padding: 2px 8px; border-radius: 4px; background: rgba(251,191,36,0.15); color: var(--accent-gold); font-size: 10px; font-weight: 700;">Pending Review</span>`);
+
+          const submittedStr = k.createdAt ? new Date(k.createdAt).toLocaleDateString() : 'N/A';
+
+          return `
+            <tr>
+              <td class="mono" style="color: var(--accent-lavender); font-weight: 700;">#${k.id || k.userId}</td>
+              <td>
+                <div style="font-weight: 700; color: #fff;">Trader #${k.userId}</div>
+                <div class="mono" style="font-size: 10px; color: var(--text-gray);">${k.userEmail || ''}</div>
+              </td>
+              <td style="font-weight: 700; color: #fff;">${k.userName || 'Trader'}</td>
+              <td>${k.docType || 'National ID'}</td>
+              <td class="mono" style="color: var(--accent-lavender);">${k.docNumber || 'ID-DOC'}</td>
+              <td style="font-size: 11px; color: var(--text-gray);">${submittedStr}</td>
+              <td>${statusPill}</td>
+              <td style="text-align: right;">
+                <button onclick="inspectKyc(${k.id || k.userId})" class="btn-action" style="font-size: 11px; padding: 3px 8px;">
+                  Inspect & Review →
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      window.filterKyc = function(filter) {
+        document.querySelectorAll('#panelKyc .pill-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.getElementById('kycFilter' + filter.charAt(0).toUpperCase() + filter.slice(1));
+        if (btn) btn.classList.add('active');
+
+        if (filter === 'all') return renderKycTable(cachedKyc);
+        const filtered = cachedKyc.filter(k => {
+          if (filter === 'pending') return k.status === 'pending';
+          if (filter === 'approved') return k.status === 'approved' || k.status === 'verified';
+          if (filter === 'rejected') return k.status === 'rejected';
+          return true;
+        });
+        renderKycTable(filtered);
+      };
+
+      window.inspectKyc = function(id) {
+        const item = cachedKyc.find(k => (k.id === id || k.userId === id));
+        if (!item) return;
+        activeKycSubmission = item;
+
+        document.getElementById('modalKycUserTag').textContent = `Submission #${item.id || item.userId} · User #${item.userId}`;
+        document.getElementById('modalKycName').textContent = item.userName || 'Trader';
+        document.getElementById('modalKycDocType').textContent = item.docType || 'National ID';
+        document.getElementById('modalKycDocNum').textContent = item.docNumber || 'N/A';
+        document.getElementById('modalKycImgFront').src = item.frontUrl || 'https://probinary.app/docs/placeholder-front.png';
+        document.getElementById('modalKycImgBack').src = item.backUrl || item.selfieUrl || 'https://probinary.app/docs/placeholder-back.png';
+        document.getElementById('modalKycRejectionReason').value = item.rejectionReason || '';
+
+        openModal('modalKycInspect');
+      };
+
+      window.submitKycAction = async function(action) {
+        if (!activeKycSubmission) return;
+        const reason = document.getElementById('modalKycRejectionReason').value.trim();
+        if (action === 'reject' && !reason) {
+          return alert('Please enter a rejection reason to inform the trader.');
+        }
+
         try {
-          const res = await adminFetch('/api/admin/simulation/balance', {
+          const res = await adminFetch(`/api/admin/kyc/${action}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: 'simulation@probinary.com', balance: amount })
+            body: JSON.stringify({
+              kycId: activeKycSubmission.id,
+              userId: activeKycSubmission.userId,
+              action,
+              reason,
+              rejectionReason: reason
+            })
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            alert(data.message || `Simulation balance set to $${amount.toLocaleString()}!`);
+            alert(data.message || `KYC submission marked as ${action.toUpperCase()}!`);
+            closeModal('modalKycInspect');
             refreshAdminData();
           } else {
-            alert(data.error || 'Failed to update balance.');
+            alert(data.error || 'Failed to update KYC.');
           }
-        } catch (e) {
-          alert('Error connecting to server.');
+        } catch {
+          alert('Network error connecting to server.');
         }
       };
 
-      window.quickAdjustSimBalance = async function(delta) {
+      // 5. MANUAL ADJUSTMENTS & USER MODAL
+      function populateUserDropdown(users) {
+        const select = document.getElementById('adjUserSelect');
+        if (!select) return;
+        const prev = select.value;
+        select.innerHTML = '<option value="">-- Choose User --</option>' + users.map(u => `
+          <option value="${u.id}">${u.name} (${u.email}) - $${Number(u.balance).toFixed(2)}</option>
+        `).join('');
+        if (prev) select.value = prev;
+      }
+
+      window.onAdjUserSelected = function() {
+        const select = document.getElementById('adjUserSelect');
+        const uid = select.value;
+        const user = cachedUsers.find(u => String(u.id) === String(uid));
+        if (user) {
+          document.getElementById('adjCurrentBalDisplay').textContent = '$' + Number(user.balance).toLocaleString(undefined, {minimumFractionDigits: 2});
+        } else {
+          document.getElementById('adjCurrentBalDisplay').textContent = '$0.00';
+        }
+      };
+
+      window.submitManualAdjustment = async function() {
+        const uid = document.getElementById('adjUserSelect').value;
+        const amt = parseFloat(document.getElementById('adjAmountInput').value);
+        const reason = document.getElementById('adjReasonInput').value.trim();
+        const classify = document.getElementById('adjClassifyDeposit').checked;
+
+        if (!uid) return alert('Please select a target user.');
+        if (isNaN(amt) || amt <= 0) return alert('Please enter a valid amount greater than zero.');
+        if (!reason) return alert('Please provide an audit note/reason for this adjustment.');
+
         try {
-          const res = await adminFetch('/api/admin/simulation/balance', {
+          const res = await adminFetch('/api/admin/balance/adjust', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: 'simulation@probinary.com', delta: delta })
+            body: JSON.stringify({ userId: uid, amount: amt, reason, classifyAsDeposit: classify })
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            alert(data.message || `Simulation balance adjusted by +$${delta}!`);
+            alert(data.message || 'Balance adjusted successfully!');
+            document.getElementById('adjAmountInput').value = '';
+            document.getElementById('adjReasonInput').value = '';
             refreshAdminData();
           } else {
             alert(data.error || 'Failed to adjust balance.');
           }
-        } catch (e) {
-          alert('Error connecting to server.');
+        } catch {
+          alert('Network error submitting adjustment.');
         }
       };
 
-      window.openBalanceModal = async function(userId, email, currentBalance) {
-        const input = prompt(`Enter new balance in USD for user ${email} (ID: ${userId}):\nCurrent Balance: $${(parseFloat(currentBalance)||0).toFixed(2)}`, currentBalance);
-        if (input === null || input.trim() === '') return;
-        const newBal = parseFloat(input);
-        if (isNaN(newBal) || newBal < 0) {
-          alert('Invalid amount entered.');
-          return;
-        }
+      window.openBalanceModal = function(userId, email, balance) {
+        targetAdjUserId = userId;
+        document.getElementById('modalAdjUserLabel').textContent = userId ? `User #${userId}` : 'Custom Trader';
+        document.getElementById('modalAdjEmailLabel').textContent = email || 'Search or select';
+        document.getElementById('modalAdjCurrentBal').textContent = '$' + (Number(balance)||0).toFixed(2);
+        document.getElementById('modalAdjAmount').value = '';
+        document.getElementById('modalAdjReason').value = '';
+        openModal('modalAdjustBalance');
+      };
+
+      window.submitModalAdjustment = async function() {
+        if (!targetAdjUserId) return alert('No target user specified.');
+        const amt = parseFloat(document.getElementById('modalAdjAmount').value);
+        const reason = document.getElementById('modalAdjReason').value.trim();
+        const classify = document.getElementById('modalAdjDeposit').checked;
+
+        if (isNaN(amt) || amt <= 0) return alert('Please enter a valid credit amount.');
 
         try {
-          const res = await adminFetch('/api/admin/users/update-balance', {
+          const res = await adminFetch('/api/admin/balance/adjust', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, email, balance: newBal })
+            body: JSON.stringify({
+              userId: targetAdjUserId,
+              amount: amt,
+              reason: reason || 'Admin manual balance adjustment',
+              classifyAsDeposit: classify
+            })
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            alert(data.message || `Balance for ${email} updated to $${newBal.toFixed(2)} in Supabase!`);
+            alert(data.message || 'Balance updated successfully!');
+            closeModal('modalAdjustBalance');
             refreshAdminData();
           } else {
-            alert(data.error || 'Failed to update balance.');
+            alert(data.error || 'Failed to adjust balance.');
           }
-        } catch (e) {
-          alert('Error connecting to server.');
+        } catch {
+          alert('Network error submitting adjustment.');
         }
       };
+
+      function renderAdjustmentsTable(adjustments) {
+        const tbody = document.getElementById('adjustmentsTableBody');
+        if (!tbody) return;
+        if (!adjustments || adjustments.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-gray);">No adjustments recorded yet.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = adjustments.slice(0, 50).map(a => {
+          const dateStr = a.created_at ? new Date(a.created_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : 'N/A';
+          return `
+            <tr>
+              <td class="mono" style="color: var(--accent-lavender); font-weight: 700;">${a.payment_reference || ('ADJ-' + a.id)}</td>
+              <td>${a.userEmail || ('User #' + a.user_id)}</td>
+              <td class="mono" style="color: var(--accent-green); font-weight: 700;">+$${Number(a.amount).toFixed(2)}</td>
+              <td>${a.description || 'Admin Balance Adjustment'}</td>
+              <td>${a.metadata_json?.admin_id ? ('Admin #' + a.metadata_json.admin_id) : 'Admin'}</td>
+              <td style="font-size: 11px; color: var(--text-gray);">${dateStr}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // 6. DEPOSITS
+      function renderDepositsTable(deposits) {
+        const tbody = document.getElementById('depositsTableBody');
+        if (!deposits || deposits.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">No deposits recorded.</td></tr>`;
+          return;
+        }
+
+        let total = 0;
+        tbody.innerHTML = deposits.map(d => {
+          const amt = Number(d.amount) || 0;
+          total += amt;
+          const dateStr = d.createdAt ? new Date(d.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : 'N/A';
+          return `
+            <tr>
+              <td class="mono" style="color: var(--accent-lavender); font-weight: 700;">${d.id}</td>
+              <td>
+                <div style="font-weight: 700; color: #fff;">${d.userName}</div>
+                <div class="mono" style="font-size: 10px; color: var(--text-gray);">${d.userEmail}</div>
+              </td>
+              <td><span style="font-weight: 600; color: #fff;">${d.asset || d.method}</span></td>
+              <td class="mono" style="font-weight: 800; color: var(--accent-green); font-size: 13px;">+$${amt.toFixed(2)}</td>
+              <td class="mono" style="font-size: 11px; color: var(--accent-purple);">${d.txHash || 'CONFIRMED'}</td>
+              <td class="mono" style="font-size: 11px; color: var(--text-gray);">${d.destination}</td>
+              <td style="font-size: 11px; color: var(--text-gray);">${dateStr}</td>
+              <td><span style="padding: 2px 7px; border-radius: 4px; background: rgba(16,185,129,0.15); color: var(--accent-green); font-size: 10px; font-weight: 700;">Completed</span></td>
+            </tr>
+          `;
+        }).join('');
+
+        const banner = document.getElementById('depositsTotalBanner');
+        if (banner) banner.textContent = `Total: $${total.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+      }
+
+      // 7. TRANSACTIONS
+      function renderTransactionsTable(transactions) {
+        const tbody = document.getElementById('txTableBody');
+        if (!tbody) return;
+        if (!transactions || transactions.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 24px; color: var(--text-gray);">No transactions found.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = transactions.map(t => {
+          const isDeposit = t.transaction_type === 'deposit' || t.transaction_type === 'mpesa_deposit' || t.transaction_type === 'adjustment';
+          const isWd = t.transaction_type === 'withdrawal';
+          const amt = Number(t.amount) || 0;
+          const dateStr = t.created_at ? new Date(t.created_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : 'N/A';
+
+          return `
+            <tr>
+              <td class="mono" style="color: var(--text-gray);">#${t.id}</td>
+              <td class="mono" style="color: var(--accent-lavender); font-weight: 700;">${t.payment_reference || 'N/A'}</td>
+              <td>${t.userEmail || ('User #' + t.user_id)}</td>
+              <td><span style="background: var(--bg-card-alt); border: 1px solid var(--border-card-alt); border-radius: 4px; padding: 2px 6px; font-size: 10px; font-weight: 700; color: var(--accent-lavender);">${t.transaction_type.toUpperCase()}</span></td>
+              <td class="mono" style="font-weight: 700; color: ${isDeposit ? 'var(--accent-green)' : (isWd ? 'var(--accent-gold)' : '#fff')};">
+                ${isDeposit ? '+' : (isWd ? '-' : '')}$${amt.toFixed(2)}
+              </td>
+              <td style="font-size: 11px; color: var(--text-gray);">${t.description || '-'}</td>
+              <td style="font-size: 11px; color: var(--text-gray);">${dateStr}</td>
+              <td><span style="padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: rgba(224,204,255,0.1); color: #fff;">${t.status.toUpperCase()}</span></td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      window.filterTxTable = function() {
+        const type = document.getElementById('txFilterType').value;
+        const status = document.getElementById('txFilterStatus').value;
+
+        let filtered = cachedTransactions;
+        if (type !== 'all') filtered = filtered.filter(t => t.transaction_type === type);
+        if (status !== 'all') {
+          if (status === 'completed') filtered = filtered.filter(t => t.status === 'completed');
+          else if (status === 'pending') filtered = filtered.filter(t => t.status === 'pending');
+          else if (status === 'approved') filtered = filtered.filter(t => t.status === 'approved');
+          else if (status === 'failed') filtered = filtered.filter(t => t.status === 'failed' || t.status === 'rejected');
+        }
+        renderTransactionsTable(filtered);
+      };
+
+      // 8. TRADING RECORDS
+      function renderTradesTable(trades) {
+        const tbody = document.getElementById('tradesTableBody');
+        if (!tbody) return;
+        if (!trades || trades.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 24px; color: var(--text-gray);">No trading records logged.</td></tr>`;
+          return;
+        }
+
+        const banner = document.getElementById('tradesTotalBanner');
+        if (banner) banner.textContent = `${trades.length} Trades Recorded`;
+
+        tbody.innerHTML = trades.map(t => {
+          const isWin = t.status === 'won' || t.result === 'won';
+          const isLoss = t.status === 'lost' || t.result === 'lost';
+          const p = Number(t.profit) || 0;
+          const dateStr = t.settled_at || t.created_at ? new Date(t.settled_at || t.created_at).toLocaleString() : 'N/A';
+
+          return `
+            <tr>
+              <td class="mono" style="color: var(--accent-lavender); font-weight: 700;">${t.trade_id}</td>
+              <td>${t.userEmail || ('Trader #' + t.user_id)}</td>
+              <td><b style="color: #fff;">${t.symbol}</b></td>
+              <td>${t.contract_type || 'Rise/Fall'}</td>
+              <td><span style="color: ${t.direction === 'rise' ? 'var(--accent-green)' : 'var(--accent-red)'}; font-weight: 700; text-transform: uppercase;">${t.direction}</span></td>
+              <td class="mono">$${(Number(t.stake)||0).toFixed(2)}</td>
+              <td class="mono">$${(Number(t.payout)||0).toFixed(2)}</td>
+              <td class="mono" style="font-weight: 800; color: ${isWin ? 'var(--accent-green)' : (isLoss ? 'var(--accent-red)' : '#fff')};">
+                ${p >= 0 ? '+' : ''}$${p.toFixed(2)}
+              </td>
+              <td><span style="font-size: 10px; font-weight: 800; color: ${isWin ? 'var(--accent-green)' : (isLoss ? 'var(--accent-red)' : 'var(--accent-gold)')};">${(t.status || 'OPEN').toUpperCase()}</span></td>
+              <td style="font-size: 11px; color: var(--text-gray);">${dateStr}</td>
+            </tr>
+          `;
+        }).join('');
+      }
 
       window.toggleMobileDrawer = function() {
         const d = document.getElementById('mobileDrawer');
@@ -1144,8 +1549,11 @@
         localStorage.removeItem('probinary_user');
         window.location.href = '/auth/login.html';
       };
+
+      // Initial Data Fetch
+      refreshAdminData();
+      setInterval(refreshAdminData, 10000);
     })();
   </script>
 </body>
 </html>
-
