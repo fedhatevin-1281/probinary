@@ -937,9 +937,17 @@
       const inputStakeVal = document.getElementById('inputStakeVal');
 
       // 3. BALANCE & MODE SWITCHER
-      function getBal() { return isDemo ? demoBalance : realBalance; }
+      function getBal() {
+        if (!isDemo) {
+          const syncedBalance = Number.isFinite(window.databaseRealBalance)
+            ? window.databaseRealBalance
+            : window.databaseWalletBalance;
+          if (Number.isFinite(syncedBalance)) realBalance = syncedBalance;
+        }
+        return isDemo ? demoBalance : realBalance;
+      }
       function updateBalances() {
-        if (!isDemo && Number.isFinite(window.databaseWalletBalance)) realBalance = window.databaseWalletBalance;
+        if (!isDemo) realBalance = getBal();
         const bal = getBal();
         localStorage.setItem('probinary_balance', bal.toFixed(2));
         const str = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
