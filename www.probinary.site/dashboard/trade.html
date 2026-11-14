@@ -394,7 +394,7 @@
       <!-- Balance Pill -->
       <div class="pill-btn" id="headerBalancePill" style="padding: 4px 10px; cursor: default;">
         <span style="color: var(--accent-purple);">●</span>
-        <span class="mono" id="headerBalanceText" style="font-weight: 700; color: #fff;">$10,000.00</span>
+        <span class="mono" id="headerBalanceText" style="font-weight: 700; color: #fff;">$10,000.00.00</span>
         <span style="font-size: 9px; color: var(--text-gray);">▼</span>
       </div>
 
@@ -472,7 +472,7 @@
               <span id="tabDemo" onclick="setMode(true)" class="pill-btn" style="padding: 2px 6px; font-size: 10px;">Demo</span>
             </div>
           </div>
-          <div id="sidebarBalanceAmount" class="mono" style="font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px;">$10,000.00</div>
+          <div id="sidebarBalanceAmount" class="mono" style="font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px;">$10,000.00.00</div>
           <a href="/dashboard/deposit.html" class="purple-btn" style="width: 100%; padding: 6px 0; font-size: 11px; text-decoration: none;">
             + Deposit
           </a>
@@ -825,7 +825,7 @@
         <span onclick="closeModal('portfolioModal')" style="cursor:pointer; color:var(--text-gray); display:inline-flex; align-items:center; justify-content:center; transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-gray)'" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
       </div>
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:14px;">
-        <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">BALANCE</div><div id="pBal" class="mono" style="font-size:16px; font-weight:700; color:#fff;">$10,000.00</div></div>
+        <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">BALANCE</div><div id="pBal" class="mono" style="font-size:16px; font-weight:700; color:#fff;">$10,000.00.00</div></div>
         <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">NET P/L</div><div id="pNet" class="mono" style="font-size:16px; font-weight:700; color:var(--accent-lavender);">+$0.00</div></div>
         <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">TOTAL TRADES</div><div id="pTrades" class="mono" style="font-size:16px; font-weight:700; color:#fff;">0</div></div>
         <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">WIN RATE</div><div id="pWinRate" class="mono" style="font-size:16px; font-weight:700; color:var(--accent-lavender);">0%</div></div>
@@ -1282,16 +1282,56 @@
           alert('Session trade limit reached.');
           return;
         }
-        if (bal < currentStake) {
-          alert('Insufficient balance. Please deposit funds or switch to Demo.');
+
+        if (!isDemo && bal < currentStake) {
+          alert(`Insufficient real wallet balance ($${realBalance.toFixed(2)}) for trade stake ($${currentStake.toFixed(2)}). Please deposit funds to trade on the real market, or switch to Demo mode.`);
+          return;
+        }
+
+        if (isDemo && bal < currentStake) {
+          alert(`Insufficient demo virtual balance ($${demoBalance.toFixed(2)}) for trade stake ($${currentStake.toFixed(2)}). Please reset your demo account or reduce your stake.`);
           return;
         }
 
         const tradeId = 'PB-' + Math.floor(100000 + Math.random() * 900000);
         const entryP = ASSETS[currentAsset].price;
+        const token = localStorage.getItem('auth_token');
 
         if (isDemo) {
-          demoBalance -= currentStake;
+          document.getElementById('tradeStatusPrompt').innerHTML = `<span style="color:var(--accent-purple); font-weight:700;">TRANSMITTING DEMO ORDER...</span>`;
+          try {
+            if (token) {
+              const res = await fetch('/api/trading/order', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  id: tradeId,
+                  stake: currentStake,
+                  asset: currentAsset,
+                  tradeType: currentTradeType,
+                  direction: dir.toLowerCase(),
+                  entryPrice: entryP,
+                  duration: 5,
+                  isDemo: true
+                })
+              });
+              const data = await res.json();
+              if (data && Number.isFinite(Number(data.balance))) {
+                demoBalance = Number(data.balance);
+                window.databaseDemoBalance = demoBalance;
+              } else {
+                demoBalance -= currentStake;
+              }
+            } else {
+              demoBalance -= currentStake;
+            }
+          } catch {
+            demoBalance -= currentStake;
+          }
+
           updateBalances();
           sessionTradeCount++;
           activeTrades.push({
@@ -1307,7 +1347,6 @@
           });
           document.getElementById('tradeStatusPrompt').innerHTML = `<span style="color:var(--accent-purple); font-weight:700;">DEMO ORDER OPEN: ${dir.toUpperCase()} (5s)</span>`;
         } else {
-          const token = localStorage.getItem('auth_token');
           if (!token) {
             alert('Please sign in to place real trades.');
             return;
@@ -1341,6 +1380,7 @@
 
             realBalance = Number(data.balance);
             window.databaseWalletBalance = realBalance;
+            window.databaseRealBalance = realBalance;
             updateBalances();
             sessionTradeCount++;
 
@@ -1404,37 +1444,43 @@
           if (t.isDemo) {
             if (isWin) demoBalance += payout;
             updateBalances();
-          } else {
-            const token = localStorage.getItem('auth_token');
-            if (token) {
-              try {
-                const res = await fetch('/api/trading/settle', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                  },
-                  body: JSON.stringify({
-                    tradeId: t.id,
-                    exitPrice: exit,
-                    outcome: isWin ? 'win' : 'loss',
-                    payout,
-                    stake: t.stake,
-                    isDemo: false
-                  })
-                });
-                const data = await res.json();
-                if (data.success && Number.isFinite(Number(data.balance))) {
-                  realBalance = Number(data.balance);
-                  window.databaseWalletBalance = realBalance;
+          }
+
+          const token = localStorage.getItem('auth_token');
+          if (token) {
+            try {
+              fetch('/api/trading/settle', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  tradeId: t.id,
+                  exitPrice: exit,
+                  outcome: isWin ? 'win' : 'loss',
+                  payout,
+                  stake: t.stake,
+                  isDemo: Boolean(t.isDemo)
+                })
+              }).then(r => r.json()).then(data => {
+                if (data && data.success && Number.isFinite(Number(data.balance))) {
+                  if (t.isDemo) {
+                    demoBalance = Number(data.balance);
+                    window.databaseDemoBalance = demoBalance;
+                  } else {
+                    realBalance = Number(data.balance);
+                    window.databaseWalletBalance = realBalance;
+                    window.databaseRealBalance = realBalance;
+                  }
                   updateBalances();
                 }
-              } catch (e) {
-                console.error('Failed to settle real trade on server:', e);
-              }
+              }).catch(() => {});
+            } catch (e) {
+              console.error('Failed to settle trade on server:', e);
             }
-            window.refreshAccountBalance?.();
           }
+          window.refreshAccountBalance?.();
 
           if (martingaleOn) {
             if (isWin) currentStake = martingaleBaseStake;
@@ -1576,26 +1622,50 @@
         document.getElementById('depUsdRate').textContent = `≈ $${(kes / USD_KES_RATE).toFixed(2)} USD (1 USD = 129.5 KES)`;
       });
       document.getElementById('btnSubmitDep').addEventListener('click', () => {
-        const kes = parseFloat(document.getElementById('depKes').value) || 0;
-        const usd = parseFloat((kes / USD_KES_RATE).toFixed(2));
-        if (isDemo) demoBalance += usd; else realBalance += usd;
-        updateBalances();
         closeModal('depositModal');
-        alert(`M-Pesa STK push confirmed! +$${usd.toFixed(2)} credited.`);
+        window.location.href = '/dashboard/deposit.html';
       });
 
       document.getElementById('withUsd').addEventListener('input', (e) => {
         const usd = parseFloat(e.target.value) || 0;
         document.getElementById('withKesRate').textContent = `≈ KES ${Math.round(usd * USD_KES_RATE).toLocaleString('en-US')}`;
       });
-      document.getElementById('btnSubmitWith').addEventListener('click', () => {
+      document.getElementById('btnSubmitWith').addEventListener('click', async () => {
         const usd = parseFloat(document.getElementById('withUsd').value) || 0;
-        if (getBal() < usd) { alert('Insufficient funds'); return; }
-        if (isDemo) { alert('Cannot virtual demo funds'); return; }
-        realBalance -= usd;
-        updateBalances();
-        closeModal('withdrawModal');
-        alert(`Withdrawal of $${usd.toFixed(2)} sent to M-Pesa.`);
+        if (usd <= 0) { alert('Enter a valid amount'); return; }
+        if (isDemo) {
+          alert('Virtual demo funds cannot be withdrawn. Switch to Real Account to withdraw funds.');
+          return;
+        }
+        if (realBalance < usd) {
+          alert(`Insufficient funds in Real Account (Available: $${realBalance.toFixed(2)}).`);
+          return;
+        }
+        const token = localStorage.getItem('auth_token');
+        if (!token) { window.location.href = '/dashboard/withdraw.html'; return; }
+
+        try {
+          const res = await fetch('/api/wallet/withdraw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+              amount: usd,
+              currency: 'USD',
+              paymentMethod: 'mpesa',
+              destinationDetails: { note: 'Quick withdrawal from trading desk' }
+            })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.success) {
+            closeModal('withdrawModal');
+            alert(`Withdrawal request of $${usd.toFixed(2)} submitted for admin review! Reference: ${data.reference || ''}`);
+            await window.refreshAccountBalance?.();
+          } else {
+            alert(data.error || 'Failed to submit withdrawal request.');
+          }
+        } catch {
+          window.location.href = '/dashboard/withdraw.html';
+        }
       });
 
       window.signOut = function() {

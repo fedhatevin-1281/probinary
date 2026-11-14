@@ -229,7 +229,10 @@
           if (res.ok && data.token) {
             localStorage.setItem('auth_token', data.token);
             localStorage.setItem('probinary_user', JSON.stringify(data.user || { fullName, email }));
-            localStorage.setItem('probinary_balance', data.user?.balance || 1000.00);
+            localStorage.setItem('probinary_real_balance', '0.00');
+            localStorage.setItem('probinary_demo_balance', '10000.00');
+            localStorage.setItem('probinary_balance', '0.00');
+            localStorage.setItem('probinary_account_mode', 'real');
             showToast('Desk opened! Welcome to ProBinary!', 'success');
             setTimeout(function() {
               window.location.href = '/dashboard/trade.html';

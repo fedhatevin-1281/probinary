@@ -379,7 +379,7 @@
       <!-- Balance Pill -->
       <div class="pill-btn" id="headerBalancePill" style="padding: 4px 10px; cursor: default;">
         <span style="color: var(--accent-purple);">●</span>
-        <span class="mono" id="headerBalanceText" style="font-weight: 700; color: #fff;">$10,000.00</span>
+        <span class="mono" id="headerBalanceText" style="font-weight: 700; color: #fff;">$10,000.00.00</span>
         <span style="font-size: 9px; color: var(--text-gray);">▼</span>
       </div>
 
@@ -454,7 +454,7 @@
               <span id="tabDemo" onclick="setMode(true)" class="pill-btn" style="padding: 2px 6px; font-size: 10px;">Demo</span>
             </div>
           </div>
-          <div id="sidebarBalanceAmount" class="mono" style="font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px;">$10,000.00</div>
+          <div id="sidebarBalanceAmount" class="mono" style="font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px;">$10,000.00.00</div>
           <button onclick="openMpesaDeposit()" class="purple-btn" style="width: 100%; padding: 6px 0; font-size: 11px;">
             + Deposit
           </button>
@@ -515,7 +515,7 @@
         <!-- AVAILABLE BALANCE CARD -->
         <div class="card-panel" style="padding: 20px 24px; background: #130c27; border-color: rgba(224, 204, 255, 0.12);">
           <div style="font-size: 11px; color: var(--text-gray); font-weight: 600; margin-bottom: 4px;">Available Balance</div>
-          <div id="mainAvailableBal" class="mono" style="font-size: 32px; font-weight: 800; color: #fff;">$10,000.00</div>
+          <div id="mainAvailableBal" class="mono" style="font-size: 32px; font-weight: 800; color: #fff;">$10,000.00.00</div>
         </div>
 
         <!-- PAYMENT METHODS LIST CONTAINER -->
@@ -779,7 +779,7 @@
         <span onclick="closeModal('portfolioModal')" style="cursor:pointer; color:var(--text-gray); display:inline-flex; align-items:center; justify-content:center; transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-gray)'" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
       </div>
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:14px;">
-        <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">BALANCE</div><div id="pBal" class="mono" style="font-size:16px; font-weight:700; color:#fff;">$10,000.00</div></div>
+        <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">BALANCE</div><div id="pBal" class="mono" style="font-size:16px; font-weight:700; color:#fff;">$10,000.00.00</div></div>
         <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">NET P/L</div><div id="pNet" class="mono" style="font-size:16px; font-weight:700; color:var(--accent-lavender);">+$0.00</div></div>
         <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">TOTAL TRADES</div><div id="pTrades" class="mono" style="font-size:16px; font-weight:700; color:#fff;">0</div></div>
         <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">WIN RATE</div><div id="pWinRate" class="mono" style="font-size:16px; font-weight:700; color:var(--accent-lavender);">0%</div></div>
@@ -858,8 +858,6 @@
       };
 
       window.setMode = function(demo) {
-        const demoAccount = user.simulation || user.is80WinRate || (user.email && user.email.toLowerCase().includes('simulation'));
-        if (demo && !demoAccount) return;
         isDemo = Boolean(demo);
         localStorage.setItem('probinary_account_mode', isDemo ? 'demo' : 'real');
         updateBalances();

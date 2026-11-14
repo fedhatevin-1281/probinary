@@ -57,7 +57,7 @@ create table if not exists public.user_roles (
 
 create index if not exists user_roles_user_id_idx on public.user_roles (user_id);
 
--- 5. AUTHORITATIVE WALLETS TABLE
+-- 5. AUTHORITATIVE WALLETS TABLE (REAL ACCOUNT)
 create table if not exists public.wallets (
   user_id bigint primary key references public.users(id) on delete cascade,
   current_balance numeric(12, 2) not null default 0.00 check (current_balance >= 0),
@@ -69,6 +69,18 @@ create table if not exists public.wallets (
 );
 
 create index if not exists wallets_user_id_idx on public.wallets (user_id);
+
+-- 5B. DEDICATED DEMO WALLETS TABLE (VIRTUAL DEMO ACCOUNT ONLY)
+create table if not exists public.demo_wallets (
+  id bigint generated always as identity primary key,
+  user_id bigint unique not null references public.users(id) on delete cascade,
+  current_balance numeric(15, 2) not null default 10000.00 check (current_balance >= 0),
+  currency text not null default 'USD',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists demo_wallets_user_id_idx on public.demo_wallets (user_id);
 
 -- 6. CENTRAL FINANCIAL LEDGER: TRANSACTION HISTORY
 create table if not exists public.transaction_history (
@@ -232,6 +244,60 @@ create table if not exists public.manual_wallet_deposits (
 
 create index if not exists manual_wallet_deposits_user_created_idx
   on public.manual_wallet_deposits (user_id, created_at desc);
+
+-- ============================================================================
+-- USER REGISTRATION WALLET INITIALIZATION TRIGGER
+-- ============================================================================
+create or replace function public.handle_new_user_wallets()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  -- 1. Real account wallet: strictly 0.00
+  insert into public.wallets (
+    user_id,
+    current_balance,
+    currency,
+    total_deposits,
+    total_withdrawals,
+    last_updated,
+    updated_at
+  ) values (
+    NEW.id,
+    0.00,
+    'USD',
+    0.00,
+    0.00,
+    now(),
+    now()
+  ) on conflict (user_id) do nothing;
+
+  -- 2. Demo account wallet: strictly 10,000.00 virtual funds
+  insert into public.demo_wallets (
+    user_id,
+    current_balance,
+    currency,
+    created_at,
+    updated_at
+  ) values (
+    NEW.id,
+    10000.00,
+    'USD',
+    now(),
+    now()
+  ) on conflict (user_id) do nothing;
+
+  return NEW;
+end;
+$$;
+
+drop trigger if exists on_user_created_wallets on public.users;
+create trigger on_user_created_wallets
+  after insert on public.users
+  for each row
+  execute function public.handle_new_user_wallets();
 
 -- ============================================================================
 -- ATOMIC STORED PROCEDURES & RPC FUNCTIONS (SECURITY DEFINER)
@@ -583,7 +649,7 @@ end;
 $$;
 
 
--- Function 4: Atomic Binary Trade Order Placement
+-- Function 4: Atomic Binary Trade Order Placement (Strict Demo vs Real Separation)
 create or replace function public.execute_trade_atomic(
   p_user_id text,
   p_trade_id text,
@@ -609,26 +675,54 @@ as $$
 declare
   v_user_bigint bigint;
   v_wallet public.wallets%rowtype;
+  v_demo_wallet public.demo_wallets%rowtype;
   v_new_bal numeric := 0;
 begin
   if p_stake <= 0 then
     raise exception 'Trade stake must be greater than zero';
   end if;
 
-  if not p_is_demo then
-    v_user_bigint := p_user_id::bigint;
+  v_user_bigint := p_user_id::bigint;
 
+  if p_is_demo then
+    -- DEMO ACCOUNT EXECUTION: Deduct stake from public.demo_wallets strictly
+    select * into v_demo_wallet
+    from public.demo_wallets
+    where user_id = v_user_bigint
+    for update;
+
+    if not found then
+      -- Auto-provision demo wallet if missing
+      insert into public.demo_wallets (user_id, current_balance, currency, created_at, updated_at)
+      values (v_user_bigint, 10000.00, 'USD', now(), now())
+      returning * into v_demo_wallet;
+    end if;
+
+    if v_demo_wallet.current_balance < p_stake then
+      raise exception 'Insufficient demo balance ($%) for trade stake ($%). Reset your demo balance to continue.', v_demo_wallet.current_balance, p_stake;
+    end if;
+
+    v_new_bal := round(v_demo_wallet.current_balance - p_stake, 2);
+
+    update public.demo_wallets
+    set current_balance = v_new_bal,
+        updated_at = now()
+    where user_id = v_user_bigint;
+
+    -- CRITICAL: Never write demo trade stakes to public.wallets or public.transaction_history!
+  else
+    -- REAL ACCOUNT EXECUTION: Deduct stake from public.wallets strictly
     select * into v_wallet
     from public.wallets
     where user_id = v_user_bigint
     for update;
 
     if not found then
-      raise exception 'Wallet not found for user %', p_user_id;
+      raise exception 'Real wallet not found for user %', p_user_id;
     end if;
 
     if v_wallet.current_balance < p_stake then
-      raise exception 'Insufficient balance ($%) for trade stake ($%)', v_wallet.current_balance, p_stake;
+      raise exception 'Insufficient real balance ($%) for trade stake ($%). Please deposit funds or switch to Demo.', v_wallet.current_balance, p_stake;
     end if;
 
     v_new_bal := round(v_wallet.current_balance - p_stake, 2);
@@ -661,7 +755,8 @@ begin
         'symbol', p_symbol,
         'direction', p_direction,
         'stake', p_stake,
-        'entry_price', p_entry_price
+        'entry_price', p_entry_price,
+        'is_demo', false
       )
     );
   end if;
@@ -702,12 +797,12 @@ begin
     null
   );
 
-  return query select p_trade_id, 'open', v_new_bal;
+  return query select p_trade_id, 'open'::text, v_new_bal;
 end;
 $$;
 
 
--- Function 5: Atomic Binary Trade Settlement (Win/Loss/Break-even)
+-- Function 5: Atomic Binary Trade Settlement (Strict Demo vs Real Separation)
 create or replace function public.settle_trade_atomic(
   p_user_id text,
   p_trade_id text,
@@ -733,7 +828,9 @@ declare
   v_trade public.binary_trade_records%rowtype;
   v_user_bigint bigint;
   v_wallet public.wallets%rowtype;
+  v_demo_wallet public.demo_wallets%rowtype;
   v_new_bal numeric := 0;
+  v_actual_is_demo boolean;
 begin
   select * into v_trade
   from public.binary_trade_records
@@ -744,17 +841,54 @@ begin
     raise exception 'Trade % not found for user %', p_trade_id, p_user_id;
   end if;
 
-  if v_trade.status <> 'open' then
+  if v_trade.status not in ('open', 'pending') then
     raise exception 'Trade % is already settled with status %', p_trade_id, v_trade.status;
   end if;
 
-  if not p_is_demo then
-    v_user_bigint := p_user_id::bigint;
+  -- CRITICAL SECURITY RULE: Trust the account type recorded in binary_trade_records at order time!
+  v_actual_is_demo := coalesce(v_trade.is_demo, false);
+  v_user_bigint := p_user_id::bigint;
 
+  if v_actual_is_demo then
+    -- DEMO SETTLEMENT: strictly affects demo_wallets only
+    select * into v_demo_wallet
+    from public.demo_wallets
+    where user_id = v_user_bigint
+    for update;
+
+    if not found then
+      insert into public.demo_wallets (user_id, current_balance, currency, created_at, updated_at)
+      values (v_user_bigint, 10000.00, 'USD', now(), now())
+      returning * into v_demo_wallet;
+    end if;
+
+    if p_outcome = 'win' and p_payout > 0 then
+      v_new_bal := round(v_demo_wallet.current_balance + p_payout, 2);
+      update public.demo_wallets
+      set current_balance = v_new_bal,
+          updated_at = now()
+      where user_id = v_user_bigint;
+    elsif p_outcome = 'break_even' and p_payout > 0 then
+      v_new_bal := round(v_demo_wallet.current_balance + p_payout, 2);
+      update public.demo_wallets
+      set current_balance = v_new_bal,
+          updated_at = now()
+      where user_id = v_user_bigint;
+    else
+      v_new_bal := v_demo_wallet.current_balance;
+    end if;
+
+    -- NOTE: Never touch public.wallets or public.transaction_history for demo settlements!
+  else
+    -- REAL SETTLEMENT: strictly affects public.wallets and transaction_history only
     select * into v_wallet
     from public.wallets
     where user_id = v_user_bigint
     for update;
+
+    if not found then
+      raise exception 'Real wallet not found for user %', p_user_id;
+    end if;
 
     if p_outcome = 'win' then
       v_new_bal := round(v_wallet.current_balance + p_payout, 2);
@@ -764,7 +898,6 @@ begin
           updated_at = now()
       where user_id = v_user_bigint;
     elsif p_outcome = 'break_even' then
-      -- Stake refund on break-even
       v_new_bal := round(v_wallet.current_balance + p_payout, 2);
       update public.wallets
       set current_balance = v_new_bal,
@@ -772,7 +905,6 @@ begin
           updated_at = now()
       where user_id = v_user_bigint;
     else
-      -- Loss: stake was already deducted at order placement
       v_new_bal := v_wallet.current_balance;
     end if;
 
@@ -790,7 +922,8 @@ begin
           'exit_price', p_exit_price,
           'profit', p_profit,
           'payout', p_payout,
-          'settled_at', now()
+          'settled_at', now(),
+          'is_demo', false
         ),
         updated_at = now()
     where payment_reference = p_trade_id;
@@ -801,7 +934,7 @@ begin
       result = case when p_outcome = 'win' then 'won' when p_outcome = 'loss' then 'lost' else 'break_even' end,
       exit_price = p_exit_price,
       exit_digit = p_exit_digit,
-      payout = p_payout,
+      payout = case when p_outcome = 'win' then p_payout else 0.00 end,
       profit = p_profit,
       settled_at = now()
   where user_id = p_user_id and trade_id = p_trade_id;
@@ -1031,6 +1164,7 @@ alter table public.users enable row level security;
 alter table public.roles enable row level security;
 alter table public.user_roles enable row level security;
 alter table public.wallets enable row level security;
+alter table public.demo_wallets enable row level security;
 alter table public.transaction_history enable row level security;
 alter table public.withdrawal_requests enable row level security;
 alter table public.kyc_submissions enable row level security;
@@ -1052,6 +1186,7 @@ create policy "service_role_all_users" on public.users for all to service_role u
 create policy "service_role_all_roles" on public.roles for all to service_role using (true) with check (true);
 create policy "service_role_all_user_roles" on public.user_roles for all to service_role using (true) with check (true);
 create policy "service_role_all_wallets" on public.wallets for all to service_role using (true) with check (true);
+create policy "service_role_all_demo_wallets" on public.demo_wallets for all to service_role using (true) with check (true);
 create policy "service_role_all_tx" on public.transaction_history for all to service_role using (true) with check (true);
 create policy "service_role_all_wd" on public.withdrawal_requests for all to service_role using (true) with check (true);
 create policy "service_role_all_kyc" on public.kyc_submissions for all to service_role using (true) with check (true);

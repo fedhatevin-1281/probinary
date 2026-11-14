@@ -257,7 +257,11 @@
           if (res.ok && data.token) {
             localStorage.setItem('auth_token', data.token);
             localStorage.setItem('probinary_user', JSON.stringify(data.user || { email }));
-            localStorage.setItem('probinary_balance', data.user?.balance || 10000.00);
+            const realBal = typeof data.user?.realBalance === 'number' ? data.user.realBalance : (typeof data.user?.balance === 'number' ? data.user.balance : 0.00);
+            const demoBal = typeof data.user?.demoBalance === 'number' ? data.user.demoBalance : 10000.00;
+            localStorage.setItem('probinary_real_balance', realBal.toFixed(2));
+            localStorage.setItem('probinary_demo_balance', demoBal.toFixed(2));
+            localStorage.setItem('probinary_balance', realBal.toFixed(2));
 
             const isAdmin = data.user?.role === 'admin' || data.user?.role === 'superadmin';
             const isSim = Boolean(data.user?.simulation || data.user?.is80WinRate);
