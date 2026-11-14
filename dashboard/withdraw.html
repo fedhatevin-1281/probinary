@@ -762,6 +762,9 @@
         if (amt > curBal) return alert(`Insufficient live balance. You have $${curBal.toFixed(2)} available.`);
         if (!phone) return alert('Please enter receiving Safaricom phone number.');
 
+        const token = localStorage.getItem('auth_token');
+        if (!token) return alert('Please sign in to submit a withdrawal request.');
+
         const btn = document.getElementById('btnConfirmMpesaWith');
         btn.disabled = true;
         btn.textContent = 'Processing Payout...';
@@ -769,17 +772,30 @@
         try {
           const res = await fetch('/api/wallet/withdraw', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount: amt, method: 'mpesa', phone })
-          }).catch(() => null);
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ amount: amt, method: 'M-Pesa Safaricom', destination: phone, phone })
+          });
+          const data = await res.json().catch(() => ({}));
 
-          const newBal = curBal - amt;
-          localStorage.setItem('probinary_balance', newBal.toFixed(2));
-          updateBalances();
+          if (!res.ok || !data.success) {
+            alert(data.error || 'Withdrawal submission failed.');
+            return;
+          }
+
+          if (Number.isFinite(Number(data.balance))) {
+            localStorage.setItem('probinary_balance', Number(data.balance).toFixed(2));
+            localStorage.setItem('probinary_real_balance', Number(data.balance).toFixed(2));
+            window.databaseWalletBalance = Number(data.balance);
+            updateBalances();
+          }
+          window.refreshAccountBalance?.();
 
           // Add to ledger
           addHistoryRecord({
-            id: 'WD-' + Math.floor(1000 + Math.random() * 9000),
+            id: data.reference || ('WD-' + Math.floor(1000 + Math.random() * 9000)),
             asset: 'M-Pesa (' + phone + ')',
             type: 'Withdrawal',
             stake: amt,
@@ -790,6 +806,8 @@
 
           closeModal('mpesaWithdrawModal');
           alert(`Withdrawal Request Submitted! KES ${(amt * USD_KES).toFixed(2)} ($${amt.toFixed(2)} USD) requested to M-Pesa (${phone}). Status: Pending Administrator Approval.`);
+        } catch (e) {
+          alert('Network error connecting to payment gateway.');
         } finally {
           btn.disabled = false;
           btn.textContent = 'Confirm Payout Request →';
@@ -806,19 +824,35 @@
         if (amt > curBal) return alert(`Insufficient live balance. Available: $${curBal.toFixed(2)}`);
         if (!addr || addr.length < 15) return alert('Please provide a valid destination crypto wallet address.');
 
-        try {
-          await fetch('/api/wallet/withdraw', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount: amt, method: 'crypto', destination: addr, network: coin })
-          }).catch(() => null);
+        const token = localStorage.getItem('auth_token');
+        if (!token) return alert('Please sign in to submit a withdrawal request.');
 
-          const newBal = curBal - amt;
-          localStorage.setItem('probinary_balance', newBal.toFixed(2));
-          updateBalances();
+        try {
+          const res = await fetch('/api/wallet/withdraw', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ amount: amt, method: coin, destination: addr, network: coin })
+          });
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok || !data.success) {
+            alert(data.error || 'Crypto withdrawal failed.');
+            return;
+          }
+
+          if (Number.isFinite(Number(data.balance))) {
+            localStorage.setItem('probinary_balance', Number(data.balance).toFixed(2));
+            localStorage.setItem('probinary_real_balance', Number(data.balance).toFixed(2));
+            window.databaseWalletBalance = Number(data.balance);
+            updateBalances();
+          }
+          window.refreshAccountBalance?.();
 
           addHistoryRecord({
-            id: 'WD-' + Math.floor(1000 + Math.random() * 9000),
+            id: data.reference || ('WD-' + Math.floor(1000 + Math.random() * 9000)),
             asset: coin + ' (' + addr.slice(0, 6) + '...' + addr.slice(-4) + ')',
             type: 'Withdrawal',
             stake: amt,
@@ -840,19 +874,35 @@
         if (amt < 50) return alert('Minimum bank wire withdrawal is $50.00 USD.');
         if (amt > curBal) return alert(`Insufficient live balance. Available: $${curBal.toFixed(2)}`);
 
-        try {
-          await fetch('/api/wallet/withdraw', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount: amt, method: 'bank', destination: 'Bank Account' })
-          }).catch(() => null);
+        const token = localStorage.getItem('auth_token');
+        if (!token) return alert('Please sign in to submit a withdrawal request.');
 
-          const newBal = curBal - amt;
-          localStorage.setItem('probinary_balance', newBal.toFixed(2));
-          updateBalances();
+        try {
+          const res = await fetch('/api/wallet/withdraw', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ amount: amt, method: 'Bank Wire Transfer', destination: 'Bank Wire Custody' })
+          });
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok || !data.success) {
+            alert(data.error || 'Bank wire withdrawal failed.');
+            return;
+          }
+
+          if (Number.isFinite(Number(data.balance))) {
+            localStorage.setItem('probinary_balance', Number(data.balance).toFixed(2));
+            localStorage.setItem('probinary_real_balance', Number(data.balance).toFixed(2));
+            window.databaseWalletBalance = Number(data.balance);
+            updateBalances();
+          }
+          window.refreshAccountBalance?.();
 
           addHistoryRecord({
-            id: 'WD-' + Math.floor(1000 + Math.random() * 9000),
+            id: data.reference || ('WD-' + Math.floor(1000 + Math.random() * 9000)),
             asset: 'Wire Transfer',
             type: 'Withdrawal',
             stake: amt,

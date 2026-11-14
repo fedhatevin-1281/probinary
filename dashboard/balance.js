@@ -4,9 +4,10 @@
     user = JSON.parse(localStorage.getItem('probinary_user') || '{}');
   } catch {}
 
-  const isSimulation = Boolean(user.simulation || user.is80WinRate || (user.email && user.email.toLowerCase().includes('simulation')));
   const modeStorageKey = 'probinary_account_mode';
-  let isDemo = isSimulation && localStorage.getItem(modeStorageKey) !== 'real';
+  // Default to real if user has balance or chosen, else support demo
+  let isDemo = localStorage.getItem(modeStorageKey) === 'demo';
+
   const balanceElements = [
     'headerBalanceText',
     'sidebarBalanceAmount',
@@ -17,7 +18,8 @@
   ].map(id => document.getElementById(id)).filter(Boolean);
 
   function showBalance(value) {
-    const formatted = Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const num = Number(value);
+    const formatted = Number.isFinite(num) ? num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00';
     balanceElements.forEach(element => { element.textContent = `$${formatted}`; });
   }
 
@@ -42,32 +44,18 @@
       const balance = window.databaseWalletBalance;
       localStorage.setItem('probinary_balance', balance.toFixed(2));
       showBalance(balance);
+    } else {
+      const stored = parseFloat(localStorage.getItem('probinary_real_balance') || '0');
+      showBalance(stored);
     }
   }
 
   balanceElements.forEach(element => { element.textContent = 'Loading...'; });
 
-  if (!isSimulation) {
-    localStorage.setItem(modeStorageKey, 'real');
-    document.getElementById('tabDemo')?.remove();
-    const demoToggle = document.getElementById('realDemoToggle');
-    if (demoToggle) (demoToggle.closest('label') || demoToggle).remove();
-    const liveTradingUnavailable = 'Live order execution is not configured for this deployment.';
-    ['btnActionRise', 'btnActionFall', 'btnDeployBot'].forEach(id => {
-      const button = document.getElementById(id);
-      if (button) {
-        button.disabled = true;
-        button.title = liveTradingUnavailable;
-      }
-    });
-    const tradeStatus = document.getElementById('tradeStatusPrompt');
-    if (tradeStatus) tradeStatus.textContent = liveTradingUnavailable;
-  }
-
   if (typeof window.setMode === 'function') {
     const setPageMode = window.setMode;
     window.setMode = demo => {
-      isDemo = isSimulation && Boolean(demo);
+      isDemo = Boolean(demo);
       localStorage.setItem(modeStorageKey, isDemo ? 'demo' : 'real');
       setPageMode(isDemo);
       renderSelectedBalance();
@@ -78,43 +66,21 @@
     renderSelectedBalance();
   }
 
-  const withdrawalInputs = {
-    executeMpesaWithdrawal: 'mpesaWithUsd',
-    executeCryptoWithdrawal: 'cryptoWithUsd',
-    executeBankWithdrawal: 'bankWithUsd'
-  };
-  for (const [name, inputId] of Object.entries(withdrawalInputs)) {
-    if (typeof window[name] !== 'function') continue;
-    window[name] = () => {
-      if (!isDemo) {
-        window.alert('Real withdrawals are not configured for this deployment.');
-        return;
-      }
-      const amount = Number(document.getElementById(inputId)?.value);
-      const balance = getDemoBalance();
-      if (!Number.isFinite(amount) || amount <= 0 || amount > balance) {
-        window.alert('Enter a valid amount within the demo balance.');
-        return;
-      }
-      window.setDemoBalance(balance - amount);
-      window.alert(`Demo balance reduced by $${amount.toFixed(2)}. No payout was made.`);
-    };
-  }
-
   window.setDemoBalance = balance => {
     const amount = Number(balance);
-    if (!isSimulation || !isDemo || !Number.isFinite(amount) || amount < 0) return false;
+    if (!Number.isFinite(amount) || amount < 0) return false;
     localStorage.setItem('probinary_demo_balance', amount.toFixed(2));
-    localStorage.setItem('probinary_balance', amount.toFixed(2));
+    if (isDemo) {
+      localStorage.setItem('probinary_balance', amount.toFixed(2));
+      showBalance(amount);
+    }
     if (typeof window.setDatabaseDemoBalance === 'function') window.setDatabaseDemoBalance(amount);
-    renderSelectedBalance();
     return true;
   };
 
   window.refreshAccountBalance = async function() {
     const token = localStorage.getItem('auth_token');
     if (!token) {
-      window.location.replace('/auth/login.html');
       return false;
     }
 
@@ -124,7 +90,6 @@
       });
       if (response.status === 401) {
         localStorage.removeItem('auth_token');
-        window.location.replace('/auth/login.html');
         return false;
       }
       if (!response.ok) throw new Error('Balance lookup failed');
@@ -139,14 +104,15 @@
       return true;
     } catch {
       if (isDemo) renderSelectedBalance();
-      else balanceElements.forEach(element => { element.textContent = 'Unavailable'; });
       return false;
     }
   };
 
   window.addEventListener('storage', event => {
     if (event.key === modeStorageKey) {
-      window.setMode?.(event.newValue === 'demo');
+      isDemo = event.newValue === 'demo';
+      window.setMode?.(isDemo);
+      renderSelectedBalance();
     } else if (event.key === 'probinary_real_balance' && !isDemo) {
       const balance = Number(event.newValue);
       if (Number.isFinite(balance)) {
@@ -164,6 +130,6 @@
   });
 
   window.refreshAccountBalance();
-  window.setInterval(window.refreshAccountBalance, 30000);
+  window.setInterval(window.refreshAccountBalance, 15000);
   window.addEventListener('focus', window.refreshAccountBalance);
 })();
