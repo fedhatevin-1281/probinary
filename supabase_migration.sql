@@ -80,6 +80,9 @@ create table if not exists public.demo_wallets (
   updated_at timestamptz not null default now()
 );
 
+alter table public.wallets alter column current_balance set default 0.00;
+alter table public.demo_wallets alter column current_balance set default 10000.00;
+
 create index if not exists demo_wallets_user_id_idx on public.demo_wallets (user_id);
 
 -- 6. CENTRAL FINANCIAL LEDGER: TRANSACTION HISTORY
