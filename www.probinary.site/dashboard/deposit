@@ -691,15 +691,7 @@
       <!-- Step 2: Payment Details (QR & Address) -->
       <div id="cryptoStepDetails" style="display: none; flex-direction: column; gap: 12px;">
         <div style="text-align: center; background: #fff; padding: 12px; border-radius: 10px; width: 140px; margin: 0 auto; box-shadow: 0 0 20px rgba(168,85,247,0.3);">
-          <svg width="116" height="116" viewBox="0 0 24 24" fill="none" stroke="#090514" stroke-width="2">
-            <rect x="3" y="3" width="7" height="7"/>
-            <rect x="14" y="3" width="7" height="7"/>
-            <rect x="3" y="14" width="7" height="7"/>
-            <rect x="6" y="6" width="1" height="1"/>
-            <rect x="17" y="6" width="1" height="1"/>
-            <rect x="6" y="17" width="1" height="1"/>
-            <path d="M14 14h3v3h-3zM17 17h4v4h-4zM14 20h3v1h-3zM20 14h1v3h-1z"/>
-          </svg>
+          <img id="orderQrImage" alt="QR code for the NOWPayments deposit address" width="116" height="116" style="display:block;width:116px;height:116px;object-fit:contain;"/>
         </div>
 
         <div>
@@ -713,6 +705,11 @@
             <div id="orderWalletAddress" class="mono" style="font-size: 11px; color: #fff; word-break: break-all; flex: 1;">Waiting for NOWPayments order</div>
             <button onclick="copyWalletAddress()" class="pill-btn" style="padding: 3px 8px; font-size: 10px; margin-left: 6px;">Copy</button>
           </div>
+        </div>
+
+        <div id="orderExtraIdRow" style="display:none;">
+          <div id="orderExtraIdLabel" style="font-size: 10px; color: var(--text-gray); font-weight: 700; margin-bottom: 4px;">PAYMENT TAG:</div>
+          <div id="orderExtraId" class="mono" style="font-size: 12px; color: #fff; word-break: break-all;"></div>
         </div>
 
         <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-gray);">
@@ -1038,12 +1035,17 @@
             throw new Error(`Payment API unavailable (HTTP ${res.status}). Please try again later.`);
           }
           if (!res.ok || !data.success) throw new Error(data.error || 'NOWPayments could not create the payment.');
+          if (!data.payAddress || !data.qrCodeDataUrl) throw new Error('NOWPayments did not return valid payment details.');
           currentPendingOrder = data;
 
+          document.getElementById('orderQrImage').src = data.qrCodeDataUrl;
           document.getElementById('orderCryptoAmount').textContent = `${data.payAmount} ${data.payCurrency}`;
           document.getElementById('orderWalletAddress').textContent = data.payAddress;
           document.getElementById('orderIdText').textContent = data.orderId;
-          document.getElementById('orderStatusText').textContent = data.status || 'waiting';
+          document.getElementById('orderStatusText').textContent = data.paymentStatus || 'waiting';
+          document.getElementById('orderExtraIdRow').style.display = data.payinExtraId ? 'block' : 'none';
+          document.getElementById('orderExtraId').textContent = data.payinExtraId || '';
+          document.getElementById('orderExtraIdLabel').textContent = data.payinExtraIdName || 'PAYMENT TAG:';
 
           document.getElementById('cryptoStepInput').style.display = 'none';
           document.getElementById('cryptoStepDetails').style.display = 'flex';
@@ -1097,6 +1099,7 @@
       window.resetCryptoStep = function() {
         document.getElementById('cryptoStepInput').style.display = 'block';
         document.getElementById('cryptoStepDetails').style.display = 'none';
+        document.getElementById('orderQrImage').removeAttribute('src');
         currentPendingOrder = null;
       };
 
