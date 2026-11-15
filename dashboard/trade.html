@@ -856,7 +856,7 @@
     (function() {
       // 1. STATE & STORAGE
       const USD_KES_RATE = 129.5;
-      let isDemo = false;
+      let isDemo = localStorage.getItem('probinary_account_mode') === 'demo';
       let realBalance = 0;
       let demoBalance = parseFloat(localStorage.getItem('probinary_demo_balance') || '10000.00');
       let currentAsset = 'EUR/USD';
@@ -914,7 +914,11 @@
         const l2 = document.getElementById('navAdminDrawerLink');
         if (l2) l2.style.display = 'flex';
       }
-      if (user.simulation || user.is80WinRate || (user.email && user.email.includes('simulation'))) {
+      if (['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(user.email || '').trim().toLowerCase())) {
+        isDemo = true;
+        localStorage.setItem('probinary_account_mode', 'demo');
+        const accountToggle = document.getElementById('realDemoToggle');
+        if (accountToggle) accountToggle.disabled = true;
         const badge = document.getElementById('headerSimBadge');
         if (badge) badge.style.display = 'inline-flex';
       }
@@ -1454,7 +1458,7 @@
           let isSimulation80 = false;
           try {
             const u = JSON.parse(localStorage.getItem('probinary_user') || '{}');
-            if (u.simulation || u.is80WinRate || (u.email && u.email.includes('simulation'))) {
+            if (['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(u.email || '').trim().toLowerCase())) {
               isSimulation80 = true;
             }
           } catch(e) {}
@@ -1466,7 +1470,7 @@
           const entryDigit = digitFromPrice(t.entryPrice, ASSETS[t.asset].precision);
           const exitDigit = digitFromPrice(exit, ASSETS[t.asset].precision);
 
-          if (isSimulation80) {
+          if (isSimulation80 && t.isDemo) {
             // 80% Win Rate Engine: 8 out of 10 trades win!
             isWin = Math.random() < 0.80;
           } else if (t.type === 'Even/Odd') {

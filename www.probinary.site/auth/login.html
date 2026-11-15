@@ -117,41 +117,6 @@
 
       <!-- Card -->
       <div class="auth-card p-7 sm:p-8">
-        <!-- 2 Unique Role Quick Fill Selectors -->
-        <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px;">
-          <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-gray, #9d8ec2); margin-bottom: 2px;">
-            Select Access Role:
-          </div>
-
-          <!-- Role 1: Admin User -->
-          <div style="padding: 10px 12px; border-radius: 10px; background: rgba(168,85,247,0.12); border: 1px solid rgba(168,85,247,0.30); display: flex; align-items: center; justify-content: space-between;">
-            <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <span style="font-size: 11px; font-weight: 700; color: #fff;">System Admin</span>
-                <span style="padding: 1px 6px; border-radius: 4px; background: rgba(168,85,247,0.25); color: #e0ccff; font-size: 9px; font-weight: 700;">Approves Payouts</span>
-              </div>
-              <div class="mono" style="font-size: 10px; color: #baa4e8; margin-top: 1px;">admin@probinary.com</div>
-            </div>
-            <button type="button" id="fillAdminBtn" style="background: #a855f7; color: #090514; border: none; border-radius: 6px; padding: 5px 12px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
-              Use Admin
-            </button>
-          </div>
-
-          <!-- Role 2: 80% Win Rate Simulation Trader -->
-          <div style="padding: 10px 12px; border-radius: 10px; background: rgba(16,185,129,0.10); border: 1px solid rgba(16,185,129,0.30); display: flex; align-items: center; justify-content: space-between;">
-            <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <span style="font-size: 11px; font-weight: 700; color: #fff;">Simulation Account</span>
-                <span style="padding: 1px 6px; border-radius: 4px; background: rgba(16,185,129,0.25); color: #10b981; font-size: 9px; font-weight: 800;">80% Win Rate</span>
-              </div>
-              <div class="mono" style="font-size: 10px; color: #9fe9cb; margin-top: 1px;">simulation@probinary.com</div>
-            </div>
-            <button type="button" id="fillSimulationBtn" style="background: #10b981; color: #090514; border: none; border-radius: 6px; padding: 5px 12px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
-              Use Sim
-            </button>
-          </div>
-        </div>
-
         <form id="loginForm" class="space-y-5">
           <div>
             <label class="block text-[11px] font-bold uppercase tracking-wider mb-2" style="color:#9d8ec2">Email Address</label>
@@ -200,24 +165,6 @@
       const passwordInput = document.getElementById('passwordInput');
       const toggleBtn = document.getElementById('togglePasswordBtn');
       const submitBtn = document.getElementById('submitBtn');
-      const fillAdminBtn = document.getElementById('fillAdminBtn');
-      const fillSimulationBtn = document.getElementById('fillSimulationBtn');
-
-      if (fillAdminBtn) {
-        fillAdminBtn.addEventListener('click', function() {
-          emailInput.value = 'admin@probinary.com';
-          passwordInput.value = 'AdminPass123!';
-          showToast('Admin credentials loaded', 'info');
-        });
-      }
-
-      if (fillSimulationBtn) {
-        fillSimulationBtn.addEventListener('click', function() {
-          emailInput.value = 'simulation@probinary.com';
-          passwordInput.value = 'SimPass123!';
-          showToast('Simulation credentials loaded', 'info');
-        });
-      }
 
       // Show / Hide Password
       toggleBtn.addEventListener('click', function() {
@@ -257,14 +204,16 @@
           if (res.ok && data.token) {
             localStorage.setItem('auth_token', data.token);
             localStorage.setItem('probinary_user', JSON.stringify(data.user || { email }));
-            const realBal = typeof data.user?.realBalance === 'number' ? data.user.realBalance : (typeof data.user?.balance === 'number' ? data.user.balance : 0.00);
-            const demoBal = typeof data.user?.demoBalance === 'number' ? data.user.demoBalance : 10000.00;
-            localStorage.setItem('probinary_real_balance', realBal.toFixed(2));
-            localStorage.setItem('probinary_demo_balance', demoBal.toFixed(2));
-            localStorage.setItem('probinary_balance', realBal.toFixed(2));
+            const realBalance = Number(data.user?.realBalance ?? data.user?.balance);
+            const demoBalance = Number(data.user?.demoBalance);
+            const savedRealBalance = Number.isFinite(realBalance) ? realBalance : 0;
+            localStorage.setItem('probinary_real_balance', savedRealBalance.toFixed(2));
+            localStorage.setItem('probinary_demo_balance', (Number.isFinite(demoBalance) ? demoBalance : 10000).toFixed(2));
+            localStorage.setItem('probinary_balance', savedRealBalance.toFixed(2));
 
             const isAdmin = data.user?.role === 'admin' || data.user?.role === 'superadmin';
             const isSim = Boolean(data.user?.simulation || data.user?.is80WinRate);
+            localStorage.setItem('probinary_account_mode', isSim ? 'demo' : 'real');
 
             showToast(isAdmin ? 'Signed in as Administrator' : (isSim ? 'Signed in · 80% Win Rate Simulation Active' : 'Signed in to Trading Desk'), 'success');
 
@@ -277,7 +226,7 @@
             }, 600);
             return;
           } else {
-            showToast(data.error || 'Invalid credentials. Select Admin or Simulation.', 'error');
+            showToast(data.error || 'Invalid email or password.', 'error');
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalText;
           }

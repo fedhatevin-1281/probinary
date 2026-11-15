@@ -619,7 +619,7 @@
           document.getElementById('profileEmailDisplay').textContent = u.email;
           document.getElementById('sidebarUserEmail').textContent = u.email;
         }
-        if (u.simulation || u.is80WinRate || (u.email && u.email.includes('simulation'))) {
+        if (['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(u.email || '').trim().toLowerCase())) {
           const tierPill = document.querySelector('span[style*="VIP Desk Holder"]');
           if (tierPill) tierPill.innerHTML = '<b style="color:var(--accent-green);">VIP Simulation (80% Win Rate)</b>';
         }
