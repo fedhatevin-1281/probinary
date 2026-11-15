@@ -1265,6 +1265,8 @@
 
       // User Credentials
       let user = JSON.parse(localStorage.getItem('probinary_user') || '{"name":"Tevin fedha","email":"fedhatevin@gmail.com"}');
+      const isSimulationAccount = ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com']
+        .includes(String(user.email || '').trim().toLowerCase());
       document.getElementById('sidebarUserName').textContent = user.name || 'Tevin fedha';
       document.getElementById('sidebarUserEmail').textContent = user.email || 'fedhatevin@gmail.com';
       document.getElementById('profName').textContent = user.name || 'Tevin fedha';
@@ -1304,16 +1306,17 @@
 
       // 3. BALANCE & MODE SWITCHER
       function getBal() {
-        if (!isDemo) {
+        const usesDemoBalance = isDemo || isSimulationAccount;
+        if (!usesDemoBalance) {
           const syncedBalance = Number.isFinite(window.databaseRealBalance)
             ? window.databaseRealBalance
             : window.databaseWalletBalance;
           if (Number.isFinite(syncedBalance)) realBalance = syncedBalance;
         }
-        return isDemo ? demoBalance : realBalance;
+        return usesDemoBalance ? demoBalance : realBalance;
       }
       function updateBalances() {
-        if (!isDemo) realBalance = getBal();
+        if (!isDemo && !isSimulationAccount) realBalance = getBal();
         const bal = getBal();
         localStorage.setItem('probinary_balance', bal.toFixed(2));
         const str = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1322,7 +1325,7 @@
         panelBalTiny.textContent = str;
         document.getElementById('pBal').textContent = str;
 
-        if (isDemo) {
+        if (isDemo || isSimulationAccount) {
           localStorage.setItem('probinary_demo_balance', demoBalance.toFixed(2));
           document.getElementById('tabDemo').classList.add('active');
           document.getElementById('tabLive').classList.remove('active');
@@ -1782,18 +1785,19 @@
 
       async function placeOrder(dir) {
         await syncBalancesFromServer();
+        const tradeUsesDemo = isDemo || isSimulationAccount;
         const bal = getBal();
         if (sessionTradeCount >= maxTrades) {
           alert('Session trade limit reached.');
           return;
         }
 
-        if (!isDemo && bal < currentStake) {
+        if (!tradeUsesDemo && bal < currentStake) {
           alert(`Insufficient real wallet balance ($${realBalance.toFixed(2)}) for trade stake ($${currentStake.toFixed(2)}). Please deposit funds to trade on the real market, or switch to Demo mode.`);
           return;
         }
 
-        if (isDemo && bal < currentStake) {
+        if (tradeUsesDemo && bal < currentStake) {
           alert(`Insufficient demo virtual balance ($${demoBalance.toFixed(2)}) for trade stake ($${currentStake.toFixed(2)}). Please reset your demo account or reduce your stake.`);
           return;
         }
@@ -1802,7 +1806,7 @@
         const entryP = ASSETS[currentAsset].price;
         const token = localStorage.getItem('auth_token');
 
-        if (isDemo) {
+        if (tradeUsesDemo) {
           document.getElementById('tradeStatusPrompt').innerHTML = `<span style="color:var(--accent-purple); font-weight:700;">TRANSMITTING DEMO ORDER...</span>`;
           try {
             if (token) {
