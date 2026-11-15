@@ -895,6 +895,17 @@
         }
       }
 
+      async function syncSimulationBotBalances() {
+        const token = localStorage.getItem('auth_token');
+        if (!isSimulationAccount || !token) return;
+        const response = await fetch('/api/simulation/balance', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) throw new Error(data.error || 'Unable to load simulation balance.');
+        realBalance = Number(data.realBalance || 0);
+        demoBalance = Number(data.demoBalance || 0);
+        updateBalances();
+      }
+
       window.setDatabaseBalance = function(balance) {
         window.databaseWalletBalance = balance;
         realBalance = balance;
@@ -1097,6 +1108,13 @@
       async function runBotCycle() {
         if (!botDeployed || !botEnabled) return;
 
+        if (isSimulationAccount) {
+          try { await syncSimulationBotBalances(); } catch (error) {
+            logBot(`<span style="color:var(--accent-red);">[ERROR] ${error.message}</span>`);
+            return;
+          }
+        }
+
         if (botDailyCount >= maxDailyTrades) {
           logBot(`<span style="color:var(--accent-gold);">[LIMIT] Max daily trades (${maxDailyTrades}) reached. Bot pausing.</span>`);
           toggleDeployBot();
@@ -1133,6 +1151,37 @@
 
         const tradeId = 'PB-' + Math.floor(100000 + Math.random() * 900000);
         logBot(`Signal fired on <b>${asset}</b>: Placed <b>${dir}</b> order (${tradeId}) for $${tradeAmount}`);
+
+        if (isSimulationAccount) {
+          try {
+            const response = await fetch('/api/simulation/trade', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('auth_token')}` },
+              body: JSON.stringify({ mode: isDemo ? 'demo' : 'real', direction: dir, stake: tradeAmount, asset })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) throw new Error(data.error || 'Simulation bot trade failed.');
+            realBalance = Number(data.realBalance || 0);
+            demoBalance = Number(data.demoBalance || 0);
+            updateBalances();
+            const isWin = data.trade.outcome === 'win';
+            const net = Number(data.trade.profit || 0);
+            if (isWin) botWins++; else botLosses++;
+            botSessionProfit += net;
+            const total = botWins + botLosses;
+            const wr = Math.round((botWins / total) * 100);
+            document.getElementById('botSessionPl').textContent = (botSessionProfit >= 0 ? '+$' : '-$') + Math.abs(botSessionProfit).toFixed(2);
+            document.getElementById('botSessionPl').style.color = botSessionProfit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+            document.getElementById('botLiveWinRate').textContent = wr + '%';
+            document.getElementById('botTradeTally').textContent = `${botWins}/${total}`;
+            playTone(isWin);
+            logBot(isWin ? `<span style="color:var(--accent-green);font-weight:700;">Trade ${tradeId} WON: +$${net.toFixed(2)} credited!</span>` : `<span style="color:var(--accent-red);">Trade ${tradeId} Closed: -$${Math.abs(net).toFixed(2)}</span>`);
+          } catch (error) {
+            botDailyCount--;
+            logBot(`<span style="color:var(--accent-red);">[ERROR] ${error.message}</span>`);
+          }
+          return;
+        }
 
         let dbTradeId = null;
         let persistedTrade = false;
