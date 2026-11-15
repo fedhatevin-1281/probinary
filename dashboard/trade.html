@@ -1711,6 +1711,11 @@
         });
       }
 
+      // Initialize the default Rise/Fall buttons before their click handlers
+      // are used. Without this, the visible labels existed but direction was
+      // undefined and the order path failed before sending the request.
+      updateTradeActions();
+
       document.querySelectorAll('.type-btn').forEach(b => {
         b.addEventListener('click', () => {
           document.querySelectorAll('.type-btn').forEach(btn => btn.classList.remove('active'));
