@@ -857,12 +857,9 @@
 
       // User Credentials
       let user = JSON.parse(localStorage.getItem('probinary_user') || '{"name":"Tevin fedha","email":"fedhatevin@gmail.com"}');
-      if (['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(user.email || '').trim().toLowerCase())) {
-        isDemo = true;
-        localStorage.setItem('probinary_account_mode', 'demo');
-        const accountToggle = document.getElementById('realDemoToggle');
-        if (accountToggle) accountToggle.disabled = true;
-      }
+      const isSimulationAccount = user.simulation === true || user.is80WinRate === true ||
+        ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com']
+          .includes(String(user.email || '').trim().toLowerCase());
       document.getElementById('sidebarUserName').textContent = user.name || 'Tevin fedha';
       document.getElementById('sidebarUserEmail').textContent = user.email || 'fedhatevin@gmail.com';
       document.getElementById('profName').textContent = user.name || 'Tevin fedha';
@@ -872,9 +869,9 @@
       document.getElementById('sidebarAvatar').textContent = initial;
 
       // 2. BALANCES
-      function getBal() { return isDemo ? demoBalance : realBalance; }
+      function getBal() { return (isDemo || isSimulationAccount) ? demoBalance : realBalance; }
       function updateBalances() {
-        if (!isDemo && Number.isFinite(window.databaseWalletBalance)) realBalance = window.databaseWalletBalance;
+        if (!isDemo && !isSimulationAccount && Number.isFinite(window.databaseWalletBalance)) realBalance = window.databaseWalletBalance;
         const bal = getBal();
         localStorage.setItem('probinary_balance', bal.toFixed(2));
         const str = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -886,7 +883,7 @@
           localStorage.setItem('probinary_demo_balance', demoBalance.toFixed(2));
           document.getElementById('tabDemo').classList.add('active');
           document.getElementById('tabLive').classList.remove('active');
-        } else {
+          } else {
           localStorage.setItem('probinary_real_balance', realBalance.toFixed(2));
           document.getElementById('tabLive').classList.add('active');
           document.getElementById('tabDemo').classList.remove('active');
@@ -1151,7 +1148,7 @@
             dbTradeId = orderData.trade.id;
             persistedTrade = true;
             if (typeof orderData.balance === 'number') {
-              if (isDemo) demoBalance = orderData.balance;
+              if (isDemo || isSimulationAccount) demoBalance = orderData.balance;
               else realBalance = orderData.balance;
               updateBalances();
             }
@@ -1161,7 +1158,7 @@
             return;
           }
         } else {
-          if (isDemo) demoBalance -= tradeAmount; else realBalance -= tradeAmount;
+          if (isDemo || isSimulationAccount) demoBalance -= tradeAmount; else realBalance -= tradeAmount;
           updateBalances();
         }
 
@@ -1171,7 +1168,7 @@
           let targetWinRate = stratCfg.winRate;
           try {
             const u = JSON.parse(localStorage.getItem('probinary_user') || '{}');
-            if (isDemo && ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(u.email || '').trim().toLowerCase())) {
+            if (isSimulationAccount) {
               targetWinRate = 85; // 85% Win Rate Simulation active
             }
           } catch(e) {}
@@ -1187,6 +1184,7 @@
                 body: JSON.stringify({
                   tradeId: dbTradeId,
                   exitPrice: isWin ? (dir === 'Rise' ? 1.0860 : 1.0840) : (dir === 'Rise' ? 1.0840 : 1.0860),
+                  outcome: isWin ? 'win' : 'loss',
                   isDemo
                 })
               });
@@ -1194,16 +1192,16 @@
               if (!settleResponse.ok || !settleData.success || typeof settleData.balance !== 'number') {
                 throw new Error(settleData.error || 'Unable to save bot settlement.');
               }
-              if (isDemo) demoBalance = settleData.balance;
+              if (isDemo || isSimulationAccount) demoBalance = settleData.balance;
               else realBalance = settleData.balance;
               updateBalances();
-              if (!isDemo) window.refreshAccountBalance?.();
+              if (!isDemo && !isSimulationAccount) window.refreshAccountBalance?.();
             } catch (error) {
               logBot(`<span style="color:var(--accent-red);">[ERROR] Settlement was not saved: ${error.message}</span>`);
               return;
             }
           } else {
-            if (isDemo) { if (isWin) demoBalance += payout; }
+            if (isDemo || isSimulationAccount) { if (isWin) demoBalance += payout; }
             else { if (isWin) realBalance += payout; }
             updateBalances();
           }
