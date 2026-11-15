@@ -229,7 +229,13 @@
           if (res.ok && data.token) {
             localStorage.setItem('auth_token', data.token);
             localStorage.setItem('probinary_user', JSON.stringify(data.user || { fullName, email }));
-            localStorage.setItem('probinary_balance', data.user?.balance || 1000.00);
+            const realBalance = Number(data.user?.realBalance ?? data.user?.balance ?? 0);
+            const demoBalance = Number(data.user?.demoBalance ?? 10000);
+            localStorage.setItem('probinary_real_balance', realBalance.toFixed(2));
+            localStorage.setItem('probinary_demo_balance', demoBalance.toFixed(2));
+            localStorage.setItem('probinary_balance', realBalance.toFixed(2));
+            const isSimulation = ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(email.trim().toLowerCase());
+            localStorage.setItem('probinary_account_mode', 'real');
             showToast('Desk opened! Welcome to ProBinary!', 'success');
             setTimeout(function() {
               window.location.href = '/dashboard/trade.html';

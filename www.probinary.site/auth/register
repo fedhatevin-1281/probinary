@@ -235,7 +235,7 @@
             localStorage.setItem('probinary_demo_balance', demoBalance.toFixed(2));
             localStorage.setItem('probinary_balance', realBalance.toFixed(2));
             const isSimulation = ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(email.trim().toLowerCase());
-            localStorage.setItem('probinary_account_mode', isSimulation ? 'demo' : 'real');
+            localStorage.setItem('probinary_account_mode', 'real');
             showToast('Desk opened! Welcome to ProBinary!', 'success');
             setTimeout(function() {
               window.location.href = '/dashboard/trade.html';
