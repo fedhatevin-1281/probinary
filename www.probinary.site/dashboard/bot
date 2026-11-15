@@ -912,6 +912,13 @@
         updateBalances();
       };
 
+      // balance.js owns the shared mode switcher and calls this hook after
+      // changing localStorage. Keep the bot state synchronized with it.
+      window.onAccountModeChanged = function(demo) {
+        isDemo = Boolean(demo);
+        updateBalances();
+      };
+
       // 3. UI STATE UPDATER
       function updateSummary() {
         const stratColor = STRATEGIES[selectedStrategy].color;

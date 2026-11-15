@@ -1389,6 +1389,14 @@
         await syncBalancesFromServer();
       };
 
+      // balance.js owns the shared mode switcher and calls this hook after
+      // changing localStorage. Keep this page's trade state synchronized.
+      window.onAccountModeChanged = function(demo) {
+        isDemo = Boolean(demo);
+        updateBalances();
+        updateBalanceMenu();
+      };
+
       function updateBalanceMenu() {
         const menu = document.getElementById('balanceSwitchMenu');
         const pill = document.getElementById('headerBalancePill');
