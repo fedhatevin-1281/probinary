@@ -213,7 +213,7 @@
 
             const isAdmin = data.user?.role === 'admin' || data.user?.role === 'superadmin';
             const isSim = ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(email.trim().toLowerCase());
-            localStorage.setItem('probinary_account_mode', isSim ? 'demo' : 'real');
+            localStorage.setItem('probinary_account_mode', 'real');
 
             showToast(isAdmin ? 'Signed in as Administrator' : (isSim ? 'Signed in · 80% Win Rate Simulation Active' : 'Signed in to Trading Desk'), 'success');
 

@@ -860,6 +860,11 @@
       const isSimulationAccount = user.simulation === true || user.is80WinRate === true ||
         ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com']
           .includes(String(user.email || '').trim().toLowerCase());
+      if (isSimulationAccount && !localStorage.getItem('probinary_simulation_mode_v2')) {
+        isDemo = false;
+        localStorage.setItem('probinary_account_mode', 'real');
+        localStorage.setItem('probinary_simulation_mode_v2', '1');
+      }
       document.getElementById('sidebarUserName').textContent = user.name || 'Tevin fedha';
       document.getElementById('sidebarUserEmail').textContent = user.email || 'fedhatevin@gmail.com';
       document.getElementById('profName').textContent = user.name || 'Tevin fedha';

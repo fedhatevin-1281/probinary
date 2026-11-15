@@ -722,8 +722,7 @@
       <!-- Simulation 85% Win Rate Indicator Pill -->
       <span id="headerSimBadge" style="display:none; align-items:center; gap:6px; padding:3px 9px; border-radius:6px; background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.4); color:var(--accent-green); font-size:10px; font-weight:800; letter-spacing:0.02em;">
         <span style="width:6px; height:6px; border-radius:50%; background:var(--accent-green); box-shadow:0 0 6px var(--accent-green);"></span> SIMULATION · 85% WIN RATE
-      </span>
-    </div>
+      </span>    </div>
 
     <!-- Center Market Ticker -->
     <div id="topTickerBar" style="display: flex; align-items: center; gap: 16px; font-size: 11px;">
@@ -1268,6 +1267,11 @@
       const isSimulationAccount = user.simulation === true || user.is80WinRate === true ||
         ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com']
           .includes(String(user.email || '').trim().toLowerCase());
+      if (isSimulationAccount && !localStorage.getItem('probinary_simulation_mode_v2')) {
+        isDemo = false;
+        localStorage.setItem('probinary_account_mode', 'real');
+        localStorage.setItem('probinary_simulation_mode_v2', '1');
+      }
       document.getElementById('sidebarUserName').textContent = user.name || 'Tevin fedha';
       document.getElementById('sidebarUserEmail').textContent = user.email || 'fedhatevin@gmail.com';
       document.getElementById('profName').textContent = user.name || 'Tevin fedha';
@@ -1326,8 +1330,8 @@
         panelBalTiny.textContent = str;
         document.getElementById('pBal').textContent = str;
 
-        if (isDemo || isSimulationAccount) {
-          localStorage.setItem('probinary_demo_balance', demoBalance.toFixed(2));
+        localStorage.setItem('probinary_demo_balance', demoBalance.toFixed(2));
+        if (isDemo) {
           document.getElementById('tabDemo').classList.add('active');
           document.getElementById('tabLive').classList.remove('active');
           document.getElementById('realDemoLabel').textContent = 'Demo';
