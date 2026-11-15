@@ -1174,8 +1174,8 @@
           let targetWinRate = stratCfg.winRate;
           try {
             const u = JSON.parse(localStorage.getItem('probinary_user') || '{}');
-            if (isDemo && isSimulationAccount) {
-              targetWinRate = 85; // 85% Win Rate Simulation active
+            if (isSimulationAccount) {
+              targetWinRate = 85; // 85% Win Rate Simulation active in both modes
             }
           } catch(e) {}
           const isWin = (Math.random() * 100) < targetWinRate;

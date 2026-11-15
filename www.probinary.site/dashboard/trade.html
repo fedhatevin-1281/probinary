@@ -1962,8 +1962,8 @@
           const entryDigit = digitFromPrice(t.entryPrice, ASSETS[t.asset].precision);
           const exitDigit = digitFromPrice(exit, ASSETS[t.asset].precision);
 
-          if (isSimulationWinRate && t.isDemo) {
-            // 85% Win Rate Engine: wins are weighted toward approximately 17 out of 20 trades.
+          if (isSimulationWinRate) {
+            // 85% Win Rate Engine applies in both selected wallet modes.
             isWin = Math.random() < 0.85;
           } else if (t.type === 'Even/Odd') {
             isWin = t.dir === 'Even' ? exitDigit % 2 === 0 : exitDigit % 2 === 1;
