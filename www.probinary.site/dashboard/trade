@@ -1265,8 +1265,9 @@
 
       // User Credentials
       let user = JSON.parse(localStorage.getItem('probinary_user') || '{"name":"Tevin fedha","email":"fedhatevin@gmail.com"}');
-      const isSimulationAccount = ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com']
-        .includes(String(user.email || '').trim().toLowerCase());
+      const isSimulationAccount = user.simulation === true || user.is80WinRate === true ||
+        ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com']
+          .includes(String(user.email || '').trim().toLowerCase());
       document.getElementById('sidebarUserName').textContent = user.name || 'Tevin fedha';
       document.getElementById('sidebarUserEmail').textContent = user.email || 'fedhatevin@gmail.com';
       document.getElementById('profName').textContent = user.name || 'Tevin fedha';
