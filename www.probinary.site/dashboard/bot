@@ -1129,6 +1129,7 @@
 
         let dbTradeId = null;
         let persistedTrade = false;
+        const tradeUsesSimulationWallet = isDemo || isSimulationAccount;
         const token = localStorage.getItem('auth_token');
         if (token) {
           try {
@@ -1143,7 +1144,7 @@
                 stake: tradeAmount,
                 entryPrice: 1.0850,
                 duration: 2,
-                isDemo
+                isDemo: tradeUsesSimulationWallet
               })
             });
             const orderData = await orderResponse.json();
@@ -1190,7 +1191,7 @@
                   tradeId: dbTradeId,
                   exitPrice: isWin ? (dir === 'Rise' ? 1.0860 : 1.0840) : (dir === 'Rise' ? 1.0840 : 1.0860),
                   outcome: isWin ? 'win' : 'loss',
-                  isDemo
+                  isDemo: tradeUsesSimulationWallet
                 })
               });
               const settleData = await settleResponse.json();
