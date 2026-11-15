@@ -15,7 +15,6 @@
   const $ = id => document.getElementById(id);
   const money = n => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const setStatus = text => { if ($('tradeStatusPrompt')) $('tradeStatusPrompt').textContent = text; };
-  if ($('headerSimBadge')) $('headerSimBadge').style.display = 'inline-flex';
 
   function render() {
     const balance = mode === 'demo' ? demoBalance : realBalance;
