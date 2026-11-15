@@ -1075,10 +1075,10 @@
 
         <!-- Rise & Fall Buttons -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <button id="btnActionRise" class="purple-btn" style="padding: 11px 0; font-size: 15px; border-radius: 20px; font-weight: 800;">
+          <button id="btnActionRise" data-direction="Rise" class="purple-btn" style="padding: 11px 0; font-size: 15px; border-radius: 20px; font-weight: 800;">
             Rise ▲
           </button>
-          <button id="btnActionFall" class="red-btn" style="padding: 11px 0; font-size: 15px; border-radius: 20px; font-weight: 800;">
+          <button id="btnActionFall" data-direction="Fall" class="red-btn" style="padding: 11px 0; font-size: 15px; border-radius: 20px; font-weight: 800;">
             Fall ▼
           </button>
         </div>
