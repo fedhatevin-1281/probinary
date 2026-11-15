@@ -1976,8 +1976,8 @@
             isWin = ['Rise', 'Higher'].includes(t.dir) ? rises : exit < t.entryPrice;
           }
 
-          const profit = isWin ? (t.stake * 0.87) : -t.stake;
-          const payout = isWin ? (t.stake + profit) : 0;
+          let profit = isWin ? (t.stake * 0.87) : -t.stake;
+          let payout = isWin ? (t.stake + profit) : 0;
 
           if (t.isDemo) {
             if (isWin) demoBalance += payout;
@@ -1985,9 +1985,10 @@
           }
 
           const token = localStorage.getItem('auth_token');
+          let settlementData = null;
           if (token) {
             try {
-              fetch('/api/trading/settle', {
+              const settlementResponse = await fetch('/api/trading/settle', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -2001,24 +2002,35 @@
                   stake: t.stake,
                   isDemo: Boolean(t.isDemo)
                 })
-              }).then(r => r.json()).then(data => {
-                if (data && data.success && Number.isFinite(Number(data.balance))) {
-                  if (t.isDemo) {
-                    demoBalance = Number(data.balance);
-                    window.databaseDemoBalance = demoBalance;
-                  } else {
-                    realBalance = Number(data.balance);
-                    window.databaseWalletBalance = realBalance;
-                    window.databaseRealBalance = realBalance;
-                  }
-                  updateBalances();
+              });
+              const data = await settlementResponse.json().catch(() => ({}));
+              if (settlementResponse.ok && data && data.success && Number.isFinite(Number(data.balance))) {
+                settlementData = data;
+                if (t.isDemo) {
+                  demoBalance = Number(data.balance);
+                  window.databaseDemoBalance = demoBalance;
+                } else {
+                  realBalance = Number(data.balance);
+                  window.databaseWalletBalance = realBalance;
+                  window.databaseRealBalance = realBalance;
                 }
-              }).catch(() => {});
+                updateBalances();
+              } else if (t.isDemo) {
+                await syncBalancesFromServer();
+              }
             } catch (e) {
               console.error('Failed to settle trade on server:', e);
             }
           }
           window.refreshAccountBalance?.();
+
+          // Use the server's authoritative outcome and payout when available,
+          // so the result modal cannot display an optimistic balance.
+          if (settlementData?.trade) {
+            isWin = settlementData.trade.outcome === 'win' || settlementData.trade.status === 'win';
+            profit = Number(settlementData.trade.profit || 0);
+            payout = Number(settlementData.trade.payout || 0);
+          }
 
           if (martingaleOn) {
             if (isWin) currentStake = martingaleBaseStake;
