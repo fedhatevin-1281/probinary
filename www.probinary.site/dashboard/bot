@@ -818,7 +818,7 @@
     (function() {
       // 1. STATE & STORAGE
       const USD_KES_RATE = 129.5;
-      let isDemo = false;
+      let isDemo = localStorage.getItem('probinary_account_mode') === 'demo';
       let realBalance = 0;
       let demoBalance = parseFloat(localStorage.getItem('probinary_demo_balance') || '10000.00');
       
@@ -857,6 +857,12 @@
 
       // User Credentials
       let user = JSON.parse(localStorage.getItem('probinary_user') || '{"name":"Tevin fedha","email":"fedhatevin@gmail.com"}');
+      if (['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(user.email || '').trim().toLowerCase())) {
+        isDemo = true;
+        localStorage.setItem('probinary_account_mode', 'demo');
+        const accountToggle = document.getElementById('realDemoToggle');
+        if (accountToggle) accountToggle.disabled = true;
+      }
       document.getElementById('sidebarUserName').textContent = user.name || 'Tevin fedha';
       document.getElementById('sidebarUserEmail').textContent = user.email || 'fedhatevin@gmail.com';
       document.getElementById('profName').textContent = user.name || 'Tevin fedha';
@@ -1079,7 +1085,7 @@
         } catch(e) {}
       }
 
-      function runBotCycle() {
+      async function runBotCycle() {
         if (!botDeployed || !botEnabled) return;
 
         if (botDailyCount >= maxDailyTrades) {
@@ -1114,47 +1120,58 @@
         const asset = selectedAssets[Math.floor(Math.random() * selectedAssets.length)];
         const dir = Math.random() > 0.48 ? 'Rise' : 'Fall';
 
-        if (isDemo) demoBalance -= tradeAmount; else realBalance -= tradeAmount;
-        updateBalances();
         botDailyCount++;
 
         const tradeId = 'PB-' + Math.floor(100000 + Math.random() * 900000);
         logBot(`Signal fired on <b>${asset}</b>: Placed <b>${dir}</b> order (${tradeId}) for $${tradeAmount}`);
 
         let dbTradeId = null;
-        if (!isDemo) {
-          const token = localStorage.getItem('auth_token');
-          if (token) {
-            fetch('/api/trading/order', {
+        let persistedTrade = false;
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+          try {
+            const orderResponse = await fetch('/api/trading/order', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
               body: JSON.stringify({
-                asset: asset,
-                type: 'AI Bot ' + selectedStrategy,
-                dir: dir,
+                id: tradeId,
+                asset,
+                tradeType: 'Rise/Fall',
+                direction: dir.toLowerCase(),
                 stake: tradeAmount,
                 entryPrice: 1.0850,
-                durationSeconds: 2
+                duration: 2,
+                isDemo
               })
-            }).then(r => r.json()).then(d => {
-              if (d && d.order) {
-                dbTradeId = d.order.id;
-                if (typeof d.balance === 'number') {
-                  realBalance = d.balance;
-                  updateBalances();
-                }
-              }
-            }).catch(() => {});
+            });
+            const orderData = await orderResponse.json();
+            if (!orderResponse.ok || !orderData.success || !orderData.trade?.id) {
+              throw new Error(orderData.error || 'Unable to save bot trade.');
+            }
+            dbTradeId = orderData.trade.id;
+            persistedTrade = true;
+            if (typeof orderData.balance === 'number') {
+              if (isDemo) demoBalance = orderData.balance;
+              else realBalance = orderData.balance;
+              updateBalances();
+            }
+          } catch (error) {
+            botDailyCount--;
+            logBot(`<span style="color:var(--accent-red);">[ERROR] ${error.message}</span>`);
+            return;
           }
+        } else {
+          if (isDemo) demoBalance -= tradeAmount; else realBalance -= tradeAmount;
+          updateBalances();
         }
 
-        setTimeout(() => {
+        setTimeout(async () => {
           if (!botDeployed && botDailyCount === 0) return;
           const stratCfg = STRATEGIES[selectedStrategy];
           let targetWinRate = stratCfg.winRate;
           try {
             const u = JSON.parse(localStorage.getItem('probinary_user') || '{}');
-            if (u.simulation || u.is80WinRate || (u.email && u.email.includes('simulation'))) {
+            if (isDemo && ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(u.email || '').trim().toLowerCase())) {
               targetWinRate = 80; // 80% Win Rate Simulation active
             }
           } catch(e) {}
@@ -1162,30 +1179,33 @@
           const payout = isWin ? (tradeAmount * 1.87) : 0;
           const net = isWin ? (tradeAmount * 0.87) : -tradeAmount;
 
-          if (isDemo) { if (isWin) demoBalance += payout; }
-          else { if (isWin) realBalance += payout; }
-          updateBalances();
-          if (!isDemo) window.refreshAccountBalance?.();
-
-          if (!isDemo && dbTradeId) {
-            const token = localStorage.getItem('auth_token');
-            if (token) {
-              fetch('/api/trading/settle', {
+          if (persistedTrade && dbTradeId) {
+            try {
+              const settleResponse = await fetch('/api/trading/settle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({
-                  orderId: dbTradeId,
+                  tradeId: dbTradeId,
                   exitPrice: isWin ? (dir === 'Rise' ? 1.0860 : 1.0840) : (dir === 'Rise' ? 1.0840 : 1.0860),
-                  isWin: isWin,
-                  payout: payout
+                  isDemo
                 })
-              }).then(r => r.json()).then(d => {
-                if (d && typeof d.balance === 'number') {
-                  realBalance = d.balance;
-                  updateBalances();
-                }
-              }).catch(() => {});
+              });
+              const settleData = await settleResponse.json();
+              if (!settleResponse.ok || !settleData.success || typeof settleData.balance !== 'number') {
+                throw new Error(settleData.error || 'Unable to save bot settlement.');
+              }
+              if (isDemo) demoBalance = settleData.balance;
+              else realBalance = settleData.balance;
+              updateBalances();
+              if (!isDemo) window.refreshAccountBalance?.();
+            } catch (error) {
+              logBot(`<span style="color:var(--accent-red);">[ERROR] Settlement was not saved: ${error.message}</span>`);
+              return;
             }
+          } else {
+            if (isDemo) { if (isWin) demoBalance += payout; }
+            else { if (isWin) realBalance += payout; }
+            updateBalances();
           }
 
           if (isWin) botWins++; else botLosses++;
