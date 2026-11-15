@@ -1172,7 +1172,7 @@
           try {
             const u = JSON.parse(localStorage.getItem('probinary_user') || '{}');
             if (isDemo && ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(u.email || '').trim().toLowerCase())) {
-              targetWinRate = 80; // 80% Win Rate Simulation active
+              targetWinRate = 85; // 85% Win Rate Simulation active
             }
           } catch(e) {}
           const isWin = (Math.random() * 100) < targetWinRate;

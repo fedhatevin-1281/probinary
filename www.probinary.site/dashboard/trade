@@ -719,9 +719,9 @@
         <span style="font-size: 16px; font-weight: 700; letter-spacing: -0.02em; color: #fff;">Pro<span style="color:var(--accent-lavender)">Binary</span></span>
       </a>
 
-      <!-- Simulation 80% Win Rate Indicator Pill -->
+      <!-- Simulation 85% Win Rate Indicator Pill -->
       <span id="headerSimBadge" style="display:none; align-items:center; gap:6px; padding:3px 9px; border-radius:6px; background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.4); color:var(--accent-green); font-size:10px; font-weight:800; letter-spacing:0.02em;">
-        <span style="width:6px; height:6px; border-radius:50%; background:var(--accent-green); box-shadow:0 0 6px var(--accent-green);"></span> SIMULATION · 80% WIN RATE
+        <span style="width:6px; height:6px; border-radius:50%; background:var(--accent-green); box-shadow:0 0 6px var(--accent-green);"></span> SIMULATION · 85% WIN RATE
       </span>
     </div>
 
@@ -1942,12 +1942,12 @@
           const exit = ASSETS[t.asset].price;
           let isWin = false;
 
-          // Check if Simulation 80% Win Rate Engine is active
-          let isSimulation80 = false;
+          // Check if the simulation win-rate engine is active
+          let isSimulationWinRate = false;
           try {
             const u = JSON.parse(localStorage.getItem('probinary_user') || '{}');
             if (['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(u.email || '').trim().toLowerCase())) {
-              isSimulation80 = true;
+              isSimulationWinRate = true;
             }
           } catch(e) {}
 
@@ -1958,9 +1958,9 @@
           const entryDigit = digitFromPrice(t.entryPrice, ASSETS[t.asset].precision);
           const exitDigit = digitFromPrice(exit, ASSETS[t.asset].precision);
 
-          if (isSimulation80 && t.isDemo) {
-            // 80% Win Rate Engine: 8 out of 10 trades win!
-            isWin = Math.random() < 0.80;
+          if (isSimulationWinRate && t.isDemo) {
+            // 85% Win Rate Engine: wins are weighted toward approximately 17 out of 20 trades.
+            isWin = Math.random() < 0.85;
           } else if (t.type === 'Even/Odd') {
             isWin = t.dir === 'Even' ? exitDigit % 2 === 0 : exitDigit % 2 === 1;
           } else if (t.type === 'Matches') {
