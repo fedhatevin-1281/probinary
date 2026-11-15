@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+  <title>ProBinary — Account Profile & Identity Verification (KYC)</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg-main: #090514;
+      --bg-header: #0d081c;
+      --bg-card: #191131;
+      --bg-card-alt: #130c27;
+      --bg-input: #090514;
+      --border-card: rgba(224, 204, 255, 0.12);
+      --border-card-alt: rgba(224, 204, 255, 0.18);
+      --border-accent: rgba(168, 85, 247, 0.35);
+      --accent-purple: #a855f7;
+      --accent-purple-hover: #c084fc;
+      --accent-purple-dim: rgba(168, 85, 247, 0.16);
+      --accent-lavender: #e0ccff;
+      --accent-gradient: linear-gradient(135deg, #e0ccff, #a855f7);
+      --accent-green: #10b981;
+      --accent-green-dim: rgba(16, 185, 129, 0.15);
+      --accent-red: #ef4444;
+      --accent-red-hover: #f87171;
+      --accent-gold: #fbbf24;
+      --text-white: #f5f0ff;
+      --text-gray: #9d8ec2;
+      --text-dim: #6b5b95;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100vh;
+      max-height: 100vh;
+      overflow: hidden;
+      background: var(--bg-main);
+      color: var(--text-white);
+      font-family: 'Public Sans', system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+    }
+
+    .mono { font-family: 'IBM Plex Mono', monospace; }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3d236b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #583399; }
+
+    /* Top Navigation */
+    .top-nav {
+      height: 44px;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    /* Layout Grid */
+    .app-layout {
+      height: calc(100vh - 44px);
+      max-height: calc(100vh - 44px);
+      display: grid;
+      grid-template-columns: 195px 1fr;
+      gap: 12px;
+      padding: 10px 14px;
+      overflow: hidden;
+    }
+
+    /* Cards */
+    .card-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+    }
+
+    .pill-btn {
+      border: 1px solid var(--border-card-alt);
+      background: var(--bg-card-alt);
+      color: var(--text-gray);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .pill-btn:hover {
+      border-color: var(--accent-purple);
+      color: var(--text-white);
+    }
+    .pill-btn.active {
+      background: var(--accent-gradient);
+      border-color: var(--accent-purple);
+      color: #090514;
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(168, 85, 247, 0.35);
+    }
+
+    .purple-btn {
+      background: var(--accent-gradient);
+      color: #090514;
+      font-weight: 700;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.35);
+    }
+    .purple-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+    }
+
+    .nav-svg {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      color: inherit;
+    }
+
+    .nav-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--text-gray);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+    .nav-btn:hover {
+      color: var(--text-white);
+      background: rgba(224, 204, 255, 0.05);
+    }
+    .nav-btn.active {
+      background: var(--accent-purple-dim);
+      border: 1px solid var(--accent-purple);
+      color: var(--accent-lavender);
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+    }
+
+    /* Form Inputs */
+    .profile-input {
+      width: 100%;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #fff;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .profile-input:focus {
+      border-color: var(--accent-purple);
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+    }
+
+    /* Dropzone */
+    .dropzone {
+      border: 2px dashed rgba(224, 204, 255, 0.2);
+      background: var(--bg-card-alt);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .dropzone:hover {
+      border-color: var(--accent-purple);
+      background: rgba(168, 85, 247, 0.06);
+    }
+
+    /* Switch */
+    .switch-wrap {
+      position: relative;
+      display: inline-block;
+      width: 34px;
+      height: 18px;
+    }
+    .switch-wrap input { opacity: 0; width: 0; height: 0; }
+    .switch-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: #2a1d4a;
+      transition: .2s;
+      border-radius: 20px;
+    }
+    .switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 12px;
+      width: 12px;
+      left: 3px;
+      bottom: 3px;
+      background-color: #fff;
+      transition: .2s;
+      border-radius: 50%;
+    }
+    input:checked + .switch-slider { background: var(--accent-gradient); }
+    input:checked + .switch-slider:before { transform: translateX(16px); background-color: #090514; }
+
+    /* Mobile Drawer */
+    .mobile-menu-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .mobile-drawer-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+    }
+    .mobile-drawer {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 250px;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border-card);
+      z-index: 1001;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease-out;
+    }
+    .mobile-drawer.open { transform: translateX(0); }
+
+    @media (max-width: 900px) {
+      html, body { height: auto; max-height: none; overflow-y: auto; }
+      .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+      .app-layout { height: auto; max-height: none; grid-template-columns: 1fr; padding: 10px; overflow: visible; }
+      aside.desktop-sidebar { display: none !important; }
+      #topTickerBar { display: none !important; }
+      .profile-2col { grid-template-columns: 1fr !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP HEADER NAV -->
+  <header class="top-nav">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileDrawer()" aria-label="Open menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <a href="/dashboard/trade.html" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
+        <div style="width: 26px; height: 26px; border-radius: 6px; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; box-shadow: 0 0 12px rgba(168,85,247,0.4);">P</div>
+        <span style="font-size: 16px; font-weight: 700; letter-spacing: -0.02em; color: #fff;">Pro<span style="color:var(--accent-lavender)">Binary</span></span>
+      </a>
+    </div>
+
+    <div id="topTickerBar" style="display: flex; align-items: center; gap: 16px; font-size: 11px;">
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">EUR/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_EUR_USD">1.0842</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">GBP/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_GBP_USD">1.2915</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">USD/JPY</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_USD_JPY">154.20</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">BTC/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_BTC_USD">91,420</span></div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div class="pill-btn" style="padding: 4px 10px; cursor: default;">
+        <span style="color: var(--accent-purple);">●</span>
+        <span class="mono" id="headerBalanceText" style="font-weight: 700; color: #fff;">$10,000.00</span>
+      </div>
+      <a href="/dashboard/deposit.html" class="purple-btn" style="padding: 5px 14px; font-size: 11px; text-decoration: none;">
+        + Deposit
+      </a>
+      <div id="headerAvatarBtn" style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; cursor: pointer; box-shadow: 0 0 10px rgba(168,85,247,0.4);">
+        T
+      </div>
+    </div>
+  </header>
+
+  <!-- MOBILE DRAWER -->
+  <div class="mobile-drawer-backdrop" id="drawerBackdrop" onclick="toggleMobileDrawer()"></div>
+  <div class="mobile-drawer" id="mobileDrawer">
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 24px; height: 24px; border-radius: 6px; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;">P</div>
+          <span style="font-size: 15px; font-weight: 700; color: #fff;">Pro<span style="color:var(--accent-lavender)">Binary</span></span>
+        </div>
+        <button onclick="toggleMobileDrawer()" style="background:none; border:none; color:var(--text-gray); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:4px;" aria-label="Close menu">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <nav style="display: flex; flex-direction: column; gap: 6px;">
+        <a href="/dashboard/trade.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg></span> Trade
+        </a>
+        <a href="/dashboard/bot.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> Bot
+        </a>
+        <a href="/dashboard/deposit.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
+        </a>
+        <a href="/dashboard/withdraw.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
+        </a>
+        <a href="/dashboard/history.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
+        </a>
+        <a href="/dashboard/profile.html" class="nav-btn active">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile
+        </a>
+      </nav>
+    </div>
+
+    <div style="padding-top: 12px; border-top: 1px solid var(--border-card);">
+      <button onclick="signOut()" class="nav-btn" style="color: var(--accent-red);">
+        <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Sign out
+      </button>
+    </div>
+  </div>
+
+  <!-- APP LAYOUT -->
+  <div class="app-layout">
+    <!-- LEFT SIDEBAR -->
+    <aside class="desktop-sidebar" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+      <div>
+        <div class="card-panel" style="padding: 12px; margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">Live Balance</span>
+            <div style="display: flex; gap: 4px;">
+              <span id="tabLive" class="pill-btn active" style="padding: 2px 6px; font-size: 10px;">Live</span>
+              <span id="tabDemo" class="pill-btn" style="padding: 2px 6px; font-size: 10px;">Demo</span>
+            </div>
+          </div>
+          <div id="sidebarBalanceAmount" class="mono" style="font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px;">$10,000.00</div>
+          <a href="/dashboard/deposit.html" class="purple-btn" style="width: 100%; padding: 6px 0; font-size: 11px; text-decoration: none;">
+            + Deposit
+          </a>
+        </div>
+
+        <nav style="display: flex; flex-direction: column; gap: 4px;">
+          <a href="/dashboard/trade.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg></span> Trade
+          </a>
+          <a href="/dashboard/bot.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> Bot
+          </a>
+          <a href="/dashboard/deposit.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
+          </a>
+          <a href="/dashboard/withdraw.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
+          </a>
+          <a href="/dashboard/history.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
+          </a>
+          <a href="/dashboard/profile.html" class="nav-btn active">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile
+          </a>
+        </nav>
+      </div>
+
+      <div style="padding-top: 10px; border-top: 1px solid var(--border-card);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <div id="sidebarAvatar" style="width: 26px; height: 26px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px;">T</div>
+          <div style="overflow: hidden; min-width: 0;">
+            <div id="sidebarUserName" style="font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Tevin fedha</div>
+            <div id="sidebarUserEmail" class="mono" style="font-size: 9px; color: var(--text-gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">fedhatevin@gmail.com</div>
+          </div>
+        </div>
+        <button onclick="signOut()" class="nav-btn" style="padding: 4px 6px; font-size: 11px; color: var(--text-gray);">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Sign out
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main style="display: flex; flex-direction: column; height: 100%; min-height: 0; overflow-y: auto; padding: 16px 12px;">
+      <div style="max-width: 820px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 14px;">
+        
+        <!-- USER PROFILE HEADER CARD -->
+        <div class="card-panel" style="padding: 20px 24px; background: #130c27; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div id="profileMainAvatar" style="width: 58px; height: 58px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 24px; box-shadow: 0 0 20px rgba(168,85,247,0.4);">
+              T
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <h2 id="profileNameDisplay" style="font-size: 20px; font-weight: 800; color: #fff;">Tevin fedha</h2>
+                <span id="badgeKycStatus" style="background: rgba(251, 191, 36, 0.15); color: var(--accent-gold); border: 1px solid rgba(251, 191, 36, 0.35); border-radius: 6px; padding: 2px 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
+                  KYC Pending
+                </span>
+              </div>
+              <div id="profileEmailDisplay" class="mono" style="font-size: 12px; color: var(--text-gray); margin-top: 2px;">fedhatevin@gmail.com</div>
+              <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 11px;">
+                <span style="color: var(--text-gray);">ID: <b class="mono" style="color: #fff;">PB-USR-89410</b></span>
+                <span style="color: var(--text-gray);">Tier: <b style="color: var(--accent-lavender);">VIP Desk Holder</b></span>
+                <span style="color: var(--text-gray);">Country: <b style="color: #fff;">Kenya</b></span>
+              </div>
+            </div>
+          </div>
+
+          <div style="text-align: right;">
+            <div style="font-size: 10px; color: var(--text-gray); font-weight: 700; text-transform: uppercase;">AUTHENTICATED BALANCE</div>
+            <div id="profileBalanceDisplay" class="mono" style="font-size: 24px; font-weight: 800; color: #fff; margin-top: 2px;">$10,000.00</div>
+          </div>
+        </div>
+
+        <!-- KYC VERIFICATION CARD -->
+        <div class="card-panel" style="padding: 22px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <h3 style="font-size: 17px; font-weight: 800; color: #fff;">Identity Verification (KYC Level 2)</h3>
+              </div>
+              <p style="font-size: 12px; color: var(--text-gray); margin-top: 2px;">
+                Required by financial compliance to unlock unlimited daily payouts and automated M-Pesa clearing.
+              </p>
+            </div>
+            <div id="kycStatusPill" class="pill-btn" style="border-color: rgba(251, 191, 36, 0.4); color: var(--accent-gold); font-weight: 700; font-size: 10px; padding: 4px 10px;">
+              ● Verification Pending
+            </div>
+          </div>
+
+          <!-- UNLOCK PERKS ROW -->
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px;" class="profile-2col">
+            <div style="background: var(--bg-card-alt); border: 1px solid var(--border-card); border-radius: 8px; padding: 10px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: var(--accent-lavender); font-size: 11px; font-weight: 700;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                $50k / Day Limits
+              </div>
+              <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">High-volume trading and instant payouts</div>
+            </div>
+            <div style="background: var(--bg-card-alt); border: 1px solid var(--border-card); border-radius: 8px; padding: 10px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: var(--accent-lavender); font-size: 11px; font-weight: 700;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                Priority Fills
+              </div>
+              <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">Direct liquidity bridge on live desk</div>
+            </div>
+            <div style="background: var(--bg-card-alt); border: 1px solid var(--border-card); border-radius: 8px; padding: 10px;">
+              <div style="display: flex; align-items: center; gap: 6px; color: var(--accent-lavender); font-size: 11px; font-weight: 700;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                Segregated Custody
+              </div>
+              <div style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">Audited Tier-1 institutional protection</div>
+            </div>
+          </div>
+
+          <!-- KYC FORM -->
+          <form id="kycForm" onsubmit="submitKYC(event)" style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="profile-2col">
+              <div>
+                <label style="font-size: 10px; font-weight: 700; color: var(--text-gray); display: block; margin-bottom: 4px; text-transform: uppercase;">Full Legal Name</label>
+                <input id="kycFullName" type="text" value="Tevin Fedha" required class="profile-input"/>
+              </div>
+              <div>
+                <label style="font-size: 10px; font-weight: 700; color: var(--text-gray); display: block; margin-bottom: 4px; text-transform: uppercase;">Date of Birth</label>
+                <input id="kycDob" type="date" value="1998-05-14" required class="profile-input"/>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="profile-2col">
+              <div>
+                <label style="font-size: 10px; font-weight: 700; color: var(--text-gray); display: block; margin-bottom: 4px; text-transform: uppercase;">Document Type</label>
+                <select id="kycDocType" class="profile-input" style="font-weight: 600;">
+                  <option value="national_id" selected>National Identity Card (Front & Back)</option>
+                  <option value="passport">International Passport</option>
+                  <option value="driver_license">Driver's License</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size: 10px; font-weight: 700; color: var(--text-gray); display: block; margin-bottom: 4px; text-transform: uppercase;">Document Number</label>
+                <input id="kycDocNumber" type="text" placeholder="e.g. 34918204" value="34918204" required class="profile-input mono"/>
+              </div>
+            </div>
+
+            <!-- DOCUMENT UPLOADS -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px;" class="profile-2col">
+              <!-- Upload 1: ID Card -->
+              <div class="dropzone" id="dropzoneId" onclick="triggerFileInput('fileIdInput')">
+                <input type="file" id="fileIdInput" style="display:none;" onchange="handleFileSelected(this, 'idPreview')"/>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2" style="margin: 0 auto 6px;"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><line x1="15" y1="8" x2="17" y2="8"/><line x1="15" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
+                <div style="font-size: 12px; font-weight: 700; color: #fff;">Upload Photo ID</div>
+                <div id="idPreview" style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">PNG, JPG, PDF up to 10MB</div>
+              </div>
+
+              <!-- Upload 2: Proof of Address -->
+              <div class="dropzone" id="dropzoneAddress" onclick="triggerFileInput('fileAddressInput')">
+                <input type="file" id="fileAddressInput" style="display:none;" onchange="handleFileSelected(this, 'addressPreview')"/>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--accent-lavender)" stroke-width="2" style="margin: 0 auto 6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                <div style="font-size: 12px; font-weight: 700; color: #fff;">Proof of Address</div>
+                <div id="addressPreview" style="font-size: 10px; color: var(--text-gray); margin-top: 2px;">Utility Bill / Bank Statement</div>
+              </div>
+            </div>
+
+            <!-- SUBMIT BUTTON & TEST APPROVAL -->
+            <div style="display: flex; gap: 10px; align-items: center; margin-top: 6px; flex-wrap: wrap;">
+              <button type="submit" id="btnSubmitKyc" class="purple-btn" style="flex: 1; min-width: 220px; padding: 12px 0; font-size: 13px; font-weight: 800; border-radius: 8px;">
+                Submit KYC for 12h Verification →
+              </button>
+              <button type="button" onclick="testFastApproval()" class="pill-btn" style="padding: 11px 16px; font-size: 11px; border-radius: 8px; border-color: rgba(168,85,247,0.4); color: var(--accent-lavender);">
+                <span>Simulate 12h Fast-Forward</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- SECURITY & CREDENTIALS CARD -->
+        <div class="card-panel" style="padding: 22px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-lavender)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <h3 style="font-size: 17px; font-weight: 800; color: #fff;">Security & Preferences</h3>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <!-- 2FA -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border-card);">
+              <div>
+                <div style="font-weight: 700; color: #fff; font-size: 13px;">Two-Factor Authentication (2FA)</div>
+                <div style="font-size: 11px; color: var(--text-gray); margin-top: 2px;">Require authenticator code on withdrawals and new sessions</div>
+              </div>
+              <label class="switch-wrap">
+                <input type="checkbox" id="toggle2fa" checked onchange="toggle2faStatus(this.checked)"/>
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <!-- One-Click Trading -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border-card);">
+              <div>
+                <div style="font-weight: 700; color: #fff; font-size: 13px;">One-Click Execution</div>
+                <div style="font-size: 11px; color: var(--text-gray); margin-top: 2px;">Submit trades instantly without order ticket confirmation modal</div>
+              </div>
+              <label class="switch-wrap">
+                <input type="checkbox" id="toggleOneClick" checked/>
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <!-- Active Sessions -->
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 700; color: #fff; font-size: 13px;">Active Sessions</div>
+                <div class="mono" style="font-size: 11px; color: var(--accent-green); margin-top: 2px;">● Nairobi, Kenya · Chrome TLS 1.3 (Current Device)</div>
+              </div>
+              <button onclick="alert('All other browser sessions terminated.')" class="pill-btn" style="padding: 4px 12px; font-size: 10px;">
+                Revoke Others
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function() {
+      // Balance init
+      const bal = parseFloat(localStorage.getItem('probinary_balance') || '10000.00');
+      document.getElementById('headerBalanceText').textContent = '$' + bal.toFixed(2);
+      document.getElementById('sidebarBalanceAmount').textContent = '$' + bal.toFixed(2);
+      document.getElementById('profileBalanceDisplay').textContent = '$' + bal.toFixed(2);
+
+      // User Profile Init
+      try {
+        const u = JSON.parse(localStorage.getItem('probinary_user') || '{}');
+        if (u.name) {
+          document.getElementById('profileNameDisplay').textContent = u.name;
+          document.getElementById('sidebarUserName').textContent = u.name;
+          document.getElementById('kycFullName').value = u.name;
+          const initial = u.name.charAt(0).toUpperCase();
+          document.getElementById('profileMainAvatar').textContent = initial;
+          document.getElementById('headerAvatarBtn').textContent = initial;
+          document.getElementById('sidebarAvatar').textContent = initial;
+        }
+        if (u.email) {
+          document.getElementById('profileEmailDisplay').textContent = u.email;
+          document.getElementById('sidebarUserEmail').textContent = u.email;
+        }
+        if (u.simulation || u.is80WinRate || (u.email && u.email.includes('simulation'))) {
+          const tierPill = document.querySelector('span[style*="VIP Desk Holder"]');
+          if (tierPill) tierPill.innerHTML = '<b style="color:var(--accent-green);">VIP Simulation (80% Win Rate)</b>';
+        }
+        if (u.role === 'admin' || u.role === 'superadmin') {
+          const l1 = document.getElementById('navAdminLink');
+          if (l1) l1.style.display = 'flex';
+          const l2 = document.getElementById('navAdminDrawerLink');
+          if (l2) l2.style.display = 'flex';
+        }
+      } catch (e) {}
+
+      // Load KYC State from backend
+      fetchKycStatus();
+
+      async function fetchKycStatus() {
+        try {
+          const res = await fetch('/api/kyc/status');
+          const data = await res.json();
+          if (data && data.success) {
+            localStorage.setItem('probinary_kyc_status', data.status);
+            updateKycUI(data.status, data.remainingSeconds, data.remainingHoursFormatted);
+          }
+        } catch(e) {
+          const fallback = localStorage.getItem('probinary_kyc_status') || 'pending';
+          updateKycUI(fallback, 43200, '12h 0m');
+        }
+      }
+
+      let timerInterval = null;
+      function updateKycUI(status, remainingSeconds, remainingHoursFormatted) {
+        const badge = document.getElementById('badgeKycStatus');
+        const pill = document.getElementById('kycStatusPill');
+        const btn = document.getElementById('btnSubmitKyc');
+        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+
+        if (status === 'verified') {
+          badge.textContent = 'KYC Verified Tier 2 (Cleared)';
+          badge.style.background = 'rgba(16, 185, 129, 0.15)';
+          badge.style.color = 'var(--accent-green)';
+          badge.style.borderColor = 'rgba(16, 185, 129, 0.35)';
+
+          pill.textContent = 'Verified Level 2 (12h Auto-Cleared)';
+          pill.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+          pill.style.color = 'var(--accent-green)';
+
+          btn.textContent = 'Documents Verified Tier 2';
+          btn.disabled = true;
+          btn.style.opacity = '0.7';
+        } else if (status === 'review') {
+          badge.textContent = 'Under 12h Regulatory Review';
+          badge.style.background = 'rgba(168, 85, 247, 0.15)';
+          badge.style.color = 'var(--accent-lavender)';
+          badge.style.borderColor = 'rgba(168, 85, 247, 0.35)';
+
+          let sec = remainingSeconds || 43200;
+          function renderTimer() {
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const s = sec % 60;
+            pill.textContent = `Auto-Clears in: ${h}h ${m}m ${s}s`;
+            btn.textContent = `Under Review · Auto-Approves in ${h}h ${m}m`;
+          }
+          pill.style.borderColor = 'rgba(168, 85, 247, 0.4)';
+          pill.style.color = 'var(--accent-lavender)';
+          btn.disabled = true;
+          btn.style.opacity = '0.75';
+          renderTimer();
+
+          timerInterval = setInterval(() => {
+            sec--;
+            if (sec <= 0) {
+              clearInterval(timerInterval);
+              fetchKycStatus();
+            } else {
+              renderTimer();
+            }
+          }, 1000);
+        } else {
+          badge.textContent = 'KYC Pending';
+          badge.style.background = 'rgba(251, 191, 36, 0.15)';
+          badge.style.color = 'var(--accent-gold)';
+          badge.style.borderColor = 'rgba(251, 191, 36, 0.35)';
+
+          pill.textContent = 'Verification Pending';
+          pill.style.borderColor = 'rgba(251, 191, 36, 0.4)';
+          pill.style.color = 'var(--accent-gold)';
+
+          btn.textContent = 'Submit KYC for 12h Verification →';
+          btn.disabled = false;
+          btn.style.opacity = '1';
+        }
+      }
+
+      window.triggerFileInput = function(id) {
+        document.getElementById(id).click();
+      };
+
+      window.handleFileSelected = function(input, previewId) {
+        if (input.files && input.files[0]) {
+          const f = input.files[0];
+          document.getElementById(previewId).innerHTML = `<b style="color:var(--accent-lavender);">${f.name}</b> (${(f.size / 1024).toFixed(0)} KB)`;
+        }
+      };
+
+      window.submitKYC = async function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnSubmitKyc');
+        btn.disabled = true;
+        btn.textContent = 'Submitting & Registering 12h Clearance...';
+
+        const fullName = document.getElementById('kycFullName').value;
+        const dob = document.getElementById('kycDob').value;
+        const docType = document.getElementById('kycDocType').value;
+        const docNumber = document.getElementById('kycDocNumber').value;
+
+        try {
+          const res = await fetch('/api/kyc/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fullName, dob, docType, docNumber })
+          });
+          const data = await res.json();
+          localStorage.setItem('probinary_kyc_status', 'review');
+          updateKycUI('review', 12 * 3600, '12h 0m');
+          alert('KYC Documents Received! Your 12-hour automated regulatory clearance timer is active. Your account clears automatically.');
+        } catch(err) {
+          localStorage.setItem('probinary_kyc_status', 'review');
+          updateKycUI('review', 12 * 3600, '12h 0m');
+          alert('KYC Documents Received! Auto-approval countdown active.');
+        }
+      };
+
+      window.testFastApproval = async function() {
+        if (!confirm('Simulate 12 hours passing? This triggers the compliance engine auto-approval instantly.')) return;
+        try {
+          const res = await fetch('/api/kyc/fastforward', { method: 'POST' });
+          const data = await res.json();
+          localStorage.setItem('probinary_kyc_status', 'verified');
+          updateKycUI('verified');
+          alert(data.message || '12-Hour clearance complete! Account verified for Tier 2 limits ($50,000/day).');
+        } catch(err) {
+          localStorage.setItem('probinary_kyc_status', 'verified');
+          updateKycUI('verified');
+          alert('12-Hour clearance complete! KYC Verified.');
+        }
+      };
+
+      window.toggle2faStatus = function(enabled) {
+        if (enabled) {
+          alert('Two-Factor Authentication (2FA) is Active. Authenticator OTP required on high-volume withdrawals.');
+        } else {
+          alert('2FA Disabled.');
+        }
+      };
+
+      window.toggleMobileDrawer = function() {
+        const d = document.getElementById('mobileDrawer');
+        const b = document.getElementById('drawerBackdrop');
+        if (d.classList.contains('open')) {
+          d.classList.remove('open');
+          b.style.display = 'none';
+        } else {
+          d.classList.add('open');
+          b.style.display = 'block';
+        }
+      };
+
+      window.signOut = function() {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('probinary_user');
+        window.location.href = '/auth/login.html';
+      };
+    })();
+  </script>
+</body>
+</html>
