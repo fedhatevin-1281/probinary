@@ -1311,7 +1311,7 @@
 
       // 3. BALANCE & MODE SWITCHER
       function getBal() {
-        const usesDemoBalance = isDemo || isSimulationAccount;
+        const usesDemoBalance = isDemo;
         if (!usesDemoBalance) {
           const syncedBalance = Number.isFinite(window.databaseRealBalance)
             ? window.databaseRealBalance
@@ -1321,7 +1321,7 @@
         return usesDemoBalance ? demoBalance : realBalance;
       }
       function updateBalances() {
-        if (!isDemo && !isSimulationAccount) realBalance = getBal();
+        if (!isDemo) realBalance = getBal();
         const bal = getBal();
         localStorage.setItem('probinary_balance', bal.toFixed(2));
         const str = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1795,7 +1795,7 @@
 
       async function placeOrder(dir) {
         await syncBalancesFromServer();
-        const tradeUsesDemo = isDemo || isSimulationAccount;
+        const tradeUsesDemo = isDemo;
         const bal = getBal();
         if (sessionTradeCount >= maxTrades) {
           alert('Session trade limit reached.');
