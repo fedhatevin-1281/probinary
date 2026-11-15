@@ -1339,6 +1339,27 @@
         }
       }
 
+      async function syncBalancesFromServer() {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return false;
+        try {
+          const res = await fetch('/api/wallet/balance', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.success) return false;
+          if (Number.isFinite(Number(data.realBalance))) realBalance = Number(data.realBalance);
+          if (Number.isFinite(Number(data.demoBalance))) demoBalance = Number(data.demoBalance);
+          window.databaseRealBalance = realBalance;
+          window.databaseWalletBalance = realBalance;
+          window.databaseDemoBalance = demoBalance;
+          updateBalances();
+          return true;
+        } catch {
+          return false;
+        }
+      }
+
       window.setDatabaseBalance = function(balance) {
         window.databaseWalletBalance = balance;
         window.databaseRealBalance = balance;
@@ -1352,11 +1373,12 @@
         updateBalances();
       };
 
-      window.setMode = function(demo) {
+      window.setMode = async function(demo) {
         isDemo = Boolean(demo);
         localStorage.setItem('probinary_account_mode', isDemo ? 'demo' : 'real');
         updateBalances();
         updateBalanceMenu();
+        await syncBalancesFromServer();
       };
 
       function updateBalanceMenu() {
@@ -1759,6 +1781,7 @@
       }
 
       async function placeOrder(dir) {
+        await syncBalancesFromServer();
         const bal = getBal();
         if (sessionTradeCount >= maxTrades) {
           alert('Session trade limit reached.');
@@ -1800,18 +1823,23 @@
                   isDemo: true
                 })
               });
-              const data = await res.json();
-              if (data && Number.isFinite(Number(data.balance))) {
-                demoBalance = Number(data.balance);
-                window.databaseDemoBalance = demoBalance;
-              } else {
-                demoBalance -= currentStake;
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok || !data.success) {
+                await syncBalancesFromServer();
+                alert(data.error || 'Failed to place demo order.');
+                document.getElementById('tradeStatusPrompt').innerHTML = `<span style="color:var(--accent-red); font-weight:700;">DEMO ORDER FAILED</span>`;
+                return;
               }
+              demoBalance = Number(data.balance);
+              window.databaseDemoBalance = demoBalance;
             } else {
               demoBalance -= currentStake;
             }
           } catch {
-            demoBalance -= currentStake;
+            await syncBalancesFromServer();
+            alert('Network error connecting to the demo trading service.');
+            document.getElementById('tradeStatusPrompt').innerHTML = `<span style="color:var(--accent-red); font-weight:700;">DEMO CONNECTION ERROR</span>`;
+            return;
           }
 
           updateBalances();
