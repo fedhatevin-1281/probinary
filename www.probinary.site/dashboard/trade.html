@@ -152,6 +152,52 @@
     }
     .red-btn:hover { background: var(--accent-red-hover); }
 
+    .balance-switcher {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .balance-switch-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      z-index: 120;
+      display: none;
+      min-width: 142px;
+      padding: 5px;
+      background: #191131;
+      border: 1px solid var(--border-card-alt);
+      border-radius: 10px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+    }
+
+    .balance-switch-menu.open {
+      display: block;
+    }
+
+    .balance-switch-option {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 10px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--text-gray);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .balance-switch-option:hover,
+    .balance-switch-option.active {
+      background: var(--accent-purple-dim);
+      color: var(--text-white);
+    }
+
     /* Sidebar Navigation Links */
     
     .nav-svg {
@@ -691,11 +737,17 @@
     <!-- Right Header Controls -->
     <div style="display: flex; align-items: center; gap: 10px;">
       <!-- Balance Pill -->
-      <button type="button" class="pill-btn" id="headerBalancePill" aria-label="Switch between live and demo balance" onclick="setMode(!document.getElementById('realDemoToggle').checked)" style="padding: 4px 10px; cursor: pointer;">
+      <div class="balance-switcher" id="balanceSwitcher">
+      <button type="button" class="pill-btn" id="headerBalancePill" aria-label="Choose live or demo balance" aria-haspopup="menu" aria-expanded="false" onclick="toggleBalanceMenu(event)" style="padding: 4px 10px; cursor: pointer;">
         <span style="color: var(--accent-purple);">●</span>
         <span class="mono" id="headerBalanceText" style="font-weight: 700; color: #fff;">$10,000.00.00</span>
         <span style="font-size: 9px; color: var(--text-gray);">▼</span>
       </button>
+        <div class="balance-switch-menu" id="balanceSwitchMenu" role="menu" aria-label="Account balance mode">
+          <button type="button" class="balance-switch-option" data-mode="real" role="menuitem" onclick="selectBalanceMode(false, event)"><span>●</span> Real balance</button>
+          <button type="button" class="balance-switch-option" data-mode="demo" role="menuitem" onclick="selectBalanceMode(true, event)"><span>●</span> Demo balance</button>
+        </div>
+      </div>
 
       <!-- Deposit Button -->
       <a href="/dashboard/deposit.html" class="purple-btn" style="padding: 5px 14px; font-size: 11px; text-decoration: none;">
@@ -1304,7 +1356,42 @@
         isDemo = Boolean(demo);
         localStorage.setItem('probinary_account_mode', isDemo ? 'demo' : 'real');
         updateBalances();
+        updateBalanceMenu();
       };
+
+      function updateBalanceMenu() {
+        const menu = document.getElementById('balanceSwitchMenu');
+        const pill = document.getElementById('headerBalancePill');
+        if (!menu || !pill) return;
+        pill.setAttribute('aria-expanded', menu.classList.contains('open') ? 'true' : 'false');
+        menu.querySelectorAll('.balance-switch-option').forEach(option => {
+          option.classList.toggle('active', option.dataset.mode === (isDemo ? 'demo' : 'real'));
+        });
+      }
+
+      window.toggleBalanceMenu = function(event) {
+        event.stopPropagation();
+        const menu = document.getElementById('balanceSwitchMenu');
+        if (!menu) return;
+        menu.classList.toggle('open');
+        updateBalanceMenu();
+      };
+
+      window.selectBalanceMode = function(demo, event) {
+        event.stopPropagation();
+        setMode(demo);
+        document.getElementById('balanceSwitchMenu')?.classList.remove('open');
+        updateBalanceMenu();
+      };
+
+      document.addEventListener('click', () => {
+        const menu = document.getElementById('balanceSwitchMenu');
+        if (menu?.classList.contains('open')) {
+          menu.classList.remove('open');
+          updateBalanceMenu();
+        }
+      });
+
       document.getElementById('realDemoToggle').addEventListener('change', (e) => {
         setMode(!e.target.checked);
       });
