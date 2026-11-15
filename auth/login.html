@@ -221,7 +221,7 @@
               if (isAdmin) {
                 window.location.href = '/dashboard/admin.html';
               } else {
-                window.location.href = '/dashboard/trade.html';
+                window.location.href = isSim ? '/dashboard/simulation.html' : '/dashboard/trade.html';
               }
             }, 600);
             return;
