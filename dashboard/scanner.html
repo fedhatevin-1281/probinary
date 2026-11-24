@@ -784,7 +784,7 @@
     <!-- MAIN SCANNER CONTENT -->
     <main class="scanner-main">
       <div class="scanner-container">
-        
+
         <!-- SCANNER HEADER -->
         <div class="scanner-header-bar">
           <div class="ai-title-wrap">
@@ -955,7 +955,7 @@
       const demo = parseFloat(localStorage.getItem('probinary_demo_balance') || '10000');
       const val = isDemo ? demo : real;
       const formatted = '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      
+
       const balEl = document.getElementById('balance');
       if (balEl) balEl.textContent = formatted;
       const sideBalEl = document.getElementById('sidebarBalanceAmount');

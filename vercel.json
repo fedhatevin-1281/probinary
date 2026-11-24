@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": null,
+  "buildCommand": "node scripts/sync-deployment-dashboard.js",
   "outputDirectory": "www.probinary.site",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/[...path]" },

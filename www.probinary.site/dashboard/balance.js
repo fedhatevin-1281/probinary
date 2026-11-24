@@ -13,6 +13,10 @@
     'sidebarBalanceAmount',
     'panelBalTiny',
     'pBal',
+    'balance',
+    'mobHeaderBalance',
+    'mobileScannerBalance',
+    'mobilePositionsBalance',
     'mainAvailableBal',
     'profileBalanceDisplay'
   ].map(id => document.getElementById(id)).filter(Boolean);
@@ -77,13 +81,14 @@
   }
 
   // Account Switcher API
-  window.setMode = function(demo) {
+  window.setMode = async function(demo) {
     isDemo = Boolean(demo);
     localStorage.setItem(modeStorageKey, isDemo ? 'demo' : 'real');
     if (typeof window.onAccountModeChanged === 'function') {
       window.onAccountModeChanged(isDemo);
     }
     renderSelectedBalance();
+    await window.refreshAccountBalance();
   };
 
   window.setDatabaseBalance = function(balance) {
