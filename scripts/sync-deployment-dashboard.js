@@ -7,6 +7,7 @@ const files = [
   "design-system.css",
   "history.html",
   "scanner.html",
+  "simulation-chart.js",
   "simulation-ui.js",
   "simulation.html",
   "trade.html",
