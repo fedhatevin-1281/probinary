@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="theme-color" content="#100b1b"/>
+  <title>Daily Finance Monitor | ProBinary</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #0c0814;
+      --surface: #151020;
+      --surface-raised: #1b1528;
+      --line: #30263f;
+      --text: #f5f0ff;
+      --muted: #a99bbd;
+      --accent: #c49aff;
+      --green: #65d6a0;
+      --amber: #f2c56b;
+      --red: #ff777d;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--page); color: var(--text); font: 14px/1.45 "IBM Plex Sans", "Segoe UI", sans-serif; }
+    button { font: inherit; }
+    .topbar { min-height: 58px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px max(20px, calc((100vw - 1200px) / 2)); background: #100b1b; }
+    .brand { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 750; }
+    .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 7px; color: #170e22; background: linear-gradient(135deg, #eadbff, #ac64ef); font-weight: 900; }
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .button { min-height: 36px; border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; color: var(--text); background: var(--surface-raised); text-decoration: none; cursor: pointer; }
+    .button:hover { border-color: #796293; }
+    .button:disabled { opacity: .55; cursor: wait; }
+    .button-primary { border-color: #8056a8; background: #41265d; }
+    .button-danger { color: #ffd9dc; border-color: #774248; background: #3a2028; }
+    .button-success { color: #d7ffec; border-color: #356c55; background: #19372b; }
+    .shell { max-width: 1200px; margin: 0 auto; padding: 28px 20px 48px; }
+    .heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+    .eyebrow { color: var(--accent); font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: .08em; }
+    h1 { margin: 4px 0 0; font-size: 25px; line-height: 1.2; }
+    .date-line { margin-top: 6px; color: var(--muted); font-size: 12px; }
+    .live-state { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+    .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+    .metric { min-width: 0; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 7px; }
+    .metric-label { color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .metric-value { margin-top: 5px; font-size: 23px; font-weight: 750; font-variant-numeric: tabular-nums; }
+    .metric-value.manual { color: var(--amber); }
+    .section { margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+    .section-head { min-height: 56px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0; font-size: 15px; }
+    .section-meta { color: var(--muted); font-size: 11px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap; }
+    th { padding: 10px 14px; color: var(--muted); background: #191325; font-size: 10px; font-weight: 750; text-transform: uppercase; }
+    td { padding: 11px 14px; border-top: 1px solid #2a2237; font-size: 12px; }
+    tbody tr:hover { background: #1a1424; }
+    .amount { text-align: right; font-weight: 750; font-variant-numeric: tabular-nums; }
+    .source-tag, .status-tag { display: inline-flex; align-items: center; padding: 3px 7px; border: 1px solid var(--line); border-radius: 4px; color: #d5c9e5; background: #20192d; font-size: 10px; font-weight: 700; }
+    .source-tag.manual { color: #ffe2a6; border-color: #6a542d; background: #332918; }
+    .status-tag.pending { color: var(--amber); }
+    .status-tag.approved, .status-tag.processing { color: var(--accent); }
+    .row-actions { display: flex; justify-content: end; gap: 6px; }
+    .row-actions .button { min-height: 30px; padding: 4px 8px; font-size: 11px; }
+    .empty, .message { padding: 24px 16px; color: var(--muted); text-align: center; }
+    .message.error { color: var(--red); }
+    .notice { margin-top: 9px; color: var(--muted); font-size: 11px; }
+    .restricted { max-width: 520px; margin: 12vh auto; padding: 28px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); text-align: center; }
+    .restricted h1 { font-size: 20px; }
+    .restricted p { color: var(--muted); }
+    [hidden] { display: none !important; }
+    @media (max-width: 650px) {
+      .topbar { padding: 10px 14px; }
+      .shell { padding: 22px 12px 36px; }
+      .heading { align-items: start; flex-direction: column; }
+      .metrics { grid-template-columns: 1fr; }
+      .metric { padding: 11px 14px; }
+      .metric-value { font-size: 20px; }
+      .section-head { align-items: start; flex-direction: column; }
+      .top-actions .button { padding-inline: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">P</span><span>ProBinary <span style="color:var(--muted);font-weight:500">/ Finance</span></span></div>
+    <div class="top-actions">
+      <button class="button" id="refreshButton" type="button" aria-label="Refresh data" title="Refresh data">Refresh</button>
+      <a class="button" href="/dashboard/trade.html">Trading desk</a>
+    </div>
+  </header>
+
+  <main class="shell" id="monitor" hidden>
+    <div class="heading">
+      <div>
+        <div class="eyebrow">Restricted operations</div>
+        <h1>Daily funds monitor</h1>
+        <div class="date-line" id="dayLabel">Loading reporting window...</div>
+      </div>
+      <div class="live-state"><span class="live-dot"></span><span id="updatedLabel">Loading</span></div>
+    </div>
+
+    <div class="metrics" aria-live="polite">
+      <div class="metric"><div class="metric-label">Deposited today</div><div class="metric-value" id="totalDeposits">$0.00</div></div>
+      <div class="metric"><div class="metric-label">Deposit transactions</div><div class="metric-value" id="depositCount">0</div></div>
+      <div class="metric"><div class="metric-label">Admin manual credits</div><div class="metric-value manual" id="manualTotal">$0.00</div></div>
+    </div>
+
+    <section class="section" aria-labelledby="depositTitle">
+      <div class="section-head">
+        <div><h2 id="depositTitle">Completed deposits</h2><div class="section-meta">Only records created today in Africa/Nairobi time</div></div>
+        <div class="section-meta" id="depositRowsLabel">0 records</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>Client</th><th>Source</th><th>Method / note</th><th>Reference</th><th class="amount">Amount</th></tr></thead>
+          <tbody id="depositsBody"><tr><td class="empty" colspan="6">Loading today's deposits...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="withdrawalTitle">
+      <div class="section-head">
+        <div><h2 id="withdrawalTitle">Open withdrawal requests</h2><div class="section-meta">Requests remain listed until approved, paid, rejected, or failed.</div></div>
+        <div class="section-meta" id="withdrawalRowsLabel">0 open</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Reference</th><th>Client</th><th>Method / destination</th><th>Submitted</th><th>Status</th><th class="amount">Amount</th><th></th></tr></thead>
+          <tbody id="withdrawalsBody"><tr><td class="empty" colspan="7">Loading withdrawal requests...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="notice" style="padding:0 16px 14px">Mark a request completed only after the payout has been sent.</div>
+    </section>
+  </main>
+
+  <section class="restricted" id="accessMessage" hidden>
+    <div class="eyebrow">Finance monitor</div>
+    <h1 id="accessTitle">Checking access</h1>
+    <p id="accessDescription">Your account access is being verified.</p>
+    <a class="button" href="/auth/login.html">Sign in</a>
+  </section>
+  <div class="message" id="errorMessage" role="alert" hidden></div>
+
+  <script>
+    (() => {
+      const token = localStorage.getItem('auth_token');
+      const monitor = document.getElementById('monitor');
+      const accessMessage = document.getElementById('accessMessage');
+      const errorMessage = document.getElementById('errorMessage');
+      const depositsBody = document.getElementById('depositsBody');
+      const withdrawalsBody = document.getElementById('withdrawalsBody');
+
+      function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+      }
+
+      function money(value) {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(value) || 0);
+      }
+
+      function dateTime(value) {
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? '—' : new Intl.DateTimeFormat('en-KE', { timeZone: 'Africa/Nairobi', dateStyle: 'medium', timeStyle: 'short' }).format(date);
+      }
+
+      function showAccess(title, description) {
+        monitor.hidden = true;
+        accessMessage.hidden = false;
+        document.getElementById('accessTitle').textContent = title;
+        document.getElementById('accessDescription').textContent = description;
+      }
+
+      function renderDeposits(deposits) {
+        const total = deposits.reduce((sum, deposit) => sum + (Number(deposit.amount) || 0), 0);
+        const manual = deposits.filter(deposit => deposit.source === 'Manual by admin').reduce((sum, deposit) => sum + (Number(deposit.amount) || 0), 0);
+        document.getElementById('totalDeposits').textContent = money(total);
+        document.getElementById('manualTotal').textContent = money(manual);
+        document.getElementById('depositCount').textContent = String(deposits.length);
+        document.getElementById('depositRowsLabel').textContent = `${deposits.length} ${deposits.length === 1 ? 'record' : 'records'}`;
+
+        if (!deposits.length) {
+          depositsBody.innerHTML = '<tr><td class="empty" colspan="6">No completed deposits recorded today.</td></tr>';
+          return;
+        }
+
+        depositsBody.innerHTML = deposits.map(deposit => {
+          const manualSource = deposit.source === 'Manual by admin';
+          const method = [deposit.method, deposit.creditedBy ? `Credited by ${deposit.creditedBy}` : null].filter(Boolean).join(' · ');
+          return `<tr>
+            <td>${escapeHtml(dateTime(deposit.createdAt))}</td>
+            <td>${escapeHtml(deposit.userName)}<br><span class="section-meta">${escapeHtml(deposit.userEmail)}</span></td>
+            <td><span class="source-tag ${manualSource ? 'manual' : ''}">${escapeHtml(deposit.source || 'Deposit')}</span></td>
+            <td>${escapeHtml(method || '—')}</td>
+            <td>${escapeHtml(deposit.id)}</td>
+            <td class="amount">${escapeHtml(money(deposit.amount))}</td>
+          </tr>`;
+        }).join('');
+      }
+
+      function withdrawalActions(withdrawal) {
+        const status = String(withdrawal.status || '').toLowerCase();
+        if (status === 'pending') return [['Approve', 'approve', 'button-success'], ['Reject', 'reject', 'button-danger']];
+        if (status === 'approved') return [['Mark processing', 'process', 'button-primary'], ['Reject', 'reject', 'button-danger']];
+        if (status === 'processing') return [['Mark paid', 'complete', 'button-success'], ['Mark failed', 'fail', 'button-danger']];
+        return [];
+      }
+
+      function renderWithdrawals(withdrawals) {
+        document.getElementById('withdrawalRowsLabel').textContent = `${withdrawals.length} open`;
+        if (!withdrawals.length) {
+          withdrawalsBody.innerHTML = '<tr><td class="empty" colspan="7">No open withdrawal requests.</td></tr>';
+          return;
+        }
+
+        withdrawalsBody.innerHTML = withdrawals.map(withdrawal => {
+          const identifier = withdrawal.requestId || withdrawal.id;
+          const actions = withdrawalActions(withdrawal).map(([label, action, style]) => `<button class="button ${style}" type="button" data-action="${action}" data-id="${escapeHtml(identifier)}">${escapeHtml(label)}</button>`).join('');
+          return `<tr>
+            <td>${escapeHtml(withdrawal.id)}</td>
+            <td>${escapeHtml(withdrawal.userName)}<br><span class="section-meta">${escapeHtml(withdrawal.userEmail)}</span></td>
+            <td>${escapeHtml(withdrawal.method)}<br><span class="section-meta">${escapeHtml(withdrawal.destination)}</span></td>
+            <td>${escapeHtml(dateTime(withdrawal.createdAt))}</td>
+            <td><span class="status-tag ${escapeHtml(withdrawal.status)}">${escapeHtml(withdrawal.status)}</span></td>
+            <td class="amount">${escapeHtml(money(withdrawal.amount))}</td>
+            <td><div class="row-actions">${actions}</div></td>
+          </tr>`;
+        }).join('');
+      }
+
+      async function loadMonitor() {
+        if (!token) {
+          showAccess('Sign in required', 'Sign in with an authorized account to open this monitor.');
+          return;
+        }
+        errorMessage.hidden = true;
+        document.getElementById('refreshButton').disabled = true;
+        try {
+          const response = await fetch('/api/finance-monitor/today', { headers: { Authorization: `Bearer ${token}` } });
+          const data = await response.json().catch(() => ({}));
+          if (response.status === 401) {
+            localStorage.removeItem('auth_token');
+            showAccess('Sign in required', 'Your session expired. Sign in again to continue.');
+            return;
+          }
+          if (response.status === 403) {
+            showAccess('Access restricted', 'This link is limited to the designated finance accounts.');
+            return;
+          }
+          if (!response.ok || !data.success) throw new Error(data.error || 'Unable to load finance data.');
+
+          monitor.hidden = false;
+          accessMessage.hidden = true;
+          document.getElementById('dayLabel').textContent = `${data.date} · ${data.timeZone} · completed deposits only`;
+          document.getElementById('updatedLabel').textContent = `Updated ${new Intl.DateTimeFormat('en-KE', { timeZone: 'Africa/Nairobi', timeStyle: 'short' }).format(new Date())}`;
+          renderDeposits(Array.isArray(data.deposits) ? data.deposits : []);
+          renderWithdrawals(Array.isArray(data.withdrawals) ? data.withdrawals : []);
+        } catch (error) {
+          errorMessage.hidden = false;
+          errorMessage.textContent = error.message || 'Unable to load finance data.';
+        } finally {
+          document.getElementById('refreshButton').disabled = false;
+        }
+      }
+
+      withdrawalsBody.addEventListener('click', async event => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const action = button.dataset.action;
+        let note = '';
+        if (action === 'reject' || action === 'fail') {
+          note = window.prompt('Enter the reason for this action:');
+          if (!note || !note.trim()) return;
+        }
+        if (!window.confirm(`${button.textContent} withdrawal ${button.dataset.id}?`)) return;
+
+        button.disabled = true;
+        try {
+          const response = await fetch('/api/finance-monitor/withdrawals/review', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ identifier: button.dataset.id, action, note })
+          });
+          const data = await response.json().catch(() => ({}));
+          if (response.status === 403) return showAccess('Access restricted', 'This link is limited to the designated finance accounts.');
+          if (!response.ok || !data.success) throw new Error(data.error || 'Unable to update withdrawal.');
+          await loadMonitor();
+        } catch (error) {
+          errorMessage.hidden = false;
+          errorMessage.textContent = error.message || 'Unable to update withdrawal.';
+          button.disabled = false;
+        }
+      });
+
+      document.getElementById('refreshButton').addEventListener('click', loadMonitor);
+      loadMonitor();
+    })();
+  </script>
+</body>
+</html>

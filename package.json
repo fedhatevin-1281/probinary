@@ -1,0 +1,23 @@
+{
+  "name": "probinary",
+  "version": "1.0.0",
+  "description": "ProBinary Trading Desk Website",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "serve": "npx serve www.probinary.site -p 3000"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "qrcode": "^1.5.4",
+    "serve": "^14.2.4"
+  },
+  "keywords": [
+    "probinary",
+    "trading",
+    "website"
+  ],
+  "author": "",
+  "license": "ISC"
+}

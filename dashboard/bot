@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+  <title>ProBinary — AI Bot Trading</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg-main: #090514;
+      --bg-header: #0d081c;
+      --bg-card: #191131;
+      --bg-card-alt: #130c27;
+      --bg-input: #090514;
+      --border-card: rgba(224, 204, 255, 0.12);
+      --border-card-alt: rgba(224, 204, 255, 0.18);
+      --border-accent: rgba(168, 85, 247, 0.35);
+      --accent-purple: #a855f7;
+      --accent-purple-hover: #c084fc;
+      --accent-purple-dim: rgba(168, 85, 247, 0.16);
+      --accent-lavender: #e0ccff;
+      --accent-gradient: linear-gradient(135deg, #e0ccff, #a855f7);
+      --accent-green: #10b981;
+      --accent-green-dim: rgba(16, 185, 129, 0.15);
+      --accent-red: #ef4444;
+      --accent-red-hover: #f87171;
+      --accent-gold: #fbbf24;
+      --text-white: #f5f0ff;
+      --text-gray: #9d8ec2;
+      --text-dim: #6b5b95;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100vh;
+      max-height: 100vh;
+      overflow: hidden;
+      background: var(--bg-main);
+      color: var(--text-white);
+      font-family: 'Public Sans', system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+    }
+
+    .mono { font-family: 'IBM Plex Mono', monospace; }
+
+    /* Custom Sleek Purple Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3d236b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #583399; }
+
+    /* Top Navigation */
+    .top-nav {
+      height: 44px;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    /* Layout Grid */
+    .app-layout {
+      height: calc(100vh - 44px);
+      max-height: calc(100vh - 44px);
+      display: grid;
+      grid-template-columns: 195px 1fr;
+      gap: 12px;
+      padding: 10px 14px;
+      overflow: hidden;
+    }
+
+    /* Cards */
+    .card-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+    }
+
+    /* Buttons & Pills */
+    .pill-btn {
+      border: 1px solid var(--border-card-alt);
+      background: var(--bg-card-alt);
+      color: var(--text-gray);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .pill-btn:hover {
+      border-color: var(--accent-purple);
+      color: var(--text-white);
+    }
+    .pill-btn.active {
+      background: var(--accent-gradient);
+      border-color: var(--accent-purple);
+      color: #090514;
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(168, 85, 247, 0.35);
+    }
+
+    .purple-btn {
+      background: var(--accent-gradient);
+      color: #090514;
+      font-weight: 700;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.35);
+    }
+    .purple-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+    }
+
+    .red-btn {
+      background: var(--accent-red);
+      color: #ffffff;
+      font-weight: 700;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      box-shadow: 0 0 16px rgba(239, 68, 68, 0.35);
+    }
+    .red-btn:hover { background: var(--accent-red-hover); }
+
+    /* Sidebar Navigation Links */
+    
+    .nav-svg {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      color: inherit;
+    }
+
+    .nav-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--text-gray);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+    .nav-btn:hover {
+      color: var(--text-white);
+      background: rgba(224, 204, 255, 0.05);
+    }
+    .nav-btn.active {
+      background: var(--accent-purple-dim);
+      border: 1px solid var(--accent-purple);
+      color: var(--accent-lavender);
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+    }
+
+    /* Switch */
+    .switch-wrap {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 20px;
+    }
+    .switch-wrap input { opacity: 0; width: 0; height: 0; }
+    .switch-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: #2a1d4a;
+      transition: .25s;
+      border-radius: 20px;
+    }
+    .switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .25s;
+      border-radius: 50%;
+    }
+    input:checked + .switch-slider { background-color: var(--accent-purple); }
+    input:checked + .switch-slider:before { transform: translateX(18px); background-color: #090514; }
+
+    /* Strategy Card Styles */
+    .strategy-card {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-card-alt);
+      border-radius: 10px;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .strategy-card:hover {
+      border-color: rgba(168, 85, 247, 0.5);
+      transform: translateY(-1px);
+    }
+    .strategy-card.selected {
+      border: 2px solid var(--accent-purple);
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.35);
+    }
+
+    /* Asset Chip Style */
+    .asset-chip {
+      background: var(--bg-input);
+      border: 1px solid var(--border-card-alt);
+      color: var(--text-gray);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .asset-chip:hover {
+      border-color: var(--accent-purple);
+      color: #fff;
+    }
+    .asset-chip.selected {
+      background: rgba(168, 85, 247, 0.15);
+      border: 1px solid var(--accent-purple);
+      color: var(--accent-lavender);
+      font-weight: 700;
+    }
+
+    /* Quick Amount Chip */
+    .amt-chip {
+      background: var(--bg-input);
+      border: 1px solid var(--border-card-alt);
+      color: var(--text-gray);
+      border-radius: 6px;
+      padding: 5px 0;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+    .amt-chip:hover { border-color: var(--accent-purple); color: #fff; }
+    .amt-chip.active {
+      background: var(--accent-gradient);
+      border-color: var(--accent-purple);
+      color: #090514;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+    }
+
+    /* Inputs */
+    .bot-input {
+      background: var(--bg-input);
+      border: 1px solid var(--border-card-alt);
+      border-radius: 8px;
+      color: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .bot-input:focus {
+      border-color: var(--accent-purple);
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 5, 20, 0.88);
+      backdrop-filter: blur(5px);
+      z-index: 999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    /* Hamburger & Mobile Drawer */
+    .mobile-menu-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .mobile-drawer-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+    }
+    .mobile-drawer {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 250px;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border-card);
+      z-index: 1001;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease-out;
+    }
+    .mobile-drawer.open {
+      transform: translateX(0);
+    }
+
+    /* Mobile Responsive Breakpoints */
+    @media (max-width: 900px) {
+      html, body {
+        height: auto;
+        max-height: none;
+        overflow-y: auto;
+      }
+      .mobile-menu-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .app-layout {
+        height: auto;
+        max-height: none;
+        grid-template-columns: 1fr;
+        padding: 10px;
+        overflow: visible;
+      }
+      aside.desktop-sidebar {
+        display: none !important;
+      }
+      .bot-grid-strategies {
+        grid-template-columns: 1fr !important;
+      }
+      .bot-grid-3col {
+        grid-template-columns: 1fr !important;
+      }
+      .bot-summary-bar {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 12px;
+      }
+      .bot-summary-bar button {
+        width: 100%;
+        justify-content: center;
+      }
+      #topTickerBar {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP HEADER NAV -->
+  <header class="top-nav">
+    <!-- Left Logo & Mobile Hamburger -->
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileDrawer()" aria-label="Open menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <a href="/dashboard/trade.html" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
+        <div style="width: 26px; height: 26px; border-radius: 6px; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; box-shadow: 0 0 12px rgba(168,85,247,0.4);">P</div>
+        <span style="font-size: 16px; font-weight: 700; letter-spacing: -0.02em; color: #fff;">Pro<span style="color:var(--accent-lavender)">Binary</span></span>
+      </a>
+    </div>
+
+    <!-- Center Market Ticker -->
+    <div id="topTickerBar" style="display: flex; align-items: center; gap: 16px; font-size: 11px;">
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">EUR/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_EUR_USD">1.0842</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">GBP/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_GBP_USD">1.2915</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">USD/JPY</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_USD_JPY">154.20</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">BTC/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_BTC_USD">91,420</span></div>
+      <div style="cursor: pointer;"><span style="color:var(--text-gray);">ETH/USD</span> <span class="mono" style="font-weight:700; color:#fff;" id="tick_ETH_USD">3,140</span></div>
+    </div>
+
+    <!-- Right Header Controls -->
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <!-- Balance Pill -->
+      <div class="pill-btn" id="headerBalancePill" style="padding: 4px 10px; cursor: default;">
+        <span style="color: var(--accent-purple);">●</span>
+        <span class="mono" id="headerBalanceText" style="font-weight: 700; color: #fff;">$10,000.00</span>
+        <span style="font-size: 9px; color: var(--text-gray);">▼</span>
+      </div>
+
+      <!-- Deposit Button -->
+      <a href="/dashboard/deposit.html" class="purple-btn" style="padding: 5px 14px; font-size: 11px; text-decoration: none;">
+        + Deposit
+      </a>
+
+      <!-- Avatar Circle -->
+      <a href="/dashboard/profile.html" id="headerAvatarBtn" style="text-decoration: none; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; cursor: pointer; box-shadow: 0 0 10px rgba(168,85,247,0.4);">
+        T
+      </a>
+    </div>
+  </header>
+
+  <!-- MOBILE DRAWER -->
+  <div class="mobile-drawer-backdrop" id="drawerBackdrop" onclick="toggleMobileDrawer()"></div>
+  <div class="mobile-drawer" id="mobileDrawer">
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 24px; height: 24px; border-radius: 6px; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;">P</div>
+          <span style="font-size: 15px; font-weight: 700; color: #fff;">Pro<span style="color:var(--accent-lavender)">Binary</span></span>
+        </div>
+        <button onclick="toggleMobileDrawer()" style="background:none; border:none; color:var(--text-gray); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:4px;" aria-label="Close menu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+
+      <nav style="display: flex; flex-direction: column; gap: 6px;">
+        <a href="/dashboard/trade.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg></span> Trade
+        </a>
+        <a href="/dashboard/bot.html" class="nav-btn active">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> Bot <span style="color: var(--accent-purple); font-size: 10px; margin-left: auto;">●</span>
+        </a>
+        <a href="/dashboard/history.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span> Portfolio
+        </a>
+        <a href="/dashboard/deposit.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
+        </a>
+        <a href="/dashboard/withdraw.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
+        </a>
+        <a href="/dashboard/history.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
+        </a>
+        <a href="/dashboard/profile.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile
+        </a>
+      </nav>
+    </div>
+
+    <div style="padding-top: 12px; border-top: 1px solid var(--border-card);">
+      <button onclick="signOut()" class="nav-btn" style="color: var(--accent-red);">
+        <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Sign out
+      </button>
+    </div>
+  </div>
+
+  <!-- APP LAYOUT -->
+  <div class="app-layout">
+
+    <!-- 1. LEFT SIDEBAR (Desktop) -->
+    <aside class="desktop-sidebar" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+      <div>
+        <!-- Balance Card -->
+        <div class="card-panel" style="padding: 12px; margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 11px; color: var(--text-gray); font-weight: 600;">Live Balance</span>
+            <div style="display: flex; gap: 4px;">
+              <span id="tabLive" onclick="setMode(false)" class="pill-btn active" style="padding: 2px 6px; font-size: 10px;">Live</span>
+              <span id="tabDemo" onclick="setMode(true)" class="pill-btn" style="padding: 2px 6px; font-size: 10px;">Demo</span>
+            </div>
+          </div>
+          <div id="sidebarBalanceAmount" class="mono" style="font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px;">$10,000.00</div>
+          <a href="/dashboard/deposit.html" class="purple-btn" style="width: 100%; padding: 6px 0; font-size: 11px; text-decoration: none;">
+            + Deposit
+          </a>
+        </div>
+
+        <!-- Navigation -->
+        <nav style="display: flex; flex-direction: column; gap: 4px;">
+          <a href="/dashboard/trade.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg></span> Trade
+          </a>
+          <a href="/dashboard/bot.html" class="nav-btn active">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> Bot <span style="color: var(--accent-purple); font-size: 10px; margin-left: auto;">●</span>
+          </a>
+          <a href="/dashboard/history.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span> Portfolio
+          </a>
+          <a href="/dashboard/deposit.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
+          </a>
+          <a href="/dashboard/withdraw.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
+          </a>
+          <a href="/dashboard/history.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
+          </a>
+          <a href="/dashboard/profile.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile
+          </a>
+        </nav>
+      </div>
+
+      <!-- Bottom User Card -->
+      <div style="padding-top: 10px; border-top: 1px solid var(--border-card);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <div id="sidebarAvatar" style="width: 26px; height: 26px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px;">T</div>
+          <div style="overflow: hidden; min-width: 0;">
+            <div id="sidebarUserName" style="font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Tevin fedha</div>
+            <div id="sidebarUserEmail" class="mono" style="font-size: 9px; color: var(--text-gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">fedhatevin@gmail.com</div>
+          </div>
+        </div>
+        <button onclick="signOut()" class="nav-btn" style="padding: 4px 6px; font-size: 11px; color: var(--text-gray);">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span> Sign out
+        </button>
+      </div>
+    </aside>
+
+    <!-- 2. MAIN BOT DASHBOARD CONTAINER -->
+    <main style="display: flex; flex-direction: column; height: 100%; min-height: 0; overflow-y: auto; padding-right: 4px;">
+      
+      <div style="max-width: 960px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 10px;">
+        
+        <!-- HEADER ROW -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 2px 0;">
+          <div>
+            <h1 style="font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -0.02em;">AI Bot Trading</h1>
+            <p style="font-size: 11px; color: var(--text-gray); margin-top: 2px;">Configure and deploy your automated trading strategy</p>
+          </div>
+          <div id="botStatusPill" class="pill-btn" style="border-color: rgba(168, 85, 247, 0.4); color: var(--accent-lavender); background: rgba(168, 85, 247, 0.12); padding: 5px 12px; font-size: 11px;">
+            <span id="botStatusDot" style="color: var(--accent-purple);">●</span> <span id="botStatusText">Bot Active</span>
+          </div>
+        </div>
+
+        <!-- CARD 1: ENABLE BOT TRADING -->
+        <div class="card-panel" style="padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 13px; font-weight: 700; color: #fff;">Enable Bot Trading</div>
+            <div style="font-size: 11px; color: var(--text-gray); margin-top: 3px;">Allow the AI bot to automatically place trades based on your settings</div>
+          </div>
+          <label class="switch-wrap">
+            <input type="checkbox" id="toggleEnableBot" checked/>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <!-- CARD 2: TRADING STRATEGY -->
+        <div class="card-panel" style="padding: 14px 18px;">
+          <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 10px;">Trading Strategy</div>
+          <div class="bot-grid-strategies" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+            
+            <!-- Conservative -->
+            <div class="strategy-card" data-strategy="Conservative" onclick="selectStrategy('Conservative')">
+              <div>
+                <div style="margin-bottom: 6px; display: flex; align-items: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e0ccff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                <div style="font-size: 13px; font-weight: 700; color: #fff;">Conservative</div>
+                <div style="font-size: 11px; color: var(--text-gray); margin-top: 2px;">Low risk, steady returns</div>
+              </div>
+              <div style="font-size: 11px; color: var(--text-gray); margin-top: 4px;">
+                Win Rate <span style="font-weight: 700; color: #fff;">72%</span>
+              </div>
+            </div>
+
+            <!-- Moderate (Default Active) -->
+            <div class="strategy-card selected" data-strategy="Moderate" onclick="selectStrategy('Moderate')">
+              <div>
+                <div style="margin-bottom: 6px; display: flex; align-items: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></div>
+                <div style="font-size: 13px; font-weight: 700; color: var(--accent-lavender);" id="modTitle">Moderate</div>
+                <div style="font-size: 11px; color: var(--text-gray); margin-top: 2px;">Balanced risk-reward</div>
+              </div>
+              <div style="font-size: 11px; color: var(--text-gray); margin-top: 4px;">
+                Win Rate <span style="font-weight: 700; color: var(--accent-lavender);">65%</span>
+              </div>
+            </div>
+
+            <!-- Aggressive -->
+            <div class="strategy-card" data-strategy="Aggressive" onclick="selectStrategy('Aggressive')">
+              <div>
+                <div style="margin-bottom: 6px; display: flex; align-items: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div>
+                <div style="font-size: 13px; font-weight: 700; color: #fff;">Aggressive</div>
+                <div style="font-size: 11px; color: var(--text-gray); margin-top: 2px;">High risk, high reward</div>
+              </div>
+              <div style="font-size: 11px; color: var(--text-gray); margin-top: 4px;">
+                Win Rate <span style="font-weight: 700; color: #fff;">58%</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- CARD 3: 3 CONFIGURATION COLUMNS (Trade Amount, Daily Limits, Risk Management) -->
+        <div class="bot-grid-3col" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+          
+          <!-- Column 1: Trade Amount -->
+          <div class="card-panel" style="padding: 14px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 8px;">Trade Amount</div>
+            
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 4px 0;">
+              <input type="number" id="inputBotTradeAmount" value="100" min="1" max="10000" class="bot-input mono" style="font-size: 20px; font-weight: 700; text-align: center; width: 100%; padding: 8px 0;"/>
+              <span style="font-size: 10px; color: var(--text-gray);">USD per trade</span>
+            </div>
+
+            <!-- Quick Chips -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px;">
+              <button class="amt-chip" onclick="setQuickAmount(50)">50</button>
+              <button class="amt-chip active" onclick="setQuickAmount(100)">100</button>
+              <button class="amt-chip" onclick="setQuickAmount(500)">500</button>
+            </div>
+          </div>
+
+          <!-- Column 2: Daily Limits -->
+          <div class="card-panel" style="padding: 14px; display: flex; flex-direction: column;">
+            <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 8px;">Daily Limits</div>
+            <div style="margin-top: 4px;">
+              <div style="font-size: 10px; color: var(--text-gray); margin-bottom: 4px;">Max Daily Trades</div>
+              <input type="number" id="inputBotMaxTrades" value="20" min="1" max="500" class="bot-input mono" style="font-size: 15px; font-weight: 700; width: 100%; padding: 8px 12px;"/>
+            </div>
+            <div style="font-size: 10px; color: var(--text-dim); margin-top: 8px;">
+              Bot will pause once daily trade threshold is reached.
+            </div>
+          </div>
+
+          <!-- Column 3: Risk Management -->
+          <div class="card-panel" style="padding: 14px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 8px;">Risk Management</div>
+            <div>
+              <div style="font-size: 10px; color: var(--text-gray); margin-bottom: 3px;">Stop Loss (USD)</div>
+              <input type="number" id="inputBotStopLoss" value="500" min="1" class="bot-input mono" style="font-size: 14px; font-weight: 700; width: 100%; padding: 6px 10px; margin-bottom: 8px;"/>
+              
+              <div style="font-size: 10px; color: var(--text-gray); margin-bottom: 3px;">Take Profit (USD)</div>
+              <input type="number" id="inputBotTakeProfit" value="1000" min="1" class="bot-input mono" style="font-size: 14px; font-weight: 700; width: 100%; padding: 6px 10px;"/>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- CARD 4: TRADING ASSETS -->
+        <div class="card-panel" style="padding: 14px 18px;">
+          <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 8px;">Trading Assets</div>
+          <div id="assetsRow" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <button class="asset-chip selected" data-asset="EUR/USD" onclick="toggleAsset('EUR/USD')"><span style="display:inline-flex; align-items:center; gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> EUR/USD</span></button>
+            <button class="asset-chip" data-asset="GBP/USD" onclick="toggleAsset('GBP/USD')">GBP/USD</button>
+            <button class="asset-chip" data-asset="USD/JPY" onclick="toggleAsset('USD/JPY')">USD/JPY</button>
+            <button class="asset-chip" data-asset="BTC/USD" onclick="toggleAsset('BTC/USD')">BTC/USD</button>
+            <button class="asset-chip" data-asset="ETH/USD" onclick="toggleAsset('ETH/USD')">ETH/USD</button>
+            <button class="asset-chip" data-asset="XAU/USD" onclick="toggleAsset('XAU/USD')">XAU/USD</button>
+            <button class="asset-chip" data-asset="USD/KES" onclick="toggleAsset('USD/KES')">USD/KES</button>
+            <button class="asset-chip" data-asset="OIL/USD" onclick="toggleAsset('OIL/USD')">OIL/USD</button>
+          </div>
+        </div>
+
+        <!-- CARD 5: BOT CONFIGURATION SUMMARY & DEPLOY BUTTON -->
+        <div class="card-panel bot-summary-bar" style="padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 3px;">Bot Configuration Summary</div>
+            <div style="font-size: 11px; color: var(--text-gray);" id="summaryLine">
+              <span style="color: var(--accent-lavender); font-weight: 700;" id="sumStrategy">Moderate</span> strategy · <span id="sumAmount" class="mono">$100</span>/trade · Max <span id="sumMaxTrades" class="mono">20</span> trades/day · <span id="sumAssetsCount" class="mono">1</span> assets
+            </div>
+          </div>
+          <button id="btnDeployBot" onclick="toggleDeployBot()" class="purple-btn" style="padding: 10px 24px; font-size: 13px; font-weight: 800; border-radius: 10px; display: inline-flex; align-items: center; gap: 8px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg>
+            <span>Deploy Bot</span>
+          </button>
+        </div>
+
+        <!-- LIVE BOT ACTIVITY PANEL (Visible when active) -->
+        <div id="liveBotPanel" class="card-panel" style="display: none; padding: 14px 18px; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="color: var(--accent-purple); font-size: 14px;">●</span>
+              <span style="font-weight: 700; color: #fff; font-size: 12px;">Live Bot Execution Engine</span>
+            </div>
+            <div class="mono" style="font-size: 11px; color: var(--text-gray);">
+              Session P/L: <b id="botSessionPl" style="color: var(--accent-green);">+$0.00</b> | Win Rate: <b id="botLiveWinRate" style="color: #fff;">0%</b> (<span id="botTradeTally">0/0</span>)
+            </div>
+          </div>
+
+          <div id="botLiveConsole" class="mono" style="height: 120px; background: #0c071b; border-radius: 8px; border: 1px solid var(--border-card); padding: 8px 12px; font-size: 10px; overflow-y: auto; color: var(--text-gray); display: flex; flex-direction: column; gap: 3px;">
+            <div style="color: var(--accent-lavender);">[SYS] Bot initialized and deployed successfully.</div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- FLOATING CHAT WIDGET -->
+  <div style="position: fixed; right: 16px; bottom: 16px; z-index: 100;">
+    <div style="width: 38px; height: 38px; border-radius: 50%; background: var(--accent-gradient); box-shadow: 0 4px 16px rgba(168, 85, 247, 0.45); display: flex; align-items: center; justify-content: center; cursor: pointer; color: #090514; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+  </div>
+
+  <!-- MODALS -->
+
+  <!-- Deposit Modal -->
+  <div id="depositModal" class="modal-backdrop">
+    <div class="card-panel" style="max-width: 360px; width: 100%; padding: 20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="font-size: 16px; color:#fff;">Deposit Funds (M-Pesa)</h3>
+        <span onclick="closeModal('depositModal')" style="cursor:pointer; color:var(--text-gray); display:inline-flex; align-items:center; justify-content:center; transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-gray)'" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 3px;">Amount (KES)</label>
+        <input id="depKes" type="number" value="1000" class="mono" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:6px; padding:8px; color:#fff; font-size:14px;"/>
+        <div id="depUsdRate" class="mono" style="font-size:10px; color:var(--accent-lavender); margin-top:2px;">≈ $7.72 USD (1 USD = 129.5 KES)</div>
+      </div>
+      <div style="margin-bottom: 14px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 3px;">M-Pesa Phone</label>
+        <input id="depPhone" type="tel" value="0712345678" class="mono" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:6px; padding:8px; color:#fff; font-size:14px;"/>
+      </div>
+      <button id="btnSubmitDep" class="purple-btn" style="width:100%; padding:10px 0; font-size:12px;">Send M-Pesa STK Push</button>
+    </div>
+  </div>
+
+  <!-- Withdraw Modal -->
+  <div id="withdrawModal" class="modal-backdrop">
+    <div class="card-panel" style="max-width: 360px; width: 100%; padding: 20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="font-size: 16px; color:#fff;">Withdraw to M-Pesa</h3>
+        <span onclick="closeModal('withdrawModal')" style="cursor:pointer; color:var(--text-gray); display:inline-flex; align-items:center; justify-content:center; transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-gray)'" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 3px;">Amount (USD)</label>
+        <input id="withUsd" type="number" value="50" class="mono" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:6px; padding:8px; color:#fff; font-size:14px;"/>
+        <div id="withKesRate" class="mono" style="font-size:10px; color:var(--accent-lavender); margin-top:2px;">≈ KES 6,475</div>
+      </div>
+      <div style="margin-bottom: 14px;">
+        <label style="font-size: 10px; color: var(--text-gray); display:block; margin-bottom: 3px;">Receiving Phone</label>
+        <input id="withPhone" type="tel" value="0712345678" class="mono" style="width:100%; background:var(--bg-card-alt); border:1px solid var(--border-card); border-radius:6px; padding:8px; color:#fff; font-size:14px;"/>
+      </div>
+      <button id="btnSubmitWith" class="purple-btn" style="width:100%; padding:10px 0; font-size:12px;">Confirm Payout</button>
+    </div>
+  </div>
+
+  <!-- History Modal -->
+  <div id="historyModal" class="modal-backdrop">
+    <div class="card-panel" style="max-width: 600px; width: 100%; padding: 18px; max-height: 80vh; overflow-y: auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="font-size: 16px; color:#fff;">Trade History</h3>
+        <span onclick="closeModal('historyModal')" style="cursor:pointer; color:var(--text-gray); display:inline-flex; align-items:center; justify-content:center; transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-gray)'" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+      </div>
+      <table style="width:100%; border-collapse:collapse; font-size:11px; text-align:left;">
+        <thead>
+          <tr style="color:var(--text-gray); border-bottom:1px solid var(--border-card);">
+            <th style="padding:6px;">ID</th><th>ASSET</th><th>TYPE</th><th>STAKE</th><th>OUTCOME</th><th>PROFIT</th><th>TIME</th>
+          </tr>
+        </thead>
+        <tbody id="historyRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Portfolio Modal -->
+  <div id="portfolioModal" class="modal-backdrop">
+    <div class="card-panel" style="max-width: 420px; width: 100%; padding: 20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <h3 style="font-size: 16px; color:#fff;">Portfolio Performance</h3>
+        <span onclick="closeModal('portfolioModal')" style="cursor:pointer; color:var(--text-gray); display:inline-flex; align-items:center; justify-content:center; transition:color 0.15s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-gray)'" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:14px;">
+        <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">BALANCE</div><div id="pBal" class="mono" style="font-size:16px; font-weight:700; color:#fff;">$10,000.00</div></div>
+        <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">NET P/L</div><div id="pNet" class="mono" style="font-size:16px; font-weight:700; color:var(--accent-lavender);">+$0.00</div></div>
+        <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">TOTAL TRADES</div><div id="pTrades" class="mono" style="font-size:16px; font-weight:700; color:#fff;">0</div></div>
+        <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px;"><div style="font-size:9px; color:var(--text-gray);">WIN RATE</div><div id="pWinRate" class="mono" style="font-size:16px; font-weight:700; color:var(--accent-lavender);">0%</div></div>
+      </div>
+      <button onclick="closeModal('portfolioModal')" class="purple-btn" style="width:100%; padding:8px 0; font-size:11px;">Close</button>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div id="profileModal" class="modal-backdrop">
+    <div class="card-panel" style="max-width: 340px; width: 100%; padding: 20px; text-align:center;">
+      <div style="width:50px; height:50px; border-radius:50%; background:var(--accent-gradient); color:#090514; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:20px; margin:0 auto 10px;">T</div>
+      <h3 id="profName" style="color:#fff; font-size:16px;">Tevin fedha</h3>
+      <div id="profEmail" class="mono" style="font-size:11px; color:var(--text-gray); margin-bottom:14px;">fedhatevin@gmail.com</div>
+      <div style="background:var(--bg-card-alt); padding:8px; border-radius:6px; font-size:11px; text-align:left; margin-bottom:14px; display:flex; flex-direction:column; gap:4px; border: 1px solid var(--border-card);">
+        <div>Tier: <b style="color:var(--accent-lavender);">VIP Trader</b></div>
+        <div>Security: <b style="color:#fff;">TLS 1.3 / 2FA</b></div>
+      </div>
+      <button onclick="signOut()" class="red-btn" style="width:100%; padding:8px 0; font-size:11px;">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC -->
+  <script>
+    (function() {
+      // 1. STATE & STORAGE
+      const USD_KES_RATE = 129.5;
+      let isDemo = false;
+      let realBalance = parseFloat(localStorage.getItem('probinary_real_balance') || '10000.00');
+      let demoBalance = parseFloat(localStorage.getItem('probinary_demo_balance') || '10000.00');
+      
+      let botEnabled = true;
+      let botDeployed = false;
+      let selectedStrategy = 'Moderate';
+      let tradeAmount = 100;
+      let maxDailyTrades = 20;
+      let stopLoss = 500;
+      let takeProfit = 1000;
+      let selectedAssets = ['EUR/USD'];
+
+      // Bot Execution Stats
+      let botWins = 0;
+      let botLosses = 0;
+      let botSessionProfit = 0;
+      let botDailyCount = 0;
+      let botInterval = null;
+
+      const STRATEGIES = {
+        'Conservative': { winRate: 72, color: '#e0ccff', icon: 'shield', rsiBuy: 28, rsiSell: 72 },
+        'Moderate': { winRate: 65, color: '#a855f7', icon: 'scales', rsiBuy: 38, rsiSell: 62 },
+        'Aggressive': { winRate: 58, color: '#f87171', icon: 'flame', rsiBuy: 45, rsiSell: 55 }
+      };
+
+      const ASSETS = {
+        'EUR/USD': { price: 1.08420, precision: 5, delta: 0.00015 },
+        'GBP/USD': { price: 1.29150, precision: 5, delta: 0.00020 },
+        'USD/JPY': { price: 154.200, precision: 3, delta: 0.04 },
+        'BTC/USD': { price: 91420.0, precision: 2, delta: 12.0 },
+        'ETH/USD': { price: 3140.50, precision: 2, delta: 1.8 },
+        'XAU/USD': { price: 2684.30, precision: 2, delta: 0.8 },
+        'USD/KES': { price: 129.50, precision: 2, delta: 0.05 },
+        'OIL/USD': { price: 74.85, precision: 2, delta: 0.08 }
+      };
+
+      // User Credentials
+      let user = JSON.parse(localStorage.getItem('probinary_user') || '{"name":"Tevin fedha","email":"fedhatevin@gmail.com"}');
+      document.getElementById('sidebarUserName').textContent = user.name || 'Tevin fedha';
+      document.getElementById('sidebarUserEmail').textContent = user.email || 'fedhatevin@gmail.com';
+      document.getElementById('profName').textContent = user.name || 'Tevin fedha';
+      document.getElementById('profEmail').textContent = user.email || 'fedhatevin@gmail.com';
+      const initial = (user.name || 'T').charAt(0).toUpperCase();
+      document.getElementById('headerAvatarBtn').textContent = initial;
+      document.getElementById('sidebarAvatar').textContent = initial;
+
+      // 2. BALANCES
+      function getBal() { return isDemo ? demoBalance : realBalance; }
+      function updateBalances() {
+        const bal = getBal();
+        const str = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('headerBalanceText').textContent = str;
+        document.getElementById('sidebarBalanceAmount').textContent = str;
+        document.getElementById('pBal').textContent = str;
+
+        if (isDemo) {
+          localStorage.setItem('probinary_demo_balance', demoBalance.toFixed(2));
+          document.getElementById('tabDemo').classList.add('active');
+          document.getElementById('tabLive').classList.remove('active');
+        } else {
+          localStorage.setItem('probinary_real_balance', realBalance.toFixed(2));
+          document.getElementById('tabLive').classList.add('active');
+          document.getElementById('tabDemo').classList.remove('active');
+        }
+      }
+
+      window.setMode = function(demo) {
+        isDemo = demo;
+        updateBalances();
+      };
+
+      // 3. UI STATE UPDATER
+      function updateSummary() {
+        const stratColor = STRATEGIES[selectedStrategy].color;
+        document.getElementById('sumStrategy').textContent = selectedStrategy;
+        document.getElementById('sumStrategy').style.color = stratColor;
+        document.getElementById('sumAmount').textContent = '$' + tradeAmount;
+        document.getElementById('sumMaxTrades').textContent = maxDailyTrades;
+        document.getElementById('sumAssetsCount').textContent = selectedAssets.length;
+      }
+
+      // 4. STRATEGY SELECTION
+      window.selectStrategy = function(strat) {
+        selectedStrategy = strat;
+        document.querySelectorAll('.strategy-card').forEach(card => {
+          if (card.dataset.strategy === strat) {
+            card.classList.add('selected');
+          } else {
+            card.classList.remove('selected');
+          }
+        });
+        updateSummary();
+      };
+
+      // 5. TRADE AMOUNT & QUICK CHIPS
+      const inputBotTradeAmount = document.getElementById('inputBotTradeAmount');
+      inputBotTradeAmount.addEventListener('input', () => {
+        tradeAmount = Math.max(1, parseFloat(inputBotTradeAmount.value) || 100);
+        document.querySelectorAll('.amt-chip').forEach(c => {
+          c.classList.toggle('active', parseFloat(c.textContent) === tradeAmount);
+        });
+        updateSummary();
+      });
+
+      window.setQuickAmount = function(val) {
+        tradeAmount = val;
+        inputBotTradeAmount.value = val;
+        document.querySelectorAll('.amt-chip').forEach(c => {
+          c.classList.toggle('active', parseFloat(c.textContent) === val);
+        });
+        updateSummary();
+      };
+
+      // 6. DAILY LIMITS & RISK MANAGEMENT
+      const inputBotMaxTrades = document.getElementById('inputBotMaxTrades');
+      inputBotMaxTrades.addEventListener('input', () => {
+        maxDailyTrades = Math.max(1, parseInt(inputBotMaxTrades.value) || 20);
+        updateSummary();
+      });
+
+      const inputBotStopLoss = document.getElementById('inputBotStopLoss');
+      inputBotStopLoss.addEventListener('input', () => {
+        stopLoss = Math.max(1, parseFloat(inputBotStopLoss.value) || 500);
+      });
+
+      const inputBotTakeProfit = document.getElementById('inputBotTakeProfit');
+      inputBotTakeProfit.addEventListener('input', () => {
+        takeProfit = Math.max(1, parseFloat(inputBotTakeProfit.value) || 1000);
+      });
+
+      // 7. TRADING ASSETS MULTI-SELECT
+      window.toggleAsset = function(asset) {
+        const idx = selectedAssets.indexOf(asset);
+        if (idx === -1) {
+          selectedAssets.push(asset);
+        } else {
+          if (selectedAssets.length === 1) {
+            alert('At least one asset must be selected for the AI Bot.');
+            return;
+          }
+          selectedAssets.splice(idx, 1);
+        }
+        renderAssetChips();
+        updateSummary();
+      };
+
+      function renderAssetChips() {
+        document.querySelectorAll('.asset-chip').forEach(chip => {
+          const a = chip.dataset.asset;
+          if (selectedAssets.includes(a)) {
+            chip.classList.add('selected');
+            chip.innerHTML = '<span style="display:inline-flex; align-items:center; gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> ' + a + '</span>';
+          } else {
+            chip.classList.remove('selected');
+            chip.textContent = a;
+          }
+        });
+      }
+
+      // 8. ENABLE BOT TOGGLE
+      const toggleEnableBot = document.getElementById('toggleEnableBot');
+      const botStatusPill = document.getElementById('botStatusPill');
+      const botStatusDot = document.getElementById('botStatusDot');
+      const botStatusText = document.getElementById('botStatusText');
+      const btnDeployBot = document.getElementById('btnDeployBot');
+
+      toggleEnableBot.addEventListener('change', () => {
+        botEnabled = toggleEnableBot.checked;
+        if (!botEnabled) {
+          if (botDeployed) toggleDeployBot();
+          botStatusPill.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+          botStatusPill.style.background = 'rgba(239, 68, 68, 0.08)';
+          botStatusPill.style.color = 'var(--accent-red)';
+          botStatusDot.style.color = 'var(--accent-red)';
+          botStatusText.textContent = 'Bot Disabled';
+          btnDeployBot.style.opacity = '0.5';
+          btnDeployBot.style.pointerEvents = 'none';
+        } else {
+          botStatusPill.style.borderColor = 'rgba(168, 85, 247, 0.4)';
+          botStatusPill.style.background = 'rgba(168, 85, 247, 0.12)';
+          botStatusPill.style.color = 'var(--accent-lavender)';
+          botStatusDot.style.color = 'var(--accent-purple)';
+          botStatusText.textContent = 'Bot Active';
+          btnDeployBot.style.opacity = '1';
+          btnDeployBot.style.pointerEvents = 'auto';
+        }
+      });
+
+      // 9. DEPLOY / STOP BOT LOGIC
+      const liveBotPanel = document.getElementById('liveBotPanel');
+      const botLiveConsole = document.getElementById('botLiveConsole');
+
+      window.toggleDeployBot = function() {
+        if (!botEnabled) return;
+        botDeployed = !botDeployed;
+
+        if (botDeployed) {
+          btnDeployBot.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg><span>Stop Bot</span>';
+          btnDeployBot.className = 'red-btn';
+          botStatusText.textContent = 'Bot Running (Active)';
+          liveBotPanel.style.display = 'flex';
+          logBot(`[START] Bot deployed with ${selectedStrategy} strategy ($${tradeAmount}/trade)`);
+          
+          botInterval = setInterval(runBotCycle, 2500);
+        } else {
+          btnDeployBot.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg><span>Deploy Bot</span>';
+          btnDeployBot.className = 'purple-btn';
+          botStatusText.textContent = 'Bot Standby';
+          if (botInterval) clearInterval(botInterval);
+          logBot(`[HALT] Bot stopped by user.`);
+        }
+      };
+
+      function logBot(msg) {
+        const time = new Date().toLocaleTimeString();
+        const line = document.createElement('div');
+        line.innerHTML = `<span style="color:var(--text-dim);">[${time}]</span> ${msg}`;
+        botLiveConsole.prepend(line);
+      }
+
+      // Audio Beep
+      let audioCtx = null;
+      function playTone(win) {
+        try {
+          if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          const now = audioCtx.currentTime;
+          if (win) {
+            osc.frequency.setValueAtTime(523, now);
+            osc.frequency.setValueAtTime(784, now + 0.15);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+            osc.start(now); osc.stop(now + 0.35);
+          } else {
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(110, now + 0.25);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now); osc.stop(now + 0.3);
+          }
+        } catch(e) {}
+      }
+
+      function runBotCycle() {
+        if (!botDeployed || !botEnabled) return;
+
+        if (botDailyCount >= maxDailyTrades) {
+          logBot(`<span style="color:var(--accent-gold);">[LIMIT] Max daily trades (${maxDailyTrades}) reached. Bot pausing.</span>`);
+          toggleDeployBot();
+          alert('AI Bot: Max daily trades limit reached.');
+          return;
+        }
+
+        if (botSessionProfit >= takeProfit) {
+          logBot(`<span style="color:var(--accent-green); font-weight:700;">[PROFIT] Target profit (+$${takeProfit}) reached! Session closed.</span>`);
+          toggleDeployBot();
+          alert(`AI Bot Target Profit Reached! Realized Session Profit: +$${botSessionProfit.toFixed(2)}`);
+          return;
+        }
+
+        if (botSessionProfit <= -stopLoss) {
+          logBot(`<span style="color:var(--accent-red); font-weight:700;">[RISK] Stop loss threshold (-$${stopLoss}) triggered. Safety halt.</span>`);
+          toggleDeployBot();
+          alert(`AI Bot Stop Loss Triggered. Bot paused at -$${Math.abs(botSessionProfit).toFixed(2)}`);
+          return;
+        }
+
+        const bal = getBal();
+        if (bal < tradeAmount) {
+          logBot(`<span style="color:var(--accent-red);">[ERROR] Insufficient balance for stake $${tradeAmount}.</span>`);
+          toggleDeployBot();
+          alert('Insufficient balance for AI Bot trade.');
+          return;
+        }
+
+        const asset = selectedAssets[Math.floor(Math.random() * selectedAssets.length)];
+        const dir = Math.random() > 0.48 ? 'Rise' : 'Fall';
+
+        if (isDemo) demoBalance -= tradeAmount; else realBalance -= tradeAmount;
+        updateBalances();
+        botDailyCount++;
+
+        const tradeId = 'PB-' + Math.floor(100000 + Math.random() * 900000);
+        logBot(`Signal fired on <b>${asset}</b>: Placed <b>${dir}</b> order (${tradeId}) for $${tradeAmount}`);
+
+        setTimeout(() => {
+          if (!botDeployed && botDailyCount === 0) return;
+          const stratCfg = STRATEGIES[selectedStrategy];
+          let targetWinRate = stratCfg.winRate;
+          try {
+            const u = JSON.parse(localStorage.getItem('probinary_user') || '{}');
+            if (u.simulation || u.is80WinRate || (u.email && u.email.includes('simulation'))) {
+              targetWinRate = 80; // 80% Win Rate Simulation active
+            }
+          } catch(e) {}
+          const isWin = (Math.random() * 100) < targetWinRate;
+          const payout = isWin ? (tradeAmount * 1.87) : 0;
+          const net = isWin ? (tradeAmount * 0.87) : -tradeAmount;
+
+          if (isDemo) { if (isWin) demoBalance += payout; }
+          else { if (isWin) realBalance += payout; }
+          updateBalances();
+
+          if (isWin) botWins++; else botLosses++;
+          botSessionProfit += net;
+
+          let history = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
+          history.unshift({
+            id: tradeId,
+            asset: asset,
+            type: 'AI Bot ' + selectedStrategy,
+            stake: tradeAmount,
+            outcome: isWin ? 'win' : 'loss',
+            profit: net,
+            time: new Date().toLocaleTimeString()
+          });
+          localStorage.setItem('probinary_trade_history', JSON.stringify(history.slice(0, 50)));
+
+          playTone(isWin);
+
+          const total = botWins + botLosses;
+          const wr = Math.round((botWins / total) * 100);
+          document.getElementById('botSessionPl').textContent = (botSessionProfit >= 0 ? '+$' : '-$') + Math.abs(botSessionProfit).toFixed(2);
+          document.getElementById('botSessionPl').style.color = botSessionProfit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+          document.getElementById('botLiveWinRate').textContent = wr + '%';
+          document.getElementById('botTradeTally').textContent = `${botWins}/${total}`;
+
+          if (isWin) {
+            logBot(`<span style="color:var(--accent-green); font-weight:700;">Trade ${tradeId} WON: +$${net.toFixed(2)} payout credited!</span>`);
+          } else {
+            logBot(`<span style="color:var(--accent-red);">Trade ${tradeId} Closed: -$${Math.abs(net).toFixed(2)}</span>`);
+          }
+        }, 1800);
+      }
+
+      // 10. TICK ENGINE (Updates top header ticker)
+      setInterval(() => {
+        Object.keys(ASSETS).forEach(a => {
+          let p = ASSETS[a].price;
+          const delta = (Math.random() - 0.499) * ASSETS[a].delta;
+          p = parseFloat((p + delta).toFixed(ASSETS[a].precision));
+          ASSETS[a].price = p;
+          const tickEl = document.getElementById('tick_' + a.replace('/', '_'));
+          if (tickEl) tickEl.textContent = p.toFixed(ASSETS[a].precision);
+        });
+      }, 1000);
+
+      // 11. MOBILE DRAWER TOGGLE
+      window.toggleMobileDrawer = function() {
+        const drawer = document.getElementById('mobileDrawer');
+        const backdrop = document.getElementById('drawerBackdrop');
+        const isOpen = drawer.classList.contains('open');
+        if (isOpen) {
+          drawer.classList.remove('open');
+          backdrop.style.display = 'none';
+        } else {
+          drawer.classList.add('open');
+          backdrop.style.display = 'block';
+        }
+      };
+
+      // 12. MODALS LOGIC
+      window.openModal = function(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'flex';
+
+        if (id === 'historyModal') {
+          const tbody = document.getElementById('historyRows');
+          const history = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
+          tbody.innerHTML = history.map(t => `
+            <tr style="border-bottom:1px solid var(--border-card);">
+              <td class="mono" style="padding:6px; color:var(--accent-lavender);">${t.id}</td>
+              <td>${t.asset}</td>
+              <td>${t.type}</td>
+              <td class="mono">$${t.stake}</td>
+              <td style="color:${t.outcome === 'win' ? 'var(--accent-green)' : 'var(--accent-red)'}; font-weight:700;">${t.outcome.toUpperCase()}</td>
+              <td class="mono" style="color:${t.outcome === 'win' ? 'var(--accent-green)' : 'var(--accent-red)'};">${t.profit >= 0 ? '+' : ''}$${t.profit.toFixed(2)}</td>
+              <td style="color:var(--text-gray);">${t.time}</td>
+            </tr>
+          `).join('');
+        } else if (id === 'portfolioModal') {
+          const history = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
+          const wins = history.filter(t => t.outcome === 'win').length;
+          const total = history.length;
+          const wr = total > 0 ? Math.round((wins / total) * 100) : 0;
+          const net = history.reduce((a, b) => a + (b.profit || 0), 0);
+          document.getElementById('pNet').textContent = (net >= 0 ? '+$' : '-$') + Math.abs(net).toFixed(2);
+          document.getElementById('pTrades').textContent = total;
+          document.getElementById('pWinRate').textContent = wr + '%';
+        }
+      };
+
+      window.closeModal = function(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      };
+
+      // Deposit / Withdraw actions
+      document.getElementById('depKes').addEventListener('input', (e) => {
+        const kes = parseFloat(e.target.value) || 0;
+        document.getElementById('depUsdRate').textContent = `≈ $${(kes / USD_KES_RATE).toFixed(2)} USD (1 USD = 129.5 KES)`;
+      });
+      document.getElementById('btnSubmitDep').addEventListener('click', () => {
+        const kes = parseFloat(document.getElementById('depKes').value) || 0;
+        const usd = parseFloat((kes / USD_KES_RATE).toFixed(2));
+        if (isDemo) demoBalance += usd; else realBalance += usd;
+        updateBalances();
+        closeModal('depositModal');
+        alert(`M-Pesa STK push confirmed! +$${usd.toFixed(2)} credited.`);
+      });
+
+      document.getElementById('withUsd').addEventListener('input', (e) => {
+        const usd = parseFloat(e.target.value) || 0;
+        document.getElementById('withKesRate').textContent = `≈ KES ${Math.round(usd * USD_KES_RATE).toLocaleString('en-US')}`;
+      });
+      document.getElementById('btnSubmitWith').addEventListener('click', () => {
+        const usd = parseFloat(document.getElementById('withUsd').value) || 0;
+        if (getBal() < usd) { alert('Insufficient funds'); return; }
+        if (isDemo) { alert('Cannot withdraw virtual demo funds'); return; }
+        realBalance -= usd;
+        updateBalances();
+        closeModal('withdrawModal');
+        alert(`Withdrawal of $${usd.toFixed(2)} sent to M-Pesa.`);
+      });
+
+      window.signOut = function() {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('probinary_user');
+        window.location.href = '/auth/login.html';
+      };
+
+      // INIT
+      updateBalances();
+      renderAssetChips();
+      updateSummary();
+    })();
+  </script>
+</body>
+</html>

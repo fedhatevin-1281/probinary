@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+  <title>ProBinary — Scanner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root{--bg:#090514;--panel:#171131;--panel2:#100a25;--border:rgba(224,204,255,.13);--purple:#a855f7;--lavender:#e0ccff;--green:#10b981;--red:#ef4444;--text:#f5f0ff;--muted:#9d8ec2}
+    *{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-tap-highlight-color:transparent}
+    body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'Public Sans',system-ui,sans-serif;overflow-x:hidden}
+    .mono{font-family:'IBM Plex Mono',monospace}
+    .topbar{height:52px;border-bottom:1px solid var(--border);background:#0d081c;display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+    .brand{display:flex;align-items:center;gap:8px;text-decoration:none;color:#fff;font-weight:800;font-size:15px}.brand-mark{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#e0ccff,#a855f7);display:grid;place-items:center;color:#090514}
+    .balance{border:1px solid var(--border);border-radius:18px;padding:7px 12px;font-size:11px;font-weight:700;background:rgba(168,85,247,.06)}
+    .main{max-width:760px;margin:0 auto;padding:16px 14px 110px}
+    .scanner-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .ai-title{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:800}.ai-badge{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#8ef4ff,#4a86ff);color:#08111f;display:grid;place-items:center;font-size:12px;box-shadow:0 0 18px rgba(74,134,255,.2)}
+    .subtitle{font-size:10px;color:#d5caef;margin-top:4px}
+    .rescan{border:0;border-radius:20px;background:#2ad5c5;color:#07352f;padding:9px 13px;font-weight:800;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 16px rgba(42,213,197,.18)}
+    .rescan.loading svg{animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:15px;padding:16px;margin-bottom:10px}
+    .card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px}.label{color:#91a0e8;font-size:11px;font-weight:800;letter-spacing:.04em}.score{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.25);color:#45dfbd;border-radius:7px;padding:7px 9px;font-size:11px;font-weight:800}
+    .asset-row{display:flex;align-items:baseline;gap:10px}.asset{font-size:30px;font-weight:800}.volatility{font-size:12px;color:var(--muted)}.price-row{margin-top:8px;color:#40e4b9;font-size:13px}.price-row.down{color:var(--red)}
+    .type-row{display:flex;align-items:center;gap:10px;margin:20px 0}.type-icon{width:44px;height:44px;border-radius:10px;background:#9df71f;display:grid;place-items:center;color:#18310a}.type-name{font-size:15px;font-weight:800}
+    .pick-label{font-size:9px;color:var(--muted);font-weight:800;letter-spacing:.04em;margin-bottom:6px}.reason{border-radius:10px;padding:12px 14px;background:rgba(11,7,28,.28);margin-bottom:12px}.reason p{font-size:11px;margin-top:6px}.reason strong{color:#fbbf24}
+    .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.metric{background:rgba(11,7,28,.28);border:1px solid rgba(224,204,255,.04);border-radius:9px;padding:10px}.metric-label{font-size:9px;color:#7f9ab5;margin-bottom:7px}.metric-value{font-size:14px;font-weight:800}.trend-down{color:var(--red)}
+    .trade-btn{width:100%;border:0;border-radius:10px;padding:14px 12px;background:linear-gradient(135deg,#22c3b3,#3bc99b);color:#071e25;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+    .disclaimer{text-align:center;color:#7d739a;font-size:9px;line-height:1.5;margin:12px 8px}.disclaimer span{color:#fbbf24}
+    .bottom-nav{position:fixed;z-index:50;left:0;right:0;bottom:0;height:72px;background:#0d081c;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(3,1fr);align-items:center;padding:6px 10px calc(6px + env(safe-area-inset-bottom))}.bottom-nav a{text-decoration:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:10px}.bottom-nav a.active{color:#fff}.bottom-nav a.active svg{color:#a855f7}.bottom-nav svg{width:21px;height:21px}
+    .scan-overlay{display:none;position:absolute;inset:0;border-radius:15px;background:rgba(9,5,20,.82);z-index:2;align-items:center;justify-content:center;flex-direction:column;gap:10px}.scan-overlay.show{display:flex}.scan-ring{width:38px;height:38px;border-radius:50%;border:3px solid rgba(224,204,255,.15);border-top-color:#20d4c0;animation:spin .8s linear infinite}.card-wrap{position:relative}
+    @media(min-width:900px){.topbar{height:58px;padding:0 26px}.main{padding-top:24px}.bottom-nav{left:50%;right:auto;width:420px;bottom:14px;border:1px solid var(--border);border-radius:18px;height:68px;transform:translateX(-50%);box-shadow:0 12px 40px rgba(0,0,0,.35)}}
+  </style>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/dashboard/trade.html"><span class="brand-mark">P</span><span>ProBinary</span></a><div id="balance" class="balance mono">● $10,000.00</div></header>
+  <main class="main">
+    <div class="scanner-head">
+      <div><div class="ai-title"><span class="ai-badge">AI</span><span>SmartiPick</span></div><div class="subtitle" id="scanSubtitle">One recommendation best setup right now</div></div>
+      <button class="rescan" id="rescanBtn" aria-label="Run scanner again"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 11a8.1 8.1 0 1 1-2.3-5.7L20 8"/><path d="M20 4v4h-4"/></svg><span>Re-scan</span></button>
+    </div>
+    <div class="card-wrap">
+      <div class="scan-overlay" id="scanOverlay"><div class="scan-ring"></div><div class="mono" style="font-size:11px;color:#cfc2ef">Analyzing markets...</div></div>
+      <section class="card">
+        <div class="card-top"><div class="label">RECOMMENDED TRADE</div><div class="score" id="score">Very High · 5/5</div></div>
+        <div class="asset-row"><span class="asset" id="asset">V10</span><span class="volatility" id="volatility">Volatility 10</span></div>
+        <div class="price-row down" id="price">@ 1696.54 &nbsp; -8.362%</div>
+        <div class="type-row"><div class="type-icon" id="typeIcon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div><div class="pick-label">TRADE TYPE</div><div class="type-name" id="tradeType">EVEN</div></div></div>
+        <div class="reason"><div class="pick-label">WHY THIS PICK</div><p id="reasonText"><strong>83%</strong> of recent digits were even.</p></div>
+        <div class="metrics"><div class="metric"><div class="metric-label">RSI</div><div class="metric-value" id="rsi">33</div></div><div class="metric"><div class="metric-label">Trend</div><div class="metric-value trend-down" id="trend">64% down</div></div><div class="metric"><div class="metric-label">Momentum</div><div class="metric-value trend-down" id="momentum">-0.05%</div></div></div>
+        <button class="trade-btn" id="tradeBtn">Trade <span id="tradeAsset">V10</span> · <span id="tradeTypeBtn">EVEN</span> <span>›</span></button>
+      </section>
+    </div>
+    <p class="disclaimer"><span>⚠ Recommendations are based on recent price patterns and don’t guarantee outcomes.</span> Trade responsibly and only with funds you can afford to lose.</p>
+  </main>
+  <nav class="bottom-nav" aria-label="Mobile navigation">
+    <a href="/dashboard/trade.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg><span>Trade</span></a>
+    <a href="/dashboard/scanner.html" class="active"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 5.8L20 10l-6.2 2.2L12 18l-1.8-5.8L4 10l6.2-2.2L12 2z"/><circle cx="18.5" cy="18.5" r="3.5"/></svg><span>Scanner</span></a>
+    <a href="/dashboard/history.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Positions</span></a>
+  </nav>
+  <script>
+    const picks=[
+      {asset:'V10',volatility:'Volatility 10',price:'1696.54',change:'-8.362',type:'EVEN',reason:'83% of recent digits were even.',rsi:33,trend:'64% down',momentum:'-0.05%'},
+      {asset:'V25',volatility:'Volatility 25',price:'8421.18',change:'+3.214',type:'RISE',reason:'Recent ticks show an 78% bullish continuation.',rsi:41,trend:'71% up',momentum:'+0.18%'},
+      {asset:'V75',volatility:'Volatility 75',price:'23218.70',change:'-2.146',type:'ODD',reason:'76% of recent digits were odd.',rsi:68,trend:'59% down',momentum:'-0.09%'},
+      {asset:'EUR/USD',volatility:'Forex Index',price:'1.0842',change:'+0.412',type:'RISE',reason:'Momentum and short-term trend are aligned upward.',rsi:47,trend:'69% up',momentum:'+0.11%'},
+      {asset:'GBP/USD',volatility:'Forex Index',price:'1.2915',change:'-0.268',type:'FALL',reason:'A 72% bearish pattern appeared across recent candles.',rsi:61,trend:'66% down',momentum:'-0.07%'}
+    ];
+    let current=0;
+    function formatBalance(){const demo=localStorage.getItem('probinary_demo_balance');const val=Number(demo||localStorage.getItem('probinary_balance')||10000);document.getElementById('balance').textContent='● $'+val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+    function render(p){
+      document.getElementById('asset').textContent=p.asset;document.getElementById('volatility').textContent=p.volatility;
+      document.getElementById('price').textContent='@ '+p.price+'  '+p.change+'%';document.getElementById('price').className='price-row '+(p.change.startsWith('-')?'down':'');
+      document.getElementById('tradeType').textContent=p.type;document.getElementById('tradeAsset').textContent=p.asset;document.getElementById('tradeTypeBtn').textContent=p.type;
+      document.getElementById('reasonText').textContent=p.reason;document.getElementById('rsi').textContent=p.rsi;
+      document.getElementById('trend').textContent=p.trend;document.getElementById('trend').className='metric-value '+(p.trend.includes('down')?'trend-down':'');
+      document.getElementById('momentum').textContent=p.momentum;document.getElementById('momentum').className='metric-value '+(p.momentum.startsWith('-')?'trend-down':'');
+    }
+    document.getElementById('rescanBtn').addEventListener('click',()=>{
+      const btn=document.getElementById('rescanBtn'),overlay=document.getElementById('scanOverlay');btn.classList.add('loading');btn.disabled=true;overlay.classList.add('show');document.getElementById('scanSubtitle').textContent='Scanning 20 markets...';
+      setTimeout(()=>{let next=current;while(next===current)next=Math.floor(Math.random()*picks.length);current=next;render(picks[current]);overlay.classList.remove('show');btn.classList.remove('loading');btn.disabled=false;document.getElementById('scanSubtitle').textContent='One recommendation from 20 markets';},900);
+    });
+    document.getElementById('tradeBtn').addEventListener('click',()=>{const p=picks[current];localStorage.setItem('probinary_scanner_asset',p.asset);localStorage.setItem('probinary_scanner_direction',p.type);window.location.href='/dashboard/trade.html';});
+    formatBalance();render(picks[0]);
+  </script>
+  <script src="/dashboard/balance.js"></script>
+</body>
+</html>
