@@ -468,7 +468,9 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 10px 12px 8px;
+        gap: 8px;
+        min-height: 52px;
+        padding: 7px 10px;
         background: #0d0920;
         border-bottom: 1px solid rgba(168, 85, 247, 0.15);
         position: sticky;
@@ -476,11 +478,36 @@
         z-index: 50;
       }
 
+      .mob-brand-group,
+      .mob-header-actions {
+        display: flex;
+        align-items: center;
+      }
+
+      .mob-brand-group {
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .mob-menu-btn {
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+        border: 1px solid var(--border-card);
+        border-radius: 8px;
+        background: var(--bg-card-alt);
+        color: var(--text-gray);
+        cursor: pointer;
+      }
+
       .mob-logo {
         display: flex;
         align-items: center;
         gap: 7px;
         text-decoration: none;
+        white-space: nowrap;
       }
 
       .mob-logo-icon {
@@ -507,7 +534,59 @@
       .mob-topbar-right {
         display: flex;
         align-items: center;
+        gap: 5px;
+      }
+
+      .mob-header-actions {
+        gap: 5px;
+        min-width: 0;
+      }
+
+      .mob-header-balance,
+      .mob-header-deposit,
+      .mob-header-avatar {
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9px;
+        text-decoration: none;
+        font-size: 10px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .mob-header-balance {
+        max-width: 82px;
+        padding: 0 7px;
+        border: 1px solid var(--border-card);
+        background: var(--bg-card-alt);
+        color: #fff;
+        cursor: pointer;
+      }
+
+      .mob-header-deposit {
+        padding: 0 9px;
+        background: var(--accent-gradient);
+        color: var(--text-inverse);
+      }
+
+      .mob-header-avatar {
+        width: 30px;
+        border-radius: 50%;
+        background: var(--accent-gradient);
+        color: var(--text-inverse);
+      }
+
+      .mob-market-row {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
         gap: 6px;
+        min-height: 40px;
+        padding: 5px 10px;
+        background: #0d0920;
+        border-bottom: 1px solid rgba(168, 85, 247, 0.1);
       }
 
       /* Volatility pill */
@@ -553,11 +632,11 @@
       /* ---- TRADE TYPE TABS ---- */
       .mob-trade-tabs {
         display: flex;
-        gap: 0;
+        gap: 5px;
         overflow-x: auto;
         scrollbar-width: none;
         background: #0d0920;
-        padding: 0 12px;
+        padding: 6px 8px;
         border-bottom: 1px solid rgba(168, 85, 247, 0.1);
       }
 
@@ -567,13 +646,13 @@
 
       .mob-ttab {
         flex-shrink: 0;
-        padding: 10px 14px;
-        font-size: 12px;
+        padding: 7px 11px;
+        font-size: 10px;
         font-weight: 600;
         color: var(--text-gray);
-        background: transparent;
-        border: none;
-        border-bottom: 2px solid transparent;
+        background: var(--bg-card-alt);
+        border: 1px solid var(--border-card);
+        border-radius: 20px;
         cursor: pointer;
         white-space: nowrap;
         transition: all 0.15s;
@@ -581,7 +660,8 @@
 
       .mob-ttab.active {
         color: #fff;
-        border-bottom-color: var(--accent-purple);
+        background: var(--accent-purple-dim);
+        border-color: var(--accent-purple);
       }
 
       /* ---- CHART AREA ---- */
@@ -1098,6 +1178,25 @@
         border-top: 1px solid rgba(168, 85, 247, 0.2);
         box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.3);
         backdrop-filter: blur(14px);
+      }
+
+      .mob-topbar .mob-logo span {
+        font-size: 14px;
+      }
+
+      @media (max-width: 380px) {
+        .mob-header-balance {
+          max-width: 65px;
+          overflow: hidden;
+        }
+
+        .mob-header-deposit {
+          padding: 0 7px;
+        }
+
+        .mob-logo span {
+          font-size: 13px;
+        }
       }
 
       .mob-nav-btn {
@@ -1765,30 +1864,23 @@
 
     <!-- TOP BAR -->
     <div class="mob-topbar">
-      <a href="/dashboard/trade.html" class="mob-logo">
-        <div class="mob-logo-icon">P</div>
-        <span>Pro<span style="color:var(--accent-lavender)">Binary</span></span>
-      </a>
-      <div class="mob-topbar-right">
-        <div class="mob-vol-pill">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+      <div class="mob-brand-group">
+        <button class="mob-menu-btn" type="button" onclick="toggleMobileDrawer()" aria-label="Open menu">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M4 6h16M4 12h16M4 18h16"/>
           </svg>
-          Volatility
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </div>
-        <div class="mob-real-pill" onclick="toggleMobRealDemo()">
-          <span class="mob-real-dot"></span>
-          <span id="mobRealLabel">Real</span>
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </div>
+        </button>
+        <a href="/dashboard/trade.html" class="mob-logo">
+          <div class="mob-logo-icon">P</div>
+          <span>Pro<span style="color:var(--accent-lavender)">Binary</span></span>
+        </a>
+      </div>
+      <div class="mob-header-actions">
+        <button class="mob-header-balance mono" type="button" onclick="toggleMobRealDemo()" aria-label="Switch account mode">
+          <span style="color:var(--accent-purple);margin-right:4px;">●</span><span id="mobHeaderBalance">$0.00</span>
+        </button>
+        <a class="mob-header-deposit" href="/dashboard/deposit.html">+ Deposit</a>
+        <a class="mob-header-avatar" id="mobHeaderAvatar" href="/dashboard/profile.html" aria-label="Profile">T</a>
       </div>
     </div>
 
@@ -1800,6 +1892,24 @@
       <button class="mob-ttab" data-type="Over/Under">Over/Under</button>
       <button class="mob-ttab" data-type="Higher/Lower">Higher/Lower</button>
       <button class="mob-ttab" data-type="Touch">Touch</button>
+    </div>
+
+    <div class="mob-market-row">
+      <div class="mob-topbar-right">
+        <div class="mob-vol-pill">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+          Volatility
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+        </div>
+        <div class="mob-real-pill" onclick="toggleMobRealDemo()">
+          <span class="mob-real-dot"></span>
+          <span id="mobRealLabel">Real</span>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+        </div>
+      </div>
     </div>
 
     <!-- CHART -->
@@ -1990,15 +2100,15 @@
     </div>
 
     <!-- BOTTOM NAV -->
-    <nav class="mob-bottom-nav">
-      <button class="mob-nav-btn active" id="mobNavTrade" onclick="mobNavTo('trade')">
+    <nav class="mob-bottom-nav dashboard-mobile-nav" aria-label="Mobile navigation">
+      <a class="mob-nav-btn active" id="mobNavTrade" href="/dashboard/trade.html">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
           stroke-linejoin="round">
           <path d="M3 3v18h18" />
           <path d="M18 9l-5 5-4-4-6 6" />
         </svg>
-        Trade
-      </button>
+        <span>Trade</span>
+      </a>
       <a class="mob-nav-btn" href="/dashboard/scanner.html">
         <div class="mob-scanner-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#090514" stroke-width="2.2"
@@ -2007,18 +2117,16 @@
               points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
           </svg>
         </div>
-        Scanner
+        <span>Scanner</span>
       </a>
       <a class="mob-nav-btn" href="/dashboard/history.html" id="mobNavPositions">
-        <button type="button" class="mob-nav-btn" id="mobNavPositions" onclick="mobNavTo('positions')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round">
-            <rect x="2" y="7" width="20" height="14" rx="2" />
-            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-          </svg>
-          Positions
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="2" />
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+        </svg>
+        <span>Positions</span>
       </a>
-      </button>
     </nav>
 
   </div><!-- /mob-trade-shell -->
@@ -2232,7 +2340,9 @@
       let realBalance = 0;
       let demoBalance = parseFloat(localStorage.getItem('probinary_demo_balance') || '10000.00');
       let currentAsset = 'EUR/USD';
-      let currentTradeType = 'Rise/Fall';
+      const requestedTradeType = new URLSearchParams(window.location.search).get('type');
+      const allowedTradeTypes = ['Rise/Fall', 'Even/Odd', 'Matches', 'Over/Under', 'Higher/Lower', 'Touch'];
+      let currentTradeType = allowedTradeTypes.includes(requestedTradeType) ? requestedTradeType : 'Rise/Fall';
       let currentStake = 10;
       let martingaleOn = false;
       let martingaleBaseStake = 10;
@@ -2260,7 +2370,10 @@
         'ETH/USD': { price: 3140.50, precision: 2, delta: 1.8 },
         'XAU/USD': { price: 2684.30, precision: 2, delta: 0.8 },
         'USD/KES': { price: 129.50, precision: 2, delta: 0.05 },
-        'OIL/USD': { price: 74.85, precision: 2, delta: 0.08 }
+        'OIL/USD': { price: 74.85, precision: 2, delta: 0.08 },
+        'V10': { price: 1696.54, precision: 2, delta: 0.1 },
+        'V25': { price: 8421.18, precision: 2, delta: 0.25 },
+        'V75': { price: 23218.70, precision: 2, delta: 0.75 }
       };
 
       let priceHistory = {};
@@ -2292,6 +2405,7 @@
       const initial = (user.name || 'T').charAt(0).toUpperCase();
       document.getElementById('headerAvatarBtn').textContent = initial;
       document.getElementById('sidebarAvatar').textContent = initial;
+      document.getElementById('mobHeaderAvatar').textContent = initial;
 
       // Role & Simulation Evaluation
       if (user.role === 'admin' || user.role === 'superadmin') {
@@ -2339,6 +2453,7 @@
         localStorage.setItem('probinary_balance', bal.toFixed(2));
         const str = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         headerBalanceText.textContent = str;
+        document.getElementById('mobHeaderBalance').textContent = str;
         sidebarBalanceAmount.textContent = str;
         panelBalTiny.textContent = str;
         document.getElementById('pBal').textContent = str;
@@ -2740,6 +2855,9 @@
         document.getElementById('btnActionFall')
       ];
       function updateTradeActions() {
+        document.querySelectorAll('.type-btn').forEach(button => {
+          button.classList.toggle('active', button.dataset.type === currentTradeType);
+        });
         tradeActions[currentTradeType].forEach((action, index) => {
           actionButtons[index].textContent = action.label;
           actionButtons[index].dataset.direction = action.direction;
@@ -3281,7 +3399,9 @@
       };
 
       let mobAsset = 'EUR/USD';
-      let mobTradeType = 'Rise/Fall';
+      const requestedMobileTradeType = new URLSearchParams(window.location.search).get('type');
+      const mobileTradeTypes = ['Rise/Fall', 'Even/Odd', 'Matches', 'Over/Under', 'Higher/Lower', 'Touch'];
+      let mobTradeType = mobileTradeTypes.includes(requestedMobileTradeType) ? requestedMobileTradeType : 'Rise/Fall';
       let mobStake = 10;
       let mobZoom = 50;
       let mobLastDigits = [];
@@ -3592,6 +3712,7 @@
 
       // ---- TRADE TYPE TABS ----
       document.querySelectorAll('.mob-ttab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.type === mobTradeType);
         btn.addEventListener('click', () => {
           document.querySelectorAll('.mob-ttab').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
@@ -3607,6 +3728,11 @@
       window.mobSwitchMode = function (mode) {
         const manual = document.getElementById('mobManualPanel');
         const bot = document.getElementById('mobBotPanel');
+        document.querySelectorAll('.mob-mode-tab').forEach(button => {
+          const isActive = button.textContent.trim().toLowerCase() === mode;
+          button.classList.toggle('active', isActive);
+          button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
         if (mode === 'bot') {
           if (manual) manual.style.display = 'none';
           if (bot) bot.classList.add('active');
@@ -3615,6 +3741,7 @@
           if (bot) bot.classList.remove('active');
         }
       };
+      window.mobSwitchMode('manual');
 
       // ---- BOT TOGGLE ----
       window.toggleMobBot = function () {
@@ -3643,13 +3770,13 @@
       });
 
       // ---- REAL/DEMO TOGGLE ----
-      window.toggleMobRealDemo = function () {
-        isDemo = !isDemo;
-        localStorage.setItem('probinary_account_mode', isDemo ? 'demo' : 'real');
+      window.toggleMobRealDemo = async function () {
+        await window.setMode(!isDemo);
+        isDemo = localStorage.getItem('probinary_account_mode') === 'demo';
         const lbl = document.getElementById('mobRealLabel');
         const dot = document.querySelector('.mob-real-dot');
         if (lbl) lbl.textContent = isDemo ? 'Demo' : 'Real';
-        if (dot) dot.style.background = isDemo ? '#6366f1' : '#a855f7';
+        if (dot) dot.style.background = 'var(--accent-purple)';
       };
 
       // ---- NAV ----
@@ -3673,30 +3800,28 @@
       };
 
       window.mobNavTo = function (page) {
-        if (page === 'trade') {
-          // already here — just ensure manual panel visible
-          const navTrade = document.getElementById('mobNavTrade');
-          const navPositions = document.getElementById('mobNavPositions');
-          const manual = document.getElementById('mobManualPanel');
-          const bot = document.getElementById('mobBotPanel');
-          const posPanel = document.getElementById('mobPositionsPanel');
+        const navTrade = document.getElementById('mobNavTrade');
+        const navPositions = document.getElementById('mobNavPositions');
+        const manual = document.getElementById('mobManualPanel');
+        const bot = document.getElementById('mobBotPanel');
+        const posPanel = document.getElementById('mobPositionsPanel');
 
-          if (page === 'positions') {
-            window.mobCurrentTab = 'positions';
-            if (navPositions) navPositions.classList.add('active');
-            if (navTrade) navTrade.classList.remove('active');
-            if (manual) manual.style.display = 'none';
-            if (bot) bot.classList.remove('active');
-            if (posPanel) posPanel.style.display = 'flex';
-            mobRenderPositions();
-          } else if (page === 'trade') {
-            window.mobCurrentTab = 'trade';
-            if (navTrade) navTrade.classList.add('active');
-            if (navPositions) navPositions.classList.remove('active');
-            if (posPanel) posPanel.style.display = 'none';
-            window.mobSwitchMode('manual');
-          }
+        if (page === 'positions') {
+          window.mobCurrentTab = 'positions';
+          if (navPositions) navPositions.classList.add('active');
+          if (navTrade) navTrade.classList.remove('active');
+          if (manual) manual.style.display = 'none';
+          if (bot) bot.classList.remove('active');
+          if (posPanel) posPanel.style.display = 'flex';
+          mobRenderPositions();
+        } else if (page === 'trade') {
+          window.mobCurrentTab = 'trade';
+          if (navTrade) navTrade.classList.add('active');
+          if (navPositions) navPositions.classList.remove('active');
+          if (posPanel) posPanel.style.display = 'none';
+          window.mobSwitchMode('manual');
         };
+      };
 
         function mobRenderPositions() {
           const container = document.getElementById('mobPositionsList');
@@ -3760,7 +3885,7 @@
             let history = [];
             try {
               const localHist = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
-              history = Array.isClass(localHist) ? localHist : [];
+              history = Array.isArray(localHist) ? localHist : [];
             } catch (_) { }
 
             if (!history.length) {

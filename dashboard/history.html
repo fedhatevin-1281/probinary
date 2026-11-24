@@ -243,25 +243,41 @@
     @media (max-width: 900px) {
       .top-nav, .app-layout, .mobile-drawer, .mobile-drawer-backdrop { display: none !important; }
       .mobile-positions-view { display: flex; position: fixed; inset: 0; flex-direction: column; background: var(--bg-main); }
-      .positions-header { height: 58px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; background: #0d081c; border-bottom: 1px solid var(--border-card); }
+      .positions-header { height: 52px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px; background: #0d081c; border-bottom: 1px solid var(--border-card); }
       .positions-brand { display: flex; align-items: center; gap: 8px; color: #fff; text-decoration: none; }
       .positions-logo { width: 28px; height: 28px; border-radius: 7px; background: var(--accent-gradient); color: #090514; display: grid; place-items: center; font-weight: 800; }
       .positions-actions { display: flex; align-items: center; gap: 8px; }
-      .positions-balance { font-size: 11px; font-weight: 700; border: 1px solid var(--border-card); border-radius: 18px; padding: 7px 10px; }
-      .positions-deposit { background: var(--accent-gradient); color: #090514; border-radius: 16px; padding: 7px 10px; text-decoration: none; font-size: 11px; font-weight: 800; }
-      .positions-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: grid; place-items: center; text-decoration: none; font-weight: 800; }
-      .positions-content { flex: 1; min-height: 0; display: grid; grid-template-rows: 50% 50%; overflow: hidden; padding: 0 12px 72px; }
-      .positions-chart { position: relative; min-height: 0; border-bottom: 1px solid var(--border-card); overflow: hidden; background: #061b17; }
+      .positions-balance { max-width: 82px; overflow: hidden; text-overflow: ellipsis; font-size: 10px; font-weight: 700; border: 1px solid var(--border-card); border-radius: 9px; padding: 7px; white-space: nowrap; }
+      .positions-deposit { background: var(--accent-gradient); color: #090514; border-radius: 9px; padding: 8px 9px; text-decoration: none; font-size: 10px; font-weight: 800; white-space: nowrap; }
+      .positions-avatar { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: grid; place-items: center; text-decoration: none; font-weight: 800; }
+      .positions-content { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 0 0 72px; }
+      .positions-contract-tabs { display: flex; flex: 0 0 42px; align-items: center; gap: 5px; overflow-x: auto; padding: 5px 8px; scrollbar-width: none; border-bottom: 1px solid var(--border-card); }
+      .positions-contract-tabs::-webkit-scrollbar { display: none; }
+      .positions-contract-tab { flex-shrink: 0; padding: 6px 10px; border: 1px solid var(--border-card); border-radius: 20px; background: var(--bg-card-alt); color: var(--text-gray); font: inherit; font-size: 10px; font-weight: 700; white-space: nowrap; }
+      .positions-contract-tab.active { border-color: var(--accent-purple); background: var(--accent-purple-dim); color: #fff; }
+      .positions-market-row { display: flex; justify-content: flex-end; align-items: center; gap: 6px; flex: 0 0 38px; padding: 4px 10px; border-bottom: 1px solid var(--border-card); }
+      .positions-market-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 4px 10px; border: 1px solid var(--border-card); border-radius: 16px; background: var(--bg-card-alt); color: var(--text-gray); font-size: 10px; font-weight: 700; }
+      .positions-market-pill.account { color: var(--accent-green); border-color: rgba(16, 185, 129, 0.3); cursor: pointer; }
+      .positions-market-pill.account::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-green); }
+      .positions-chart { position: relative; flex: 0 0 30%; min-height: 140px; border-bottom: 1px solid var(--border-card); overflow: hidden; background: #061b17; }
       .positions-chart svg { width: 100%; height: 100%; display: block; }
-      .positions-list { min-height: 0; overflow-y: auto; padding-top: 12px; }
+      .positions-digits { flex: 0 0 66px; display: flex; align-items: center; justify-content: space-around; gap: 3px; padding: 5px 8px; border-bottom: 1px solid var(--border-card); background: var(--bg-header); }
+      .positions-digit { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; color: var(--text-gray); font-family: 'IBM Plex Mono', monospace; font-size: 9px; }
+      .positions-digit-ring { display: grid; place-items: center; width: 29px; height: 29px; border: 2px solid rgba(168, 85, 247, 0.25); border-radius: 50%; background: var(--bg-card-alt); color: var(--text-gray); font-size: 11px; font-weight: 700; }
+      .positions-digit.current .positions-digit-ring { border-color: var(--accent-purple); color: var(--accent-lavender); box-shadow: 0 0 8px var(--accent-purple-glow); }
+      .positions-mode-tabs { display: flex; flex: 0 0 42px; gap: 4px; padding: 5px 8px; border-bottom: 1px solid var(--border-card); }
+      .positions-mode-tab { flex: 1; border: 1px solid transparent; border-radius: 9px; background: var(--bg-card-alt); color: var(--text-gray); font: inherit; font-size: 11px; font-weight: 700; }
+      .positions-mode-tab.active { border-color: var(--accent-purple); background: var(--accent-purple-dim); color: var(--accent-lavender); }
+      .positions-list { flex: 1; min-height: 70px; overflow-y: auto; padding: 8px 12px; }
       .positions-empty { height: 100%; display: grid; place-items: center; color: var(--text-gray); font-size: 13px; text-align: center; }
       .position-card { background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
-      .positions-bottom-nav { position: fixed; z-index: 50;
- left: 0; right: 0; bottom: 0; height: 72px; background: #0d081c; border-top: 1px solid var(--border-card); display: grid; grid-template-columns: repeat(3, 1fr); align-items: center; padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); }
-      .positions-bottom-nav a { text-decoration: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 10px; }
-      .positions-bottom-nav a.active { color: #fff; }
-      .positions-bottom-nav a.active svg { color: var(--accent-purple); }
-      .positions-bottom-nav svg { width: 21px; height: 21px; }
+      @media (max-width: 380px) {
+        .positions-header { padding: 0 7px; }
+        .positions-actions { gap: 5px; }
+        .positions-balance { max-width: 68px; }
+        .positions-deposit { padding: 8px 7px; }
+        .positions-brand { gap: 6px; }
+      }
     }
   </style>
   <link rel="stylesheet" href="/dashboard/design-system.css" />
@@ -491,15 +507,32 @@
   <div class="mobile-positions-view">
     <header class="positions-header">
       <a class="positions-brand" href="/dashboard/trade.html"><span class="positions-logo">P</span><span style="font-weight:800">ProBinary</span></a>
-      <div class="positions-actions"><span class="positions-balance mono" id="mobilePositionsBalance">● $0.00</span><a class="positions-deposit" href="/dashboard/deposit.html">+ Deposit</a><a class="positions-avatar" id="mobilePositionsAvatar" href="/dashboard/profile.html">T</a></div>
+      <div class="positions-actions"><span class="positions-balance mono">● <span id="mobilePositionsBalance">$0.00</span></span><a class="positions-deposit" href="/dashboard/deposit.html">+ Deposit</a><a class="positions-avatar" id="mobilePositionsAvatar" href="/dashboard/profile.html" aria-label="Profile">T</a></div>
     </header>
     <main class="positions-content" id="mobilePositionsContent">
+      <nav class="positions-contract-tabs" aria-label="Trade type">
+        <button type="button" class="positions-contract-tab active" data-type="Rise/Fall">Rise/Fall</button>
+        <button type="button" class="positions-contract-tab" data-type="Even/Odd">Even/Odd</button>
+        <button type="button" class="positions-contract-tab" data-type="Matches">Matches</button>
+        <button type="button" class="positions-contract-tab" data-type="Over/Under">Over/Under</button>
+        <button type="button" class="positions-contract-tab" data-type="Higher/Lower">Higher/Lower</button>
+        <button type="button" class="positions-contract-tab" data-type="Touch">Touch</button>
+      </nav>
+      <div class="positions-market-row">
+        <span class="positions-market-pill">◆ Volatility</span>
+        <button type="button" class="positions-market-pill account" id="positionsAccountMode" onclick="togglePositionsAccount()">Real</button>
+      </div>
       <div class="positions-chart" id="positionsChart" aria-label="Trading chart">
         <canvas id="positionsTradingChart" style="width:100%;height:100%;display:block"></canvas>
       </div>
+      <div class="positions-digits" id="positionsDigits" aria-label="Recent price digit frequencies"></div>
+      <div class="positions-mode-tabs" role="group" aria-label="Trade mode">
+        <button type="button" class="positions-mode-tab active" aria-pressed="true" onclick="selectPositionsMode(this)">Manual</button>
+        <button type="button" class="positions-mode-tab" aria-pressed="false" onclick="selectPositionsMode(this)">Bot</button>
+      </div>
       <div class="positions-list" id="positionsList"><div class="positions-empty">No open positions</div></div>
     </main>
-    <nav class="mob-bottom-nav" aria-label="Mobile navigation">
+    <nav class="mob-bottom-nav dashboard-mobile-nav" aria-label="Mobile navigation">
       <a href="/dashboard/trade.html" class="mob-nav-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg>
         <span>Trade</span>
@@ -858,7 +891,45 @@
         ctx.fill();
         ctx.fillStyle = '#090514'; ctx.font = 'bold 9px IBM Plex Mono, monospace';
         ctx.fillText(Number(slice[slice.length - 1]).toFixed(precision), chartW + 5, lastY + 3);
+        renderPositionsDigits();
       }
+
+      function renderPositionsDigits() {
+        const container = document.getElementById('positionsDigits');
+        if (!container || !positionsChartSeries.length) return;
+        const precision = positionsChartAsset === 'USD/JPY' ? 3 :
+          (positionsChartAsset.includes('BTC') || positionsChartAsset.includes('USD/J') ? 2 : 5);
+        const series = positionsChartSeries.slice(-50);
+        const counts = Array(10).fill(0);
+        const getDigit = value => Number(Number(value).toFixed(precision).replace(/\D/g, '').slice(-1));
+        series.forEach(value => counts[getDigit(value)]++);
+        const currentDigit = getDigit(series[series.length - 1]);
+        container.innerHTML = counts.map((count, digit) => `
+          <div class="positions-digit${digit === currentDigit ? ' current' : ''}">
+            <span class="positions-digit-ring">${digit}</span>
+            <span>${((count / series.length) * 100).toFixed(1)}%</span>
+          </div>`).join('');
+      }
+
+      window.selectPositionsMode = function (button) {
+        document.querySelectorAll('.positions-mode-tab').forEach(tab => {
+          const active = tab === button;
+          tab.classList.toggle('active', active);
+          tab.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+      };
+
+      window.togglePositionsAccount = async function () {
+        const isDemo = localStorage.getItem('probinary_account_mode') === 'demo';
+        await window.setMode(!isDemo);
+        loadMobilePositions();
+      };
+
+      document.querySelectorAll('.positions-contract-tab').forEach(button => {
+        button.addEventListener('click', () => {
+          window.location.href = '/dashboard/trade.html?type=' + encodeURIComponent(button.dataset.type);
+        });
+      });
 
       function startPositionsChartUpdates() {
         if (positionsChartTimer) clearInterval(positionsChartTimer);
@@ -892,10 +963,8 @@
         const list = document.getElementById('positionsList');
         if (!content || !list) return;
 
-        const demoBalance = parseFloat(localStorage.getItem('probinary_demo_balance') || '10000');
-        const realBalance = parseFloat(localStorage.getItem('probinary_balance') || '0');
-        const isDemo = localStorage.getItem('probinary_account_mode') !== 'real';
-        document.getElementById('mobilePositionsBalance').textContent = '● $' + (isDemo ? demoBalance : realBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const isDemo = localStorage.getItem('probinary_account_mode') === 'demo';
+        document.getElementById('positionsAccountMode').textContent = isDemo ? 'Demo' : 'Real';
 
         try {
           const user = JSON.parse(localStorage.getItem('probinary_user') || '{}');

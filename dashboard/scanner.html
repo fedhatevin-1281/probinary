@@ -11,6 +11,52 @@
   <link rel="stylesheet" href="/dashboard/design-system.css"/>
   <style>
     /* Scanner specific page styles matching design system */
+    .scanner-mobile-header {
+      display: none;
+    }
+
+    .scanner-mobile-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .scanner-mobile-balance {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .scanner-mobile-deposit {
+      padding: 7px 9px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-gradient);
+      color: var(--text-inverse);
+      font-size: 10px;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .scanner-mobile-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent-gradient);
+      color: var(--text-inverse);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 800;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
     .scanner-main {
       display: flex;
       flex-direction: column;
@@ -214,6 +260,61 @@
       color: var(--accent-red);
     }
 
+    .scanner-stake-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-md);
+    }
+
+    .scanner-stake-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .scanner-stake-label {
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .scanner-stake-help {
+      color: var(--text-gray);
+      font-size: 10px;
+    }
+
+    .scanner-stake-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 9px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-card-alt);
+      border-radius: var(--radius-sm);
+      color: var(--text-gray);
+    }
+
+    .scanner-stake-input {
+      width: 100px;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #fff;
+      font: 700 14px 'IBM Plex Mono', monospace;
+      text-align: right;
+      user-select: text;
+    }
+
+    .scanner-stake-input:focus {
+      color: var(--accent-lavender);
+    }
+
     .trade-now-btn {
       width: 100%;
       border: none;
@@ -235,6 +336,12 @@
     .trade-now-btn:hover {
       box-shadow: 0 6px 22px rgba(168, 85, 247, 0.55);
       transform: translateY(-1px);
+    }
+
+    .trade-now-btn:disabled {
+      cursor: wait;
+      opacity: 0.7;
+      transform: none;
     }
 
     .scan-overlay {
@@ -264,17 +371,269 @@
       animation: spin 0.8s linear infinite;
     }
 
+    .scanner-result-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(5, 3, 12, 0.82);
+      backdrop-filter: blur(8px);
+    }
+
+    .scanner-result-backdrop.show {
+      display: flex;
+    }
+
+    .scanner-result-card {
+      width: min(100%, 360px);
+      padding: 22px;
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius-lg);
+      background: var(--bg-card);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), var(--shadow-glow);
+      text-align: center;
+    }
+
+    .scanner-result-icon {
+      width: 54px;
+      height: 54px;
+      margin: 0 auto 12px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--accent-green-dim);
+      color: var(--accent-green);
+      font-size: 26px;
+      font-weight: 800;
+    }
+
+    .scanner-result-card.loss .scanner-result-icon,
+    .scanner-result-card.error .scanner-result-icon {
+      background: var(--accent-red-dim);
+      color: var(--accent-red);
+    }
+
+    .scanner-result-title {
+      color: #fff;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .scanner-result-subtitle {
+      margin-top: 5px;
+      color: var(--text-gray);
+      font-size: 12px;
+    }
+
+    .scanner-result-amount {
+      margin: 18px 0;
+      color: var(--accent-green);
+      font: 800 28px 'IBM Plex Mono', monospace;
+    }
+
+    .scanner-result-card.loss .scanner-result-amount,
+    .scanner-result-card.error .scanner-result-amount {
+      color: var(--accent-red);
+    }
+
+    .scanner-result-details {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-md);
+      background: var(--bg-card-alt);
+      text-align: left;
+      font-size: 11px;
+    }
+
+    .scanner-result-detail {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .scanner-result-detail span {
+      color: var(--text-gray);
+    }
+
+    .scanner-result-detail strong {
+      color: #fff;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .scanner-result-error {
+      display: none;
+      margin-top: 12px;
+      color: var(--accent-red);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .scanner-result-card.error .scanner-result-error {
+      display: block;
+    }
+
+    .scanner-result-continue {
+      width: 100%;
+      margin-top: 16px;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: var(--accent-gradient);
+      color: var(--text-inverse);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
     /* Mobile overrides */
     @media (max-width: 900px) {
+      .scanner-mobile-header {
+        display: flex;
+        height: var(--header-height);
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 0 10px;
+        background: var(--bg-header);
+        border-bottom: 1px solid var(--border-card);
+        flex-shrink: 0;
+      }
+      .scanner-mobile-header .brand {
+        gap: 6px;
+        font-size: 14px;
+        min-width: 0;
+      }
+      .scanner-mobile-header .brand-mark {
+        width: 26px;
+        height: 26px;
+        flex-shrink: 0;
+      }
+      .scanner-mobile-actions {
+        gap: 6px;
+      }
+      .scanner-mobile-balance {
+        font-size: 10px;
+      }
+      .scanner-mobile-deposit {
+        padding: 7px 8px;
+        font-size: 9px;
+      }
+      .app-layout {
+        display: flex !important;
+        height: calc(100dvh - var(--header-height) - var(--bottom-nav-height));
+        max-height: calc(100dvh - var(--header-height) - var(--bottom-nav-height));
+        gap: 0;
+        padding: 0;
+        overflow: hidden;
+      }
       .scanner-main {
-        padding: 14px 12px 84px;
+        flex: 1;
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        padding: 10px 12px 12px;
+        overflow-y: auto;
+      }
+      .scanner-container {
+        max-width: 640px;
+        gap: 12px;
+      }
+      .scanner-header-bar {
+        min-height: 56px;
+        flex-wrap: nowrap;
+      }
+      .ai-title-wrap {
+        gap: 8px;
+        min-width: 0;
+      }
+      .ai-badge-icon {
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+        font-size: 11px;
+      }
+      .scanner-header-bar .ai-title-wrap > div:last-child > div:first-child {
+        font-size: 15px !important;
+      }
+      .rescan-btn {
+        padding: 8px 10px;
+        flex-shrink: 0;
       }
       .scanner-card {
-        padding: 16px;
+        padding: 14px;
         border-radius: var(--radius-md);
       }
+      .scanner-card-header {
+        margin-bottom: 12px;
+      }
       .asset-title {
-        font-size: 26px;
+        font-size: 24px;
+      }
+      .type-display-row {
+        margin: 12px 0 10px;
+        padding: 10px;
+      }
+      .type-icon-box {
+        width: 38px;
+        height: 38px;
+      }
+      .reason-box {
+        padding: 10px 12px;
+        margin-bottom: 10px;
+      }
+      .reason-box p {
+        font-size: 11px;
+      }
+      .metrics-grid-3 {
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      .metric-item {
+        padding: 9px;
+      }
+      .metric-value {
+        font-size: 13px;
+      }
+      .scanner-stake-row {
+        margin-bottom: 12px;
+        padding: 9px 10px;
+      }
+      .scanner-stake-input {
+        width: 86px;
+      }
+      .trade-now-btn {
+        padding: 13px 10px;
+        font-size: 13px;
+      }
+      .scanner-container > p {
+        margin-top: 0 !important;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .scanner-header-bar .ai-title-wrap > div:last-child > div:first-child {
+        font-size: 14px !important;
+      }
+      .scanner-header-bar .ai-title-wrap > div:last-child > div:last-child {
+        font-size: 9px !important;
+      }
+      .rescan-btn {
+        padding: 7px 8px;
+        font-size: 10px;
+      }
+      .scanner-mobile-header {
+        padding: 0 7px;
+      }
+      .scanner-mobile-actions {
+        gap: 4px;
+      }
+      .scanner-mobile-deposit {
+        padding: 7px 6px;
       }
     }
   </style>
@@ -313,6 +672,18 @@
       <a href="/dashboard/profile.html" id="headerAvatarBtn" style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-gradient); color: #090514; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; cursor: pointer; text-decoration: none; box-shadow: 0 0 10px rgba(168,85,247,0.4);">
         T
       </a>
+    </div>
+  </header>
+
+  <header class="scanner-mobile-header">
+    <a href="/dashboard/trade.html" class="brand">
+      <span class="brand-mark">P</span>
+      <span>Pro<span style="color:var(--accent-lavender)">Binary</span></span>
+    </a>
+    <div class="scanner-mobile-actions">
+      <span class="scanner-mobile-balance mono"><span style="color:var(--accent-purple);">●</span><span id="mobileScannerBalance">$0.00</span></span>
+      <a href="/dashboard/deposit.html" class="scanner-mobile-deposit">+ Deposit</a>
+      <a href="/dashboard/profile.html" id="scannerMobileAvatar" class="scanner-mobile-avatar" aria-label="Profile">T</a>
     </div>
   </header>
 
@@ -419,13 +790,13 @@
           <div class="ai-title-wrap">
             <div class="ai-badge-icon">AI</div>
             <div>
-              <div style="font-size: 18px; font-weight: 800; color: #fff; letter-spacing: -0.02em;">SmartPick Market Scanner</div>
-              <div style="font-size: 11px; color: var(--text-gray);" id="scanSubtitle">Top high-probability setup analyzed in real time</div>
+              <div style="font-size: 18px; font-weight: 800; color: #fff; letter-spacing: -0.02em;">Smart Pick</div>
+              <div style="font-size: 11px; color: var(--text-gray);" id="scanSubtitle">One recommendation · best setup right now</div>
             </div>
           </div>
           <button class="rescan-btn" id="rescanBtn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 11a8.1 8.1 0 1 1-2.3-5.7L20 8"/><path d="M20 4v4h-4"/></svg>
-            <span>Scan Markets</span>
+            <span>Re-scan</span>
           </button>
         </div>
 
@@ -439,8 +810,8 @@
 
           <div class="scanner-card">
             <div class="scanner-card-header">
-              <span class="badge badge-purple" style="font-size: 10px;">RECOMMENDED CONTRACT</span>
-              <span class="badge badge-green" style="font-size: 10px;">High Probability · 5/5</span>
+              <span class="badge badge-purple" style="font-size: 10px;">RECOMMENDED TRADE</span>
+              <span class="badge badge-green" style="font-size: 10px;">Very High · 5/5</span>
             </div>
 
             <div class="asset-display-row">
@@ -455,25 +826,25 @@
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
               </div>
               <div>
-                <div style="font-size: 10px; color: var(--text-gray); font-weight: 700; text-transform: uppercase;">PREDICTED CONTRACT TYPE</div>
+                <div style="font-size: 10px; color: var(--text-gray); font-weight: 700; text-transform: uppercase;">TRADE TYPE</div>
                 <div class="type-name-text" id="tradeType">EVEN</div>
               </div>
             </div>
 
             <!-- Why This Pick -->
             <div class="reason-box">
-              <div style="font-size: 10px; color: var(--text-gray); font-weight: 700; text-transform: uppercase;">WHY THIS SETUP</div>
+              <div style="font-size: 10px; color: var(--text-gray); font-weight: 700; text-transform: uppercase;">WHY THIS PICK</div>
               <p id="reasonText"><strong>83%</strong> of recent digits were even within the 50-tick inspection window.</p>
             </div>
 
             <!-- 3 Metrics -->
             <div class="metrics-grid-3">
               <div class="metric-item">
-                <div class="metric-label">RSI(14)</div>
+                <div class="metric-label">RSI</div>
                 <div class="metric-value mono" id="rsi">33</div>
               </div>
               <div class="metric-item">
-                <div class="metric-label">Directional Bias</div>
+                <div class="metric-label">Trend</div>
                 <div class="metric-value trend-down mono" id="trend">64% down</div>
               </div>
               <div class="metric-item">
@@ -482,11 +853,23 @@
               </div>
             </div>
 
+            <label class="scanner-stake-row" for="scannerStakeInput">
+              <span class="scanner-stake-copy">
+                <span class="scanner-stake-label">Trade amount</span>
+                <span class="scanner-stake-help">USD per trade</span>
+              </span>
+              <span class="scanner-stake-input-wrap">
+                <span aria-hidden="true">$</span>
+                <input class="scanner-stake-input" id="scannerStakeInput" type="number" min="1" max="10000" step="0.01" value="100" inputmode="decimal" aria-label="Scanner trade amount in US dollars"/>
+              </span>
+            </label>
+
             <!-- CTA Button -->
             <button class="trade-now-btn" id="tradeBtn">
-              <span>Execute Contract: <strong id="tradeAsset">V10</strong> · <strong id="tradeTypeBtn">EVEN</strong></span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+              <span>Trade <strong id="tradeAsset">V10</strong> · <strong id="tradeTypeBtn">EVEN</strong> · $<strong id="tradeStakeBtn">100</strong></span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
             </button>
+            <div id="tradeStatus" role="status" aria-live="polite" style="min-height:18px; margin-top:8px; text-align:center; color:var(--text-gray); font-size:11px;"></div>
           </div>
         </div>
 
@@ -499,7 +882,7 @@
   </div>
 
   <!-- MOBILE BOTTOM NAV -->
-  <nav class="mob-bottom-nav">
+  <nav class="mob-bottom-nav dashboard-mobile-nav" aria-label="Mobile navigation">
     <a href="/dashboard/trade.html" class="mob-nav-btn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg>
       <span>Trade</span>
@@ -516,6 +899,21 @@
     </a>
   </nav>
 
+  <div class="scanner-result-backdrop" id="scannerResultBackdrop" aria-hidden="true">
+    <section class="scanner-result-card" id="scannerResultCard" role="dialog" aria-modal="true" aria-labelledby="scannerResultTitle">
+      <div class="scanner-result-icon" id="scannerResultIcon" aria-hidden="true">✓</div>
+      <h2 class="scanner-result-title" id="scannerResultTitle">Trade complete</h2>
+      <p class="scanner-result-subtitle" id="scannerResultSubtitle"></p>
+      <div class="scanner-result-amount mono" id="scannerResultAmount"></div>
+      <div class="scanner-result-details">
+        <div class="scanner-result-detail"><span>Stake</span><strong id="scannerResultStake"></strong></div>
+        <div class="scanner-result-detail"><span>Balance</span><strong id="scannerResultBalance"></strong></div>
+      </div>
+      <p class="scanner-result-error" id="scannerResultError"></p>
+      <button class="scanner-result-continue" id="scannerResultContinue" type="button">Continue</button>
+    </section>
+  </div>
+
   <!-- SCRIPTS -->
   <script>
     const picks = [
@@ -528,6 +926,28 @@
     ];
 
     let current = 0;
+    const scannerStakeStorageKey = 'probinary_scanner_trade_amount';
+    let orderInProgress = false;
+    let settlementRequests = 0;
+    let settlementQueue = Promise.resolve();
+    const activeScannerTrades = new Map();
+    const scannerResultQueue = [];
+    let scannerResultOpen = false;
+    const scannerMarketSettings = {
+      V10: { precision: 2, delta: 0.1 },
+      V25: { precision: 2, delta: 0.25 },
+      V75: { precision: 2, delta: 0.75 },
+      'EUR/USD': { precision: 5, delta: 0.00015 },
+      'GBP/USD': { precision: 5, delta: 0.0002 },
+      'BTC/USD': { precision: 2, delta: 12 }
+    };
+    const scannerMarkets = Object.fromEntries(picks.map(pick => [
+      pick.asset,
+      { price: Number(pick.price), ...scannerMarketSettings[pick.asset] }
+    ]));
+    const scannerStakeInput = document.getElementById('scannerStakeInput');
+    const savedScannerStake = localStorage.getItem(scannerStakeStorageKey);
+    if (savedScannerStake !== null) scannerStakeInput.value = savedScannerStake;
 
     function formatBalance() {
       const isDemo = localStorage.getItem('probinary_account_mode') === 'demo';
@@ -542,14 +962,268 @@
       if (sideBalEl) sideBalEl.textContent = formatted;
     }
 
+    function getScannerStake() {
+      const rawStake = scannerStakeInput.value.trim();
+      if (!rawStake) return null;
+      const stake = Number(rawStake);
+      return Number.isFinite(stake) && stake >= 1 && stake <= 10000 ? stake : null;
+    }
+
+    function updateTradeStake() {
+      const stake = getScannerStake();
+      document.getElementById('tradeStakeBtn').textContent = stake === null
+        ? '—'
+        : stake.toLocaleString('en-US');
+      document.getElementById('tradeBtn').disabled = orderInProgress || stake === null;
+    }
+
+    function formatUsd(amount) {
+      return '$' + Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function getScannerCurrentBalance(isDemo) {
+      const balance = isDemo
+        ? window.databaseDemoBalance ?? localStorage.getItem('probinary_demo_balance') ?? 10000
+        : window.databaseRealBalance ?? localStorage.getItem('probinary_real_balance') ?? 0;
+      return Number(balance);
+    }
+
+    function showNextScannerResult() {
+      if (scannerResultOpen || scannerResultQueue.length === 0) return;
+      const result = scannerResultQueue.shift();
+      const backdrop = document.getElementById('scannerResultBackdrop');
+      const card = document.getElementById('scannerResultCard');
+      const isError = Boolean(result.error);
+
+      card.classList.toggle('win', !isError && result.won);
+      card.classList.toggle('loss', !isError && !result.won);
+      card.classList.toggle('error', isError);
+      document.getElementById('scannerResultIcon').textContent = isError ? '!' : result.won ? '✓' : '×';
+      document.getElementById('scannerResultTitle').textContent = isError
+        ? 'Trade settlement pending'
+        : result.won ? 'Congratulations!' : 'Trade complete';
+      document.getElementById('scannerResultSubtitle').textContent = isError
+        ? `${result.trade.asset} · settlement could not be confirmed`
+        : `${result.trade.asset} · ${result.trade.direction.toUpperCase()} contract`;
+      document.getElementById('scannerResultAmount').textContent = isError
+        ? 'Pending'
+        : `${result.won ? '+' : '-'}${formatUsd(Math.abs(result.profit))}`;
+      document.getElementById('scannerResultStake').textContent = formatUsd(result.trade.stake);
+      document.getElementById('scannerResultBalance').textContent = Number.isFinite(result.balance)
+        ? formatUsd(result.balance)
+        : 'Unavailable';
+      document.getElementById('scannerResultError').textContent = result.error || '';
+      backdrop.classList.add('show');
+      backdrop.setAttribute('aria-hidden', 'false');
+      scannerResultOpen = true;
+      document.getElementById('scannerResultContinue').focus();
+    }
+
+    function queueScannerResult(result) {
+      scannerResultQueue.push(result);
+      showNextScannerResult();
+    }
+
+    function closeScannerResult() {
+      const backdrop = document.getElementById('scannerResultBackdrop');
+      backdrop.classList.remove('show');
+      backdrop.setAttribute('aria-hidden', 'true');
+      scannerResultOpen = false;
+      showNextScannerResult();
+    }
+
+    function updateScannerTradeStatus() {
+      const status = document.getElementById('tradeStatus');
+      if (activeScannerTrades.size > 0) {
+        const remaining = Math.min(...Array.from(activeScannerTrades.values(), trade => trade.ticksRemaining));
+        status.style.color = 'var(--accent-lavender)';
+        status.textContent = `${activeScannerTrades.size} trade${activeScannerTrades.size === 1 ? '' : 's'} running · ${remaining}s remaining`;
+      } else if (settlementRequests > 0) {
+        status.style.color = 'var(--text-gray)';
+        status.textContent = 'Trade finished · confirming result...';
+      }
+    }
+
+    function saveScannerActiveTrade(trade) {
+      const savedTrades = JSON.parse(localStorage.getItem('probinary_active_trades') || '[]');
+      const trades = Array.isArray(savedTrades) ? savedTrades : [];
+      trades.unshift({
+        id: trade.id,
+        asset: trade.asset,
+        type: trade.tradeType,
+        dir: trade.direction.charAt(0).toUpperCase() + trade.direction.slice(1),
+        stake: trade.stake,
+        entryPrice: trade.entryPrice,
+        ticks: trade.ticksRemaining,
+        totalTicks: 5,
+        duration: 5,
+        isDemo: trade.isDemo
+      });
+      localStorage.setItem('probinary_active_trades', JSON.stringify(trades));
+    }
+
+    function removeScannerActiveTrade(tradeId) {
+      const savedTrades = JSON.parse(localStorage.getItem('probinary_active_trades') || '[]');
+      if (!Array.isArray(savedTrades)) return;
+      localStorage.setItem('probinary_active_trades', JSON.stringify(savedTrades.filter(trade => trade.id !== tradeId)));
+    }
+
+    function saveScannerTradeResult(trade, won, profit) {
+      const savedHistory = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
+      const history = Array.isArray(savedHistory) ? savedHistory : [];
+      history.unshift({
+        id: trade.id,
+        asset: trade.asset,
+        type: `Scanner ${trade.tradeType}`,
+        stake: trade.stake,
+        outcome: won ? 'win' : 'loss',
+        profit,
+        time: new Date().toLocaleTimeString()
+      });
+      localStorage.setItem('probinary_trade_history', JSON.stringify(history.slice(0, 50)));
+    }
+
+    function getScannerTradeOutcome(trade, exitPrice) {
+      const market = scannerMarkets[trade.asset];
+      if (trade.tradeType === 'Even/Odd') {
+        const exitDigit = parseInt(Number(exitPrice).toFixed(market.precision).replace('.', '').slice(-1), 10) || 0;
+        return trade.direction === 'even' ? exitDigit % 2 === 0 : exitDigit % 2 === 1;
+      }
+      return trade.direction === 'rise' ? exitPrice > trade.entryPrice : exitPrice < trade.entryPrice;
+    }
+
+    async function settleScannerTrade(trade, exitPrice) {
+      const predictedWin = getScannerTradeOutcome(trade, exitPrice);
+      let won = predictedWin;
+      let payout = won ? Number((trade.stake * 1.87).toFixed(2)) : 0;
+      let profit = won ? Number((payout - trade.stake).toFixed(2)) : -trade.stake;
+      let balance = getScannerCurrentBalance(trade.isDemo);
+
+      try {
+        if (trade.authToken) {
+          const response = await fetch('/api/trading/settle', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${trade.authToken}`
+            },
+            body: JSON.stringify({
+              tradeId: trade.id,
+              exitPrice,
+              outcome: won ? 'win' : 'loss',
+              payout,
+              stake: trade.stake,
+              isDemo: trade.isDemo,
+              demoBalance: trade.isDemo ? balance : undefined
+            })
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.success || !data.trade) {
+            throw new Error(data.error || 'The trade result could not be confirmed.');
+          }
+          if (!['win', 'loss'].includes(data.trade.outcome)) {
+            throw new Error('The trading service returned an unknown result.');
+          }
+
+          won = data.trade.outcome === 'win';
+          payout = Number(data.trade.payout);
+          profit = Number(data.trade.profit);
+          if (!Number.isFinite(profit) || !Number.isFinite(payout)) {
+            throw new Error('The trading service returned an invalid payout.');
+          }
+          if (trade.isDemo) {
+            balance = getScannerCurrentBalance(true) + (won ? payout : 0);
+            window.setDatabaseDemoBalance?.(balance);
+          } else {
+            balance = Number(data.balance);
+            if (!Number.isFinite(balance)) throw new Error('The updated wallet balance was unavailable.');
+            window.setDatabaseBalance?.(balance);
+            await window.refreshAccountBalance?.();
+          }
+        } else {
+          if (!trade.isDemo) throw new Error('Sign in again to confirm this Real trade.');
+          balance = getScannerCurrentBalance(true) + (won ? payout : 0);
+          window.setDatabaseDemoBalance?.(balance);
+        }
+
+        try {
+          removeScannerActiveTrade(trade.id);
+          saveScannerTradeResult(trade, won, profit);
+        } catch (error) {
+          console.error('Unable to save the completed scanner trade:', error);
+        }
+
+        document.getElementById('tradeStatus').style.color = won ? 'var(--accent-green)' : 'var(--accent-red)';
+        document.getElementById('tradeStatus').textContent = `Trade complete · ${won ? 'won' : 'lost'} ${formatUsd(Math.abs(profit))}.`;
+        queueScannerResult({ trade, won, profit, balance });
+      } catch (error) {
+        const message = error.message || 'The trade settlement could not be confirmed.';
+        document.getElementById('tradeStatus').style.color = 'var(--accent-red)';
+        document.getElementById('tradeStatus').textContent = `Settlement pending: ${message}`;
+        queueScannerResult({ trade, error: message, balance });
+      }
+    }
+
+    function queueScannerSettlement(trade, exitPrice) {
+      settlementRequests++;
+      updateScannerTradeStatus();
+      settlementQueue = settlementQueue
+        .then(() => settleScannerTrade(trade, exitPrice))
+        .catch(error => {
+          const message = error.message || 'The trade settlement could not be confirmed.';
+          queueScannerResult({ trade, error: message, balance: getScannerCurrentBalance(trade.isDemo) });
+        })
+        .finally(() => {
+          settlementRequests--;
+          updateScannerTradeStatus();
+        });
+    }
+
+    function tickScannerTrades() {
+      if (activeScannerTrades.size === 0) return;
+
+      const tradedAssets = new Set(Array.from(activeScannerTrades.values(), trade => trade.asset));
+      tradedAssets.forEach(asset => {
+        const market = scannerMarkets[asset];
+        market.price = Number((market.price + (Math.random() - 0.499) * market.delta).toFixed(market.precision));
+        if (picks[current].asset === asset) {
+          document.getElementById('price').textContent = `@ ${market.price.toFixed(market.precision)}  ${picks[current].change}%`;
+        }
+      });
+
+      const completed = [];
+      activeScannerTrades.forEach(trade => {
+        trade.ticksRemaining--;
+        if (trade.ticksRemaining <= 0) {
+          activeScannerTrades.delete(trade.id);
+          completed.push({ trade, exitPrice: scannerMarkets[trade.asset].price });
+        }
+      });
+
+      updateScannerTradeStatus();
+      completed.forEach(({ trade, exitPrice }) => queueScannerSettlement(trade, exitPrice));
+    }
+
+    document.getElementById('scannerResultContinue').addEventListener('click', closeScannerResult);
+    document.getElementById('scannerResultBackdrop').addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeScannerResult();
+    });
+
     function render(p) {
+      const market = scannerMarkets[p.asset];
       document.getElementById('asset').textContent = p.asset;
       document.getElementById('volatility').textContent = p.volatility;
-      document.getElementById('price').textContent = '@ ' + p.price + '  ' + (p.change.startsWith('+') ? p.change : p.change) + '%';
+      document.getElementById('price').textContent = `@ ${market.price.toFixed(market.precision)}  ${p.change}%`;
       document.getElementById('price').className = 'price-row mono ' + (p.change.startsWith('-') ? 'down' : '');
       document.getElementById('tradeType').textContent = p.type;
       document.getElementById('tradeAsset').textContent = p.asset;
       document.getElementById('tradeTypeBtn').textContent = p.type;
+      updateTradeStake();
+      if (!orderInProgress && activeScannerTrades.size === 0 && settlementRequests === 0) {
+        document.getElementById('tradeStatus').textContent = '';
+      } else {
+        updateScannerTradeStatus();
+      }
       document.getElementById('reasonText').innerHTML = p.reason.replace(/^(\d+%)/, '<strong>$1</strong>');
       document.getElementById('rsi').textContent = p.rsi;
       document.getElementById('trend').textContent = p.trend;
@@ -557,6 +1231,18 @@
       document.getElementById('momentum').textContent = p.momentum;
       document.getElementById('momentum').className = 'metric-value mono ' + (p.momentum.startsWith('-') ? 'trend-down' : '');
     }
+
+    scannerStakeInput.addEventListener('input', () => {
+      localStorage.setItem(scannerStakeStorageKey, scannerStakeInput.value);
+      updateTradeStake();
+      const status = document.getElementById('tradeStatus');
+      if (getScannerStake() === null) {
+        status.style.color = 'var(--accent-red)';
+        status.textContent = 'Enter a stake between $1 and $10,000.';
+      } else if (status.textContent === 'Enter a stake between $1 and $10,000.') {
+        status.textContent = '';
+      }
+    });
 
     document.getElementById('rescanBtn').addEventListener('click', () => {
       const btn = document.getElementById('rescanBtn');
@@ -574,16 +1260,121 @@
         overlay.classList.remove('show');
         btn.classList.remove('loading');
         btn.disabled = false;
-        document.getElementById('scanSubtitle').textContent = 'Top high-probability setup analyzed in real time';
+        document.getElementById('scanSubtitle').textContent = 'One recommendation · best setup right now';
       }, 700);
     });
 
-    document.getElementById('tradeBtn').addEventListener('click', () => {
+    async function placeSuggestedTrade() {
+      if (orderInProgress) return;
       const p = picks[current];
-      localStorage.setItem('probinary_scanner_asset', p.asset);
-      localStorage.setItem('probinary_scanner_direction', p.type);
-      window.location.href = '/dashboard/trade.html';
-    });
+      const isDemo = localStorage.getItem('probinary_account_mode') === 'demo';
+      const token = localStorage.getItem('auth_token');
+      const stake = getScannerStake();
+      const status = document.getElementById('tradeStatus');
+      const button = document.getElementById('tradeBtn');
+      if (stake === null) {
+        status.style.color = 'var(--accent-red)';
+        status.textContent = 'Enter a stake between $1 and $10,000.';
+        return;
+      }
+
+      orderInProgress = true;
+      button.disabled = true;
+      scannerStakeInput.disabled = true;
+      button.setAttribute('aria-busy', 'true');
+      status.style.color = 'var(--text-gray)';
+      status.textContent = `Placing $${stake} ${p.type} trade on ${p.asset}...`;
+
+      try {
+        if (!isDemo && !token) {
+          throw new Error('Sign in to place a trade using your Real balance.');
+        }
+
+        if (token && typeof window.refreshAccountBalance === 'function') {
+          const balanceLoaded = await window.refreshAccountBalance();
+          if (!balanceLoaded) throw new Error('Could not verify your account balance. Please sign in again.');
+        }
+
+        const balance = getScannerCurrentBalance(isDemo);
+        if (!Number.isFinite(balance) || balance < stake) {
+          throw new Error(`Insufficient ${isDemo ? 'Demo' : 'Real'} balance for a $${stake} trade.`);
+        }
+
+        const tradeType = ['EVEN', 'ODD'].includes(p.type) ? 'Even/Odd' : 'Rise/Fall';
+        const direction = p.type.toLowerCase();
+        const tradeId = 'PB-' + Math.floor(100000 + Math.random() * 900000);
+        const entryPrice = scannerMarkets[p.asset].price;
+        let openedTrade;
+
+        if (token) {
+          const response = await fetch('/api/trading/order', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              id: tradeId,
+              stake,
+              asset: p.asset,
+              tradeType,
+              direction,
+              entryPrice,
+              duration: 5,
+              isDemo,
+              demoBalance: isDemo ? balance : undefined
+            })
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.success || !data.trade) {
+            throw new Error(data.error || 'The suggested trade could not be placed.');
+          }
+          const updatedBalance = Number(data.balance);
+          if (!Number.isFinite(updatedBalance)) {
+            throw new Error('The order was accepted, but the updated balance could not be confirmed.');
+          }
+          if (isDemo) window.setDatabaseDemoBalance?.(updatedBalance);
+          else window.setDatabaseBalance?.(updatedBalance);
+          openedTrade = data.trade;
+        } else {
+          const nextBalance = Number((balance - stake).toFixed(2));
+          window.setDatabaseDemoBalance?.(nextBalance);
+          openedTrade = { id: tradeId };
+        }
+
+        const trade = {
+          id: openedTrade.id || tradeId,
+          asset: p.asset,
+          tradeType,
+          direction,
+          stake,
+          entryPrice,
+          ticksRemaining: 5,
+          isDemo,
+          authToken: token
+        };
+        activeScannerTrades.set(trade.id, trade);
+
+        try {
+          saveScannerActiveTrade(trade);
+        } catch (error) {
+          console.error('Unable to save the active scanner trade:', error);
+        }
+
+        updateScannerTradeStatus();
+      } catch (error) {
+        status.textContent = error.message || 'The suggested trade could not be placed.';
+        status.style.color = 'var(--accent-red)';
+      } finally {
+        orderInProgress = false;
+        scannerStakeInput.disabled = false;
+        updateTradeStake();
+        button.removeAttribute('aria-busy');
+      }
+    }
+
+    document.getElementById('tradeBtn').addEventListener('click', placeSuggestedTrade);
+    window.setInterval(tickScannerTrades, 1000);
 
     window.toggleMobileDrawer = function() {
       const drawer = document.getElementById('mobileDrawer');
@@ -602,6 +1393,14 @@
       localStorage.removeItem('auth_token');
       localStorage.removeItem('probinary_user');
       window.location.href = '/auth/login.html';
+    }
+
+    try {
+      const user = JSON.parse(localStorage.getItem('probinary_user') || '{}');
+      const avatar = document.getElementById('scannerMobileAvatar');
+      if (avatar && user.name) avatar.textContent = user.name.charAt(0).toUpperCase();
+    } catch (error) {
+      console.error('Unable to load scanner profile name:', error);
     }
 
     formatBalance();
