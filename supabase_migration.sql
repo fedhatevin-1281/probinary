@@ -174,6 +174,8 @@ create table if not exists public.binary_trade_records (
   stake numeric(12, 2) not null check (stake > 0),
   entry_price numeric not null,
   entry_digit integer,
+  target_digit integer,
+  barrier numeric,
   exit_price numeric,
   exit_digit integer,
   payout numeric(12, 2) default 0.00,
@@ -188,6 +190,10 @@ create table if not exists public.binary_trade_records (
   closure_reason text,
   primary key (user_id, trade_id)
 );
+
+alter table public.binary_trade_records
+  add column if not exists target_digit integer,
+  add column if not exists barrier numeric;
 
 create index if not exists binary_trades_user_created_idx
   on public.binary_trade_records (user_id, created_at desc);
@@ -653,6 +659,7 @@ $$;
 
 
 -- Function 4: Atomic Binary Trade Order Placement (Strict Demo vs Real Separation)
+drop function if exists public.execute_trade_atomic(text, text, text, text, text, numeric, numeric, integer, integer, numeric, boolean);
 create or replace function public.execute_trade_atomic(
   p_user_id text,
   p_trade_id text,
@@ -664,7 +671,9 @@ create or replace function public.execute_trade_atomic(
   p_entry_digit integer,
   p_duration integer default 5,
   p_payout_multiplier numeric default 1.87,
-  p_is_demo boolean default false
+  p_is_demo boolean default false,
+  p_target_digit integer default null,
+  p_barrier numeric default null
 )
 returns table (
   trade_id text,
@@ -775,6 +784,8 @@ begin
     stake,
     entry_price,
     entry_digit,
+    target_digit,
+    barrier,
     created_at,
     expiry_at,
     expiry_seconds,
@@ -792,6 +803,8 @@ begin
     p_stake,
     p_entry_price,
     p_entry_digit,
+    p_target_digit,
+    p_barrier,
     now(),
     now() + (p_duration || ' seconds')::interval,
     p_duration,
@@ -1331,7 +1344,7 @@ revoke all on public.manual_wallet_deposits from anon, authenticated;
 grant execute on function public.apply_wallet_adjustment_atomic(bigint, numeric, text, text, text, bigint, jsonb) to service_role;
 grant execute on function public.request_withdrawal_atomic(bigint, numeric, text, text, text) to service_role;
 grant execute on function public.review_withdrawal_atomic(bigint, text, bigint, text) to service_role;
-grant execute on function public.execute_trade_atomic(text, text, text, text, text, numeric, numeric, integer, integer, numeric, boolean) to service_role;
+grant execute on function public.execute_trade_atomic(text, text, text, text, text, numeric, numeric, integer, integer, numeric, boolean, integer, numeric) to service_role;
 grant execute on function public.settle_trade_atomic(text, text, numeric, integer, text, numeric, numeric, boolean) to service_role;
 grant execute on function public.complete_nowpayments_order(text, text, numeric, text, text) to service_role;
 grant execute on function public.complete_makamescopay_order(text, text, integer, text, text) to service_role;

@@ -212,8 +212,11 @@
             localStorage.setItem('probinary_balance', savedRealBalance.toFixed(2));
 
             const isAdmin = data.user?.role === 'admin' || data.user?.role === 'superadmin';
-            const isSim = ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(email.trim().toLowerCase());
+            const isSim = Boolean(data.user?.simulation || data.user?.is80WinRate ||
+              ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com', 'simulation@probinary.com']
+                .includes(email.trim().toLowerCase()));
             localStorage.setItem('probinary_account_mode', 'real');
+            if (isSim) localStorage.setItem('probinary_simulation_mode', 'real');
 
             showToast(isAdmin ? 'Signed in as Administrator' : (isSim ? 'Signed in · 80% Win Rate Simulation Active' : 'Signed in to Trading Desk'), 'success');
 
@@ -221,7 +224,7 @@
               if (isAdmin) {
                 window.location.href = '/dashboard/admin.html';
               } else {
-                window.location.href = isSim ? '/dashboard/simulation.html' : '/dashboard/trade.html';
+                window.location.href = '/dashboard/trade.html';
               }
             }, 600);
             return;

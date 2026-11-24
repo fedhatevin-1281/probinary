@@ -117,6 +117,8 @@ CREATE TABLE public.binary_trade_records (
   stake numeric NOT NULL CHECK (stake > 0::numeric),
   entry_price numeric NOT NULL,
   entry_digit integer NOT NULL,
+  target_digit integer,
+  barrier numeric,
   expiry_at timestamp with time zone NOT NULL,
   expiry_seconds integer NOT NULL,
   payout_multiplier numeric NOT NULL,

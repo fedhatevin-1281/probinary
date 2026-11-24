@@ -355,6 +355,27 @@
       transform: translateX(0);
     }
 
+    /* Mobile Bottom Navigation */
+    .mobile-bottom-nav {
+      display: none;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 68px;
+      z-index: 80;
+      align-items: center;
+      justify-content: space-around;
+      padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+      background: rgba(7, 23, 19, 0.97);
+      border-top: 1px solid rgba(45, 212, 191, 0.22);
+      box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18);
+      backdrop-filter: blur(14px);
+    }
+    .mobile-bottom-nav a { display: flex; min-width: 72px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--text-gray); text-decoration: none; font-size: 10px; font-weight: 700; }
+    .mobile-bottom-nav a.active { color: #2dd4bf; }
+    .mobile-bottom-nav svg { width: 21px; height: 21px; }
+
     /* Mobile Responsive Breakpoints */
     @media (max-width: 900px) {
       html, body {
@@ -397,46 +418,24 @@
       }
     }
 
-    @media (max-width: 600px) {
-      body { background: #061b17; }
-      .top-nav { height: 62px; background: #071713; border-bottom-color: rgba(45, 212, 191, 0.14); }
-      .app-layout { padding: 0 0 86px; background: #061b17; }
-      .app-layout > main { padding: 0 12px 12px !important; }
-      .app-layout > main > div { gap: 8px !important; }
-      .app-layout > main > div > div:first-child { padding: 10px 0 6px; }
-      .app-layout h1 { font-size: 18px !important; }
-      .card-panel { background: #09251f !important; border-color: rgba(45, 212, 191, 0.16) !important; }
-      .bot-grid-strategies { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 6px !important; }
-      .strategy-card { min-height: 118px; padding: 10px !important; }
-      .bot-grid-3col { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
-      .bot-grid-3col > div:first-child { grid-column: 1 / -1; }
-      .bot-grid-3col > div:nth-child(2), .bot-grid-3col > div:nth-child(3) { min-height: 150px; }
-      #assetsRow { flex-wrap: nowrap !important; overflow-x: auto; }
-      .asset-chip { flex: 0 0 auto; }
-      .bot-summary-bar { position: sticky; bottom: 68px; z-index: 20; border-radius: 14px 14px 0 0; }
-      .mobile-bottom-nav { display: flex; }
-      body > div[style*="position: fixed"][style*="right: 16px"] { right: 14px !important; bottom: 76px !important; }
-    }
-
-    .mobile-bottom-nav {
-      display: none;
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: 68px;
-      z-index: 80;
-      align-items: center;
-      justify-content: space-around;
-      padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
-      background: rgba(7, 23, 19, 0.97);
-      border-top: 1px solid rgba(45, 212, 191, 0.22);
-      box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18);
-      backdrop-filter: blur(14px);
-    }
-    .mobile-bottom-nav a { display: flex; min-width: 72px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--text-gray); text-decoration: none; font-size: 10px; font-weight: 700; }
-    .mobile-bottom-nav a.active { color: #2dd4bf; }
-    .mobile-bottom-nav svg { width: 21px; height: 21px; }
+    body { background: #061b17; }
+    .top-nav { height: 62px; background: #071713; border-bottom-color: rgba(45, 212, 191, 0.14); }
+    .app-layout { padding: 0 0 86px; background: #061b17; }
+    .app-layout > main { padding: 0 12px 12px !important; }
+    .app-layout > main > div { gap: 8px !important; }
+    .app-layout > main > div > div:first-child { padding: 10px 0 6px; }
+    .app-layout h1 { font-size: 18px !important; }
+    .card-panel { background: #09251f !important; border-color: rgba(45, 212, 191, 0.16) !important; }
+    .bot-grid-strategies { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 6px !important; }
+    .strategy-card { min-height: 118px; padding: 10px !important; }
+    .bot-grid-3col { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+    .bot-grid-3col > div:first-child { grid-column: 1 / -1; }
+    .bot-grid-3col > div:nth-child(2), .bot-grid-3col > div:nth-child(3) { min-height: 150px; }
+    #assetsRow { flex-wrap: nowrap !important; overflow-x: auto; }
+    .asset-chip { flex: 0 0 auto; }
+    .bot-summary-bar { position: sticky; bottom: 68px; z-index: 20; border-radius: 14px 14px 0 0; }
+    .mobile-bottom-nav { display: flex; }
+    body > div[style*="position: fixed"][style*="right: 16px"] { right: 14px !important; bottom: 76px !important; }
   </style>
 </head>
 <body>
@@ -471,7 +470,7 @@
       </div>
 
       <!-- Deposit Button -->
-      <a href="/dashboard/deposit.html" class="purple-btn" style="width: 100%; padding: 6px 0; font-size: 11px; text-decoration: none;">
+      <a href="/dashboard/deposit.html" class="purple-btn" style="padding: 5px 14px; font-size: 11px; text-decoration: none;">
         + Deposit
       </a>
 
@@ -899,11 +898,16 @@
       // User Credentials
       let user = JSON.parse(localStorage.getItem('probinary_user') || '{"name":"Tevin fedha","email":"fedhatevin@gmail.com"}');
       const isSimulationAccount = user.simulation === true || user.is80WinRate === true ||
-        ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com']
+        String(user.name || '').trim().toLowerCase().includes('simulation') ||
+        ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com', 'simulation@probinary.com']
           .includes(String(user.email || '').trim().toLowerCase());
+      if (isSimulationAccount) {
+        isDemo = (localStorage.getItem('probinary_simulation_mode') || localStorage.getItem('probinary_account_mode')) === 'demo';
+      }
       if (isSimulationAccount && !localStorage.getItem('probinary_simulation_mode_v2')) {
         isDemo = false;
         localStorage.setItem('probinary_account_mode', 'real');
+        localStorage.setItem('probinary_simulation_mode', 'real');
         localStorage.setItem('probinary_simulation_mode_v2', '1');
       }
       document.getElementById('sidebarUserName').textContent = user.name || 'Tevin fedha';
@@ -920,6 +924,9 @@
         if (!isDemo && Number.isFinite(window.databaseWalletBalance)) realBalance = window.databaseWalletBalance;
         const bal = getBal();
         localStorage.setItem('probinary_balance', bal.toFixed(2));
+        if (isSimulationAccount) {
+          localStorage.setItem('probinary_simulation_mode', isDemo ? 'demo' : 'real');
+        }
         const str = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         document.getElementById('headerBalanceText').textContent = str;
         document.getElementById('sidebarBalanceAmount').textContent = str;
@@ -942,9 +949,8 @@
         const response = await fetch('/api/simulation/balance', { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.success) throw new Error(data.error || 'Unable to load simulation balance.');
-        realBalance = Number(data.realBalance || 0);
-        demoBalance = Number(data.demoBalance || 0);
-        updateBalances();
+        window.setDatabaseBalance(Number(data.realBalance || 0));
+        window.setDatabaseDemoBalance(Number(data.demoBalance || 0));
       }
 
       window.setDatabaseBalance = function(balance) {
@@ -961,6 +967,9 @@
       window.setMode = function(demo) {
         isDemo = Boolean(demo);
         localStorage.setItem('probinary_account_mode', isDemo ? 'demo' : 'real');
+        if (isSimulationAccount) {
+          localStorage.setItem('probinary_simulation_mode', isDemo ? 'demo' : 'real');
+        }
         updateBalances();
       };
 
@@ -968,6 +977,9 @@
       // changing localStorage. Keep the bot state synchronized with it.
       window.onAccountModeChanged = function(demo) {
         isDemo = Boolean(demo);
+        if (isSimulationAccount) {
+          localStorage.setItem('probinary_simulation_mode', isDemo ? 'demo' : 'real');
+        }
         updateBalances();
       };
 
@@ -1202,9 +1214,8 @@
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok || !data.success) throw new Error(data.error || 'Simulation bot trade failed.');
-            realBalance = Number(data.realBalance || 0);
-            demoBalance = Number(data.demoBalance || 0);
-            updateBalances();
+            window.setDatabaseBalance(Number(data.realBalance || 0));
+            window.setDatabaseDemoBalance(Number(data.demoBalance || 0));
             const isWin = data.trade.outcome === 'win';
             const net = Number(data.trade.profit || 0);
             if (isWin) botWins++; else botLosses++;
@@ -1272,7 +1283,7 @@
           try {
             const u = JSON.parse(localStorage.getItem('probinary_user') || '{}');
             if (isSimulationAccount) {
-              targetWinRate = 85; // 85% Win Rate Simulation active in both modes
+              targetWinRate = 80;
             }
           } catch(e) {}
           const isWin = (Math.random() * 100) < targetWinRate;

@@ -323,6 +323,43 @@ select:focus-visible {
   color: #fff;
 }
 
+.contract-parameter-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card-alt);
+}
+
+.contract-parameter-panel[hidden],
+.contract-parameter-group[hidden] {
+  display: none !important;
+}
+
+.contract-parameter-group {
+  display: flex;
+  flex: 1 1 90px;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-gray);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.contract-parameter-group input,
+.contract-parameter-group select {
+  width: 100%;
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  background: var(--bg-main);
+  color: var(--text-white);
+  font: inherit;
+}
+
 /* Semantic Action Buttons */
 .green-btn {
   background: var(--accent-green);

@@ -1296,12 +1296,12 @@
             style="color:var(--accent-lavender)">Binary</span></span>
       </a>
 
-      <!-- Simulation 85% Win Rate Indicator Pill -->
+      <!-- Simulation 80% Win Rate Indicator Pill -->
       <span id="headerSimBadge"
         style="display:none; align-items:center; gap:6px; padding:3px 9px; border-radius:6px; background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.4); color:var(--accent-green); font-size:10px; font-weight:800; letter-spacing:0.02em;">
         <span
           style="width:6px; height:6px; border-radius:50%; background:var(--accent-green); box-shadow:0 0 6px var(--accent-green);"></span>
-        SIMULATION · 85% WIN RATE
+        SIMULATION · 80% WIN RATE
       </span>
     </div>
 
@@ -1742,6 +1742,23 @@
               style="justify-content: center; border-radius: 6px; padding: 5px 0;">Touch</button>
           </div>
         </div>
+        <div class="contract-parameter-panel" id="desktopContractParameters" hidden>
+          <label class="contract-parameter-group" data-contract-group="digit" hidden>
+            Prediction digit
+            <select data-contract-parameter="targetDigit" aria-label="Prediction digit">
+              <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+              <option value="5" selected>5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option>
+            </select>
+          </label>
+          <label class="contract-parameter-group" data-contract-group="offset" hidden>
+            Barrier offset
+            <input type="number" min="0" step="any" data-contract-parameter="barrierOffset" aria-label="Barrier offset"/>
+          </label>
+          <label class="contract-parameter-group" data-contract-group="barrier" hidden>
+            Barrier price
+            <input type="number" min="0" step="any" data-contract-parameter="touchBarrier" aria-label="Touch barrier price"/>
+          </label>
+        </div>
 
         <!-- Mode Indicator Badge -->
         <div style="display: flex; justify-content: flex-start;">
@@ -1893,6 +1910,23 @@
       <button class="mob-ttab" data-type="Higher/Lower">Higher/Lower</button>
       <button class="mob-ttab" data-type="Touch">Touch</button>
     </div>
+    <div class="contract-parameter-panel mob-contract-parameters" id="mobileContractParameters" hidden>
+      <label class="contract-parameter-group" data-contract-group="digit" hidden>
+        Prediction digit
+        <select data-contract-parameter="targetDigit" aria-label="Prediction digit">
+          <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+          <option value="5" selected>5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option>
+        </select>
+      </label>
+      <label class="contract-parameter-group" data-contract-group="offset" hidden>
+        Barrier offset
+        <input type="number" min="0" step="any" data-contract-parameter="barrierOffset" aria-label="Barrier offset"/>
+      </label>
+      <label class="contract-parameter-group" data-contract-group="barrier" hidden>
+        Barrier price
+        <input type="number" min="0" step="any" data-contract-parameter="touchBarrier" aria-label="Touch barrier price"/>
+      </label>
+    </div>
 
     <div class="mob-market-row">
       <div class="mob-topbar-right">
@@ -1972,12 +2006,12 @@
 
       <!-- Rise / Fall buttons -->
       <div class="mob-action-row">
-        <button class="mob-rise-btn" id="mobBtnRise">
-          RISE
+        <button class="mob-rise-btn" id="mobBtnRise" data-direction="Rise">
+          <span class="mob-action-label">RISE</span>
           <span class="mob-btn-sub" id="mobRiseSub">+$8.70</span>
         </button>
-        <button class="mob-fall-btn" id="mobBtnFall">
-          FALL
+        <button class="mob-fall-btn" id="mobBtnFall" data-direction="Fall">
+          <span class="mob-action-label">FALL</span>
           <span class="mob-btn-sub" id="mobFallSub">+$8.70</span>
         </button>
       </div>
@@ -2336,7 +2370,20 @@
     (function () {
       // 1. STATE & STORAGE
       const USD_KES_RATE = 129.5;
-      let isDemo = localStorage.getItem('probinary_account_mode') === 'demo';
+      let user = {};
+      try {
+        user = JSON.parse(localStorage.getItem('probinary_user') || '{}');
+      } catch (error) {
+        console.error('Unable to read the signed-in user:', error);
+      }
+      const userEmail = String(user.email || '').trim().toLowerCase();
+      const isSimulationAccount = user.simulation === true || user.is80WinRate === true ||
+        String(user.name || '').trim().toLowerCase().includes('simulation') ||
+        ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com', 'simulation@probinary.com'].includes(userEmail);
+      let isDemo = isSimulationAccount
+        ? (localStorage.getItem('probinary_simulation_mode') || localStorage.getItem('probinary_account_mode')) === 'demo'
+        : localStorage.getItem('probinary_account_mode') === 'demo';
+      window.isSimulationAccount = isSimulationAccount;
       let realBalance = 0;
       let demoBalance = parseFloat(localStorage.getItem('probinary_demo_balance') || '10000.00');
       let currentAsset = 'EUR/USD';
@@ -2389,13 +2436,10 @@
       });
 
       // User Credentials
-      let user = JSON.parse(localStorage.getItem('probinary_user') || '{"name":"Tevin fedha","email":"fedhatevin@gmail.com"}');
-      const isSimulationAccount = user.simulation === true || user.is80WinRate === true ||
-        ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com']
-          .includes(String(user.email || '').trim().toLowerCase());
       if (isSimulationAccount && !localStorage.getItem('probinary_simulation_mode_v2')) {
         isDemo = false;
         localStorage.setItem('probinary_account_mode', 'real');
+        localStorage.setItem('probinary_simulation_mode', 'real');
         localStorage.setItem('probinary_simulation_mode_v2', '1');
       }
       document.getElementById('sidebarUserName').textContent = user.name || 'Tevin fedha';
@@ -2414,7 +2458,7 @@
         const l2 = document.getElementById('navAdminDrawerLink');
         if (l2) l2.style.display = 'flex';
       }
-      if (['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(user.email || '').trim().toLowerCase())) {
+      if (isSimulationAccount) {
         const badge = document.getElementById('headerSimBadge');
         if (badge) badge.style.display = 'inline-flex';
       }
@@ -2451,6 +2495,9 @@
         if (!isDemo) realBalance = getBal();
         const bal = getBal();
         localStorage.setItem('probinary_balance', bal.toFixed(2));
+        if (isSimulationAccount) {
+          localStorage.setItem('probinary_simulation_mode', isDemo ? 'demo' : 'real');
+        }
         const str = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         headerBalanceText.textContent = str;
         document.getElementById('mobHeaderBalance').textContent = str;
@@ -2479,7 +2526,8 @@
         const token = localStorage.getItem('auth_token');
         if (!token) return false;
         try {
-          const res = await fetch('/api/wallet/balance', {
+          const balanceEndpoint = isSimulationAccount ? '/api/simulation/balance' : '/api/wallet/balance';
+          const res = await fetch(balanceEndpoint, {
             headers: { Authorization: `Bearer ${token}` }
           });
           const data = await res.json().catch(() => ({}));
@@ -2512,8 +2560,12 @@
       window.setMode = async function (demo) {
         isDemo = Boolean(demo);
         localStorage.setItem('probinary_account_mode', isDemo ? 'demo' : 'real');
+        if (isSimulationAccount) {
+          localStorage.setItem('probinary_simulation_mode', isDemo ? 'demo' : 'real');
+        }
         updateBalances();
         updateBalanceMenu();
+        window.dispatchEvent(new CustomEvent('probinaryAccountModeChanged', { detail: { isDemo } }));
         await syncBalancesFromServer();
       };
 
@@ -2521,8 +2573,12 @@
       // changing localStorage. Keep this page's trade state synchronized.
       window.onAccountModeChanged = function (demo) {
         isDemo = Boolean(demo);
+        if (isSimulationAccount) {
+          localStorage.setItem('probinary_simulation_mode', isDemo ? 'demo' : 'real');
+        }
         updateBalances();
         updateBalanceMenu();
+        window.dispatchEvent(new CustomEvent('probinaryAccountModeChanged', { detail: { isDemo } }));
       };
 
       function updateBalanceMenu() {
@@ -2608,7 +2664,9 @@
                 entryPrice: Number(tr.entry_price || 1.0),
                 ticks: remaining,
                 totalTicks: tr.duration || 5,
-                isDemo: Boolean(tr.is_demo)
+                isDemo: Boolean(tr.is_demo),
+                targetDigit: tr.target_digit == null ? undefined : Number(tr.target_digit),
+                barrier: tr.barrier == null ? undefined : Number(tr.barrier)
               });
             });
             const promptEl = document.getElementById('tradeStatusPrompt');
@@ -2729,6 +2787,7 @@
           btn.classList.add('active');
           currentAsset = btn.dataset.asset;
           centerAssetLabel.textContent = currentAsset;
+          updateContractParameterControls();
           updatePriceViews();
           renderChart();
           calcAnalytics();
@@ -2845,36 +2904,133 @@
       const tradeActions = {
         'Rise/Fall': [{ label: 'Rise ▲', direction: 'Rise' }, { label: 'Fall ▼', direction: 'Fall' }],
         'Even/Odd': [{ label: 'Even', direction: 'Even' }, { label: 'Odd', direction: 'Odd' }],
-        Matches: [{ label: 'Match', direction: 'Matches' }, { label: 'Differ', direction: 'Differs' }],
+        Matches: [{ label: 'Matches', direction: 'Matches' }, { label: 'Differs', direction: 'Differs' }],
         'Over/Under': [{ label: 'Over', direction: 'Over' }, { label: 'Under', direction: 'Under' }],
         'Higher/Lower': [{ label: 'Higher ▲', direction: 'Higher' }, { label: 'Lower ▼', direction: 'Lower' }],
         Touch: [{ label: 'Touch', direction: 'Touch' }, { label: 'No Touch', direction: 'No Touch' }]
       };
+      const contractParameterState = { targetDigit: 5, barrierOffset: null, touchBarrier: null };
+      const customContractParameters = { barrierOffset: false, touchBarrier: false };
       const actionButtons = [
         document.getElementById('btnActionRise'),
         document.getElementById('btnActionFall')
       ];
+
+      function updateContractParameterControls() {
+        const parameterGroup = {
+          Matches: 'digit',
+          'Over/Under': 'digit',
+          'Higher/Lower': 'offset',
+          Touch: 'barrier'
+        }[currentTradeType];
+        const asset = ASSETS[currentAsset];
+        const priceStep = Math.pow(10, -asset.precision);
+        const defaultOffset = Math.max(priceStep, Number((asset.delta * 2).toFixed(asset.precision)));
+
+        if (!customContractParameters.barrierOffset) contractParameterState.barrierOffset = defaultOffset;
+        if (!customContractParameters.touchBarrier) {
+          contractParameterState.touchBarrier = Number((asset.price + defaultOffset).toFixed(asset.precision));
+        }
+
+        document.querySelectorAll('.contract-parameter-panel').forEach(panel => {
+          panel.hidden = !parameterGroup;
+          panel.querySelectorAll('[data-contract-group]').forEach(group => {
+            group.hidden = group.dataset.contractGroup !== parameterGroup;
+          });
+        });
+        document.querySelectorAll('[data-contract-parameter="targetDigit"]').forEach(input => {
+          input.value = String(contractParameterState.targetDigit);
+        });
+        document.querySelectorAll('[data-contract-parameter="barrierOffset"]').forEach(input => {
+          input.step = String(priceStep);
+          input.min = String(priceStep);
+          input.value = String(contractParameterState.barrierOffset);
+        });
+        document.querySelectorAll('[data-contract-parameter="touchBarrier"]').forEach(input => {
+          input.step = String(priceStep);
+          input.min = String(priceStep);
+          input.value = String(contractParameterState.touchBarrier);
+        });
+      }
+
+      function getTradeContractParameters(type, direction, entryPrice) {
+        if (type === 'Matches' || type === 'Over/Under') {
+          const targetDigit = Number(contractParameterState.targetDigit);
+          if (!Number.isInteger(targetDigit) || targetDigit < 0 || targetDigit > 9) {
+            throw new Error('Choose a prediction digit from 0 to 9.');
+          }
+          return { targetDigit };
+        }
+
+        if (type === 'Higher/Lower') {
+          const offset = Number(contractParameterState.barrierOffset);
+          if (!Number.isFinite(offset) || offset <= 0) throw new Error('Enter a positive barrier offset.');
+          const sign = direction.toLowerCase() === 'higher' ? 1 : -1;
+          const barrier = Number((entryPrice + sign * offset).toFixed(ASSETS[currentAsset].precision));
+          return { barrier, barrierOffset: offset };
+        }
+
+        if (type === 'Touch') {
+          const barrier = Number(contractParameterState.touchBarrier);
+          if (!Number.isFinite(barrier) || barrier <= 0) throw new Error('Enter a valid barrier price.');
+          return { barrier };
+        }
+
+        return {};
+      }
+
+      document.querySelectorAll('[data-contract-parameter]').forEach(input => {
+        const updateParameter = () => {
+          const key = input.dataset.contractParameter;
+          const value = input.value === '' ? null : Number(input.value);
+          contractParameterState[key] = value;
+          if (key === 'barrierOffset' || key === 'touchBarrier') customContractParameters[key] = true;
+          document.querySelectorAll(`[data-contract-parameter="${key}"]`).forEach(other => {
+            if (other !== input) other.value = input.value;
+          });
+        };
+        input.addEventListener('input', updateParameter);
+        input.addEventListener('change', updateParameter);
+      });
+
       function updateTradeActions() {
         document.querySelectorAll('.type-btn').forEach(button => {
+          button.classList.toggle('active', button.dataset.type === currentTradeType);
+        });
+        document.querySelectorAll('.mob-ttab').forEach(button => {
           button.classList.toggle('active', button.dataset.type === currentTradeType);
         });
         tradeActions[currentTradeType].forEach((action, index) => {
           actionButtons[index].textContent = action.label;
           actionButtons[index].dataset.direction = action.direction;
+          const mobileButton = document.getElementById(index === 0 ? 'mobBtnRise' : 'mobBtnFall');
+          const mobileLabel = mobileButton?.querySelector('.mob-action-label');
+          if (mobileButton) {
+            mobileButton.dataset.direction = action.direction;
+            mobileButton.setAttribute('aria-label', action.label);
+          }
+          if (mobileLabel) mobileLabel.textContent = action.label.toUpperCase();
         });
+        window.selectedTradeType = currentTradeType;
+        updateContractParameterControls();
+        if (typeof window.onSelectedTradeTypeChanged === 'function') {
+          window.onSelectedTradeTypeChanged(currentTradeType);
+        }
       }
 
-      // Initialize the default Rise/Fall buttons before their click handlers
-      // are used. Without this, the visible labels existed but direction was
-      // undefined and the order path failed before sending the request.
+      window.selectDashboardTradeType = function (type) {
+        if (!Object.prototype.hasOwnProperty.call(tradeActions, type)) return;
+        currentTradeType = type;
+        updateTradeActions();
+      };
+      window.getTradeContractParameters = getTradeContractParameters;
+      window.getDashboardTradeActions = type => tradeActions[type]?.map(action => action.direction) || [];
+
       updateTradeActions();
 
       document.querySelectorAll('.type-btn').forEach(b => {
         b.addEventListener('click', () => {
-          document.querySelectorAll('.type-btn').forEach(btn => btn.classList.remove('active'));
-          b.classList.add('active');
-          currentTradeType = b.dataset.type;
-          updateTradeActions();
+          window.selectDashboardTradeType(b.dataset.type);
         });
       });
 
@@ -2943,7 +3099,12 @@
       }
 
       async function placeOrder(dir) {
-        await syncBalancesFromServer();
+        const token = localStorage.getItem('auth_token');
+        const balancesSynced = await syncBalancesFromServer();
+        if (isSimulationAccount && (!token || !balancesSynced)) {
+          alert('Sign in again to use the simulation trading engine.');
+          return;
+        }
         const tradeUsesDemo = isDemo;
         const bal = getBal();
         if (sessionTradeCount >= maxTrades) {
@@ -2960,10 +3121,68 @@
           alert(`Insufficient demo virtual balance ($${demoBalance.toFixed(2)}) for trade stake ($${currentStake.toFixed(2)}). Please reset your demo account or reduce your stake.`);
           return;
         }
-
         const tradeId = 'PB-' + Math.floor(100000 + Math.random() * 900000);
         const entryP = ASSETS[currentAsset].price;
-        const token = localStorage.getItem('auth_token');
+        let contractParameters;
+        try {
+          contractParameters = getTradeContractParameters(currentTradeType, dir, entryP);
+        } catch (error) {
+          alert(error.message);
+          return;
+        }
+
+        if (isSimulationAccount) {
+          document.getElementById('tradeStatusPrompt').textContent = `SIMULATION ${tradeUsesDemo ? 'DEMO' : 'REAL'} ORDER OPEN: ${dir.toUpperCase()} (5s)`;
+          try {
+            const response = await fetch('/api/simulation/trade', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                id: tradeId,
+                mode: tradeUsesDemo ? 'demo' : 'real',
+                stake: currentStake,
+                asset: currentAsset,
+                tradeType: currentTradeType,
+                direction: dir,
+                entryPrice: entryP,
+                ...contractParameters
+              })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success || !data.trade) {
+              throw new Error(data.error || 'Simulation trade failed.');
+            }
+
+            realBalance = Number(data.realBalance || 0);
+            demoBalance = Number(data.demoBalance || 0);
+            window.databaseRealBalance = realBalance;
+            window.databaseWalletBalance = realBalance;
+            window.databaseDemoBalance = demoBalance;
+            updateBalances();
+            sessionTradeCount++;
+            activeTrades.push({
+              id: data.trade.id || tradeId,
+              asset: currentAsset,
+              type: currentTradeType,
+              dir,
+              stake: currentStake,
+              entryPrice: entryP,
+              ticks: 5,
+              totalTicks: 5,
+              isDemo: tradeUsesDemo,
+              simulationResult: data.trade,
+              ...contractParameters
+            });
+            persistActiveTrades();
+          } catch (error) {
+            await syncBalancesFromServer();
+            document.getElementById('tradeStatusPrompt').innerHTML = `<span style="color:var(--accent-red); font-weight:700;">${error.message}</span>`;
+          }
+          return;
+        }
 
         if (tradeUsesDemo) {
           document.getElementById('tradeStatusPrompt').innerHTML = `<span style="color:var(--accent-purple); font-weight:700;">TRANSMITTING DEMO ORDER...</span>`;
@@ -2983,7 +3202,8 @@
                   direction: dir.toLowerCase(),
                   entryPrice: entryP,
                   duration: 5,
-                  isDemo: true
+                  isDemo: true,
+                  ...contractParameters
                 })
               });
               const data = await res.json().catch(() => ({}));
@@ -3016,7 +3236,8 @@
             entryPrice: entryP,
             ticks: 5,
             totalTicks: 5,
-            isDemo: true
+            isDemo: true,
+            ...contractParameters
           });
           persistActiveTrades();
           document.getElementById('tradeStatusPrompt').innerHTML = `<span style="color:var(--accent-purple); font-weight:700;">DEMO ORDER OPEN: ${dir.toUpperCase()} (5s)</span>`;
@@ -3042,7 +3263,8 @@
                 direction: dir.toLowerCase(),
                 entryPrice: entryP,
                 duration: 5,
-                isDemo: false
+                isDemo: false,
+                ...contractParameters
               })
             });
             const data = await res.json();
@@ -3067,7 +3289,8 @@
               entryPrice: entryP,
               ticks: 5,
               totalTicks: 5,
-              isDemo: false
+              isDemo: false,
+              ...contractParameters
             });
             persistActiveTrades();
             document.getElementById('tradeStatusPrompt').innerHTML = `<span style="color:var(--accent-green); font-weight:700;">REAL ORDER CONFIRMED: ${dir.toUpperCase()} (5s)</span>`;
@@ -3097,15 +3320,6 @@
           const exit = ASSETS[t.asset].price;
           let isWin = false;
 
-          // Check if the simulation win-rate engine is active
-          let isSimulationWinRate = false;
-          try {
-            const u = JSON.parse(localStorage.getItem('probinary_user') || '{}');
-            if (['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(u.email || '').trim().toLowerCase())) {
-              isSimulationWinRate = true;
-            }
-          } catch (e) { }
-
           const digitFromPrice = (price, precision) => {
             const formatted = Number(price).toFixed(precision);
             return parseInt(formatted.replace('.', '').slice(-1), 10) || 0;
@@ -3113,35 +3327,43 @@
           const entryDigit = digitFromPrice(t.entryPrice, ASSETS[t.asset].precision);
           const exitDigit = digitFromPrice(exit, ASSETS[t.asset].precision);
 
-          if (isSimulationWinRate) {
-            // 85% Win Rate Engine applies in both selected wallet modes.
-            isWin = Math.random() < 0.85;
+          if (t.simulationResult) {
+            isWin = t.simulationResult.outcome === 'win';
           } else if (t.type === 'Even/Odd') {
             isWin = t.dir === 'Even' ? exitDigit % 2 === 0 : exitDigit % 2 === 1;
           } else if (t.type === 'Matches') {
-            const matched = exitDigit === entryDigit;
+            const matched = exitDigit === (t.targetDigit ?? entryDigit);
             isWin = t.dir === 'Matches' ? matched : !matched;
           } else if (t.type === 'Over/Under') {
-            isWin = t.dir === 'Over' ? exitDigit > entryDigit : exitDigit < entryDigit;
+            const targetDigit = t.targetDigit ?? entryDigit;
+            isWin = t.dir === 'Over' ? exitDigit > targetDigit : exitDigit < targetDigit;
+          } else if (t.type === 'Higher/Lower') {
+            const barrier = Number(t.barrier);
+            isWin = t.dir === 'Higher' ? exit > barrier : exit < barrier;
           } else if (t.type === 'Touch') {
-            const touched = exit >= t.entryPrice + ASSETS[t.asset].delta * 2;
+            const barrier = Number(t.barrier);
+            const touched = barrier >= t.entryPrice ? exit >= barrier : exit <= barrier;
             isWin = t.dir === 'Touch' ? touched : !touched;
           } else {
             const rises = exit > t.entryPrice;
             isWin = ['Rise', 'Higher'].includes(t.dir) ? rises : exit < t.entryPrice;
           }
 
-          let profit = isWin ? (t.stake * 0.87) : -t.stake;
-          let payout = isWin ? (t.stake + profit) : 0;
+          let profit = t.simulationResult
+            ? Number(t.simulationResult.profit)
+            : (isWin ? (t.stake * 0.87) : -t.stake);
+          let payout = t.simulationResult
+            ? Number(t.simulationResult.payout)
+            : (isWin ? (t.stake + profit) : 0);
 
-          if (t.isDemo) {
+          if (t.isDemo && !t.simulationResult) {
             if (isWin) demoBalance += payout;
             updateBalances();
           }
 
           const token = localStorage.getItem('auth_token');
-          let settlementData = null;
-          if (token) {
+          let settlementData = t.simulationResult ? { trade: t.simulationResult } : null;
+          if (token && !t.simulationResult) {
             try {
               const settlementResponse = await fetch('/api/trading/settle', {
                 method: 'POST',
@@ -3155,7 +3377,12 @@
                   outcome: isWin ? 'win' : 'loss',
                   payout,
                   stake: t.stake,
-                  isDemo: Boolean(t.isDemo)
+                  isDemo: Boolean(t.isDemo),
+                  tradeType: t.type,
+                  direction: t.dir,
+                  entryPrice: t.entryPrice,
+                  targetDigit: t.targetDigit,
+                  barrier: t.barrier
                 })
               });
               const data = await settlementResponse.json().catch(() => ({}));
@@ -3177,7 +3404,7 @@
               console.error('Failed to settle trade on server:', e);
             }
           }
-          window.refreshAccountBalance?.();
+          if (!isSimulationAccount) window.refreshAccountBalance?.();
 
           // Use the server's authoritative outcome and payout when available,
           // so the result modal cannot display an optimistic balance.
@@ -3401,7 +3628,9 @@
       let mobAsset = 'EUR/USD';
       const requestedMobileTradeType = new URLSearchParams(window.location.search).get('type');
       const mobileTradeTypes = ['Rise/Fall', 'Even/Odd', 'Matches', 'Over/Under', 'Higher/Lower', 'Touch'];
-      let mobTradeType = mobileTradeTypes.includes(requestedMobileTradeType) ? requestedMobileTradeType : 'Rise/Fall';
+      let mobTradeType = mobileTradeTypes.includes(window.selectedTradeType)
+        ? window.selectedTradeType
+        : (mobileTradeTypes.includes(requestedMobileTradeType) ? requestedMobileTradeType : 'Rise/Fall');
       let mobStake = 10;
       let mobZoom = 50;
       let mobLastDigits = [];
@@ -3409,7 +3638,15 @@
       let mobActiveTrades = [];
       let mobBotRunning = false;
       let mobBotInterval = null;
-      let isDemo = localStorage.getItem('probinary_account_mode') === 'demo';
+      let isDemo = window.isSimulationAccount
+        ? (localStorage.getItem('probinary_simulation_mode') || localStorage.getItem('probinary_account_mode')) === 'demo'
+        : localStorage.getItem('probinary_account_mode') === 'demo';
+      window.addEventListener('probinaryAccountModeChanged', event => {
+        isDemo = Boolean(event.detail?.isDemo);
+      });
+      window.onSelectedTradeTypeChanged = type => {
+        if (mobileTradeTypes.includes(type)) mobTradeType = type;
+      };
 
       // Seed price history
       let p = ASSETS_MOB[mobAsset].price;
@@ -3585,7 +3822,8 @@
           const maxTrades = parseInt(document.getElementById('sliderMaxTrades')?.value || '28');
           const stake = parseFloat(document.getElementById('mobBotStake')?.value || '10');
           if (Math.random() < 0.25) {
-            const dir = Math.random() < 0.5 ? 'Rise' : 'Fall';
+            const directions = window.getDashboardTradeActions?.(mobTradeType) || ['Rise', 'Fall'];
+            const dir = directions[Math.floor(Math.random() * directions.length)];
             mobPlaceOrder(dir, stake, true);
           }
         }
@@ -3596,12 +3834,75 @@
       async function mobPlaceOrder(dir, stakeAmt, isBot) {
         stakeAmt = stakeAmt || mobStake;
         const entryP = ASSETS_MOB[mobAsset].price;
+        let contractParameters = {};
+        try {
+          if (typeof window.getTradeContractParameters === 'function') {
+            contractParameters = window.getTradeContractParameters(mobTradeType, dir, entryP);
+          }
+        } catch (error) {
+          const parameterStatus = document.getElementById('mobStatusBar');
+          if (parameterStatus) {
+            parameterStatus.textContent = error.message;
+            parameterStatus.style.color = 'var(--accent-red)';
+          }
+          return;
+        }
         const tradeId = 'PBM-' + Math.floor(100000 + Math.random() * 900000);
         const token = localStorage.getItem('auth_token');
         const statusEl = document.getElementById('mobStatusBar');
 
         if (statusEl) statusEl.textContent = (isDemo ? 'DEMO' : 'REAL') + ' ORDER: ' + dir.toUpperCase() + ' (5s)...';
         if (statusEl) statusEl.style.color = 'var(--accent-purple)';
+
+        if (window.isSimulationAccount) {
+          if (!token) {
+            if (statusEl) {
+              statusEl.textContent = 'Sign in again to use the simulation trading engine.';
+              statusEl.style.color = 'var(--accent-red)';
+            }
+            return;
+          }
+          try {
+            const response = await fetch('/api/simulation/trade', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+              body: JSON.stringify({
+                id: tradeId,
+                mode: isDemo ? 'demo' : 'real',
+                direction: dir,
+                stake: stakeAmt,
+                asset: mobAsset,
+                tradeType: mobTradeType,
+                entryPrice: entryP,
+                ...contractParameters
+              })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success || !data.trade) {
+              throw new Error(data.error || 'Simulation trade failed.');
+            }
+            window.setDatabaseBalance?.(Number(data.realBalance || 0));
+            window.setDatabaseDemoBalance?.(Number(data.demoBalance || 0));
+            mobActiveTrades.push({
+              id: data.trade.id || tradeId,
+              dir,
+              type: mobTradeType,
+              stake: stakeAmt,
+              entryPrice: entryP,
+              ticks: 5,
+              isDemo,
+              isBot: Boolean(isBot),
+              simulationResult: data.trade,
+              ...contractParameters
+            });
+          } catch (error) {
+            if (statusEl) {
+              statusEl.textContent = error.message;
+              statusEl.style.color = 'var(--accent-red)';
+            }
+          }
+          return;
+        }
 
         // Deduct from local demo balance optimistically
         if (isDemo) {
@@ -3620,12 +3921,21 @@
             fetch('/api/trading/order', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-              body: JSON.stringify({ id: tradeId, stake: stakeAmt, asset: mobAsset, tradeType: mobTradeType, direction: dir.toLowerCase(), entryPrice: entryP, duration: 5, isDemo })
+              body: JSON.stringify({ id: tradeId, stake: stakeAmt, asset: mobAsset, tradeType: mobTradeType, direction: dir.toLowerCase(), entryPrice: entryP, duration: 5, isDemo, ...contractParameters })
             }).catch(() => { });
           } catch (_) { }
         }
 
-        mobActiveTrades.push({ id: tradeId, dir, stake: stakeAmt, entryPrice: entryP, ticks: 5, isBot: Boolean(isBot) });
+        mobActiveTrades.push({
+          id: tradeId,
+          dir,
+          type: mobTradeType,
+          stake: stakeAmt,
+          entryPrice: entryP,
+          ticks: 5,
+          isBot: Boolean(isBot),
+          ...contractParameters
+        });
       }
 
       function mobSettleTrades() {
@@ -3636,12 +3946,37 @@
 
         settled.forEach(async t => {
           const exit = ASSETS_MOB[mobAsset].price;
-          const rises = exit > t.entryPrice;
-          const isWin = ['Rise', 'Higher'].includes(t.dir) ? rises : exit < t.entryPrice;
-          const profit = isWin ? (t.stake * 0.87) : -t.stake;
-          const payout = isWin ? (t.stake + profit) : 0;
+          const exitDigit = parseInt(exit.toFixed(ASSETS_MOB[mobAsset].precision).replace('.', '').slice(-1), 10) || 0;
+          const entryDigit = parseInt(t.entryPrice.toFixed(ASSETS_MOB[mobAsset].precision).replace('.', '').slice(-1), 10) || 0;
+          let isWin;
+          if (t.simulationResult) {
+            isWin = t.simulationResult.outcome === 'win';
+          } else if (t.type === 'Even/Odd') {
+            isWin = t.dir === 'Even' ? exitDigit % 2 === 0 : exitDigit % 2 === 1;
+          } else if (t.type === 'Matches') {
+            const matched = exitDigit === (t.targetDigit ?? entryDigit);
+            isWin = t.dir === 'Matches' ? matched : !matched;
+          } else if (t.type === 'Over/Under') {
+            const targetDigit = t.targetDigit ?? entryDigit;
+            isWin = t.dir === 'Over' ? exitDigit > targetDigit : exitDigit < targetDigit;
+          } else if (t.type === 'Higher/Lower') {
+            isWin = t.dir === 'Higher' ? exit > Number(t.barrier) : exit < Number(t.barrier);
+          } else if (t.type === 'Touch') {
+            const barrier = Number(t.barrier);
+            const touched = barrier >= t.entryPrice ? exit >= barrier : exit <= barrier;
+            isWin = t.dir === 'Touch' ? touched : !touched;
+          } else {
+            const rises = exit > t.entryPrice;
+            isWin = t.dir === 'Rise' ? rises : exit < t.entryPrice;
+          }
+          const profit = t.simulationResult
+            ? Number(t.simulationResult.profit)
+            : (isWin ? (t.stake * 0.87) : -t.stake);
+          const payout = t.simulationResult
+            ? Number(t.simulationResult.payout)
+            : (isWin ? (t.stake + profit) : 0);
 
-          if (isDemo && isWin) {
+          if (isDemo && isWin && !t.simulationResult) {
             let demo = parseFloat(localStorage.getItem('probinary_demo_balance') || '0');
             demo += payout;
             localStorage.setItem('probinary_demo_balance', demo.toFixed(2));
@@ -3662,11 +3997,23 @@
           }
 
           const token = localStorage.getItem('auth_token');
-          if (token) {
+          if (token && !t.simulationResult) {
             fetch('/api/trading/settle', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-              body: JSON.stringify({ tradeId: t.id, exitPrice: exit, outcome: isWin ? 'win' : 'loss', payout, stake: t.stake, isDemo })
+              body: JSON.stringify({
+                tradeId: t.id,
+                exitPrice: exit,
+                outcome: isWin ? 'win' : 'loss',
+                payout,
+                stake: t.stake,
+                isDemo,
+                tradeType: t.type,
+                direction: t.dir,
+                entryPrice: t.entryPrice,
+                targetDigit: t.targetDigit,
+                barrier: t.barrier
+              })
             }).catch(() => { });
           }
 
@@ -3707,20 +4054,21 @@
       });
 
       // ---- RISE / FALL ----
-      document.getElementById('mobBtnRise')?.addEventListener('click', () => mobPlaceOrder('Rise'));
-      document.getElementById('mobBtnFall')?.addEventListener('click', () => mobPlaceOrder('Fall'));
+      document.getElementById('mobBtnRise')?.addEventListener('click', event => mobPlaceOrder(event.currentTarget.dataset.direction));
+      document.getElementById('mobBtnFall')?.addEventListener('click', event => mobPlaceOrder(event.currentTarget.dataset.direction));
 
       // ---- TRADE TYPE TABS ----
       document.querySelectorAll('.mob-ttab').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.type === mobTradeType);
         btn.addEventListener('click', () => {
-          document.querySelectorAll('.mob-ttab').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
           mobTradeType = btn.dataset.type;
-          // Sync with desktop
-          document.querySelectorAll('.type-btn').forEach(tb => {
-            tb.classList.toggle('active', tb.dataset.type === mobTradeType);
-          });
+          if (typeof window.selectDashboardTradeType === 'function') {
+            window.selectDashboardTradeType(mobTradeType);
+          } else {
+            document.querySelectorAll('.mob-ttab').forEach(b => {
+              b.classList.toggle('active', b.dataset.type === mobTradeType);
+            });
+          }
         });
       });
 
