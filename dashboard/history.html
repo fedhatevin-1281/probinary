@@ -264,6 +264,7 @@
       .positions-bottom-nav svg { width: 21px; height: 21px; }
     }
   </style>
+  <link rel="stylesheet" href="/dashboard/design-system.css" />
 </head>
 <body>
 
@@ -289,7 +290,7 @@
     <div style="display: flex; align-items: center; gap: 10px;">
       <div class="pill-btn" style="padding: 4px 10px; cursor: default;">
         <span style="color: var(--accent-purple);">●</span>
-        <span class="mono" id="headerBalanceText" style="font-weight: 700; color: #fff;">$10,000.00.00</span>
+        <span class="mono" id="headerBalanceText" style="font-weight: 700, color: #fff;">$10,000.00.00</span>
       </div>
       <a href="/dashboard/deposit.html" class="purple-btn" style="padding: 5px 14px; font-size: 11px; text-decoration: none;">
         + Deposit
@@ -321,14 +322,17 @@
         <a href="/dashboard/bot.html" class="nav-btn">
           <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> Bot
         </a>
+        <a href="/dashboard/scanner.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span> Scanner
+        </a>
+        <a href="/dashboard/history.html" class="nav-btn active">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> Positions
+        </a>
         <a href="/dashboard/deposit.html" class="nav-btn">
           <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
         </a>
         <a href="/dashboard/withdraw.html" class="nav-btn">
           <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
-        </a>
-        <a href="/dashboard/history.html" class="nav-btn active">
-          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
         </a>
         <a href="/dashboard/profile.html" class="nav-btn">
           <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile
@@ -369,14 +373,11 @@
           <a href="/dashboard/bot.html" class="nav-btn">
             <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></span> Bot
           </a>
-          <a href="/dashboard/deposit.html" class="nav-btn">
-            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 11v6m-3-3l3 3 3-3"/></svg></span> Deposit
-          </a>
-          <a href="/dashboard/withdraw.html" class="nav-btn">
-            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/><path d="M12 17v-6m-3 3l3-3 3 3"/></svg></span> Withdraw
+          <a href="/dashboard/scanner.html" class="nav-btn">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span> Scanner
           </a>
           <a href="/dashboard/history.html" class="nav-btn active">
-            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> History
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> Positions
           </a>
           <a href="/dashboard/profile.html" class="nav-btn">
             <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> Profile
@@ -489,7 +490,7 @@
   <!-- MOBILE POSITIONS VIEW -->
   <div class="mobile-positions-view">
     <header class="positions-header">
-      <a class="positions-brand" href="/dashboard/trade.html"><span class="positions-logo">S</span><span style="font-weight:800">SpurTrade</span></a>
+      <a class="positions-brand" href="/dashboard/trade.html"><span class="positions-logo">P</span><span style="font-weight:800">ProBinary</span></a>
       <div class="positions-actions"><span class="positions-balance mono" id="mobilePositionsBalance">● $0.00</span><a class="positions-deposit" href="/dashboard/deposit.html">+ Deposit</a><a class="positions-avatar" id="mobilePositionsAvatar" href="/dashboard/profile.html">T</a></div>
     </header>
     <main class="positions-content" id="mobilePositionsContent">
@@ -498,10 +499,21 @@
       </div>
       <div class="positions-list" id="positionsList"><div class="positions-empty">No open positions</div></div>
     </main>
-    <nav class="positions-bottom-nav" aria-label="Mobile navigation">
-      <a href="/dashboard/trade.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg><span>Trade</span></a>
-      <a href="/dashboard/scanner.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/></svg><span>Scanner</span></a>
-      <a class="active" href="/dashboard/history.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Positions</span></a>
+    <nav class="mob-bottom-nav" aria-label="Mobile navigation">
+      <a href="/dashboard/trade.html" class="mob-nav-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg>
+        <span>Trade</span>
+      </a>
+      <a href="/dashboard/scanner.html" class="mob-nav-btn">
+        <div class="mob-scanner-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#090514" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <span>Scanner</span>
+      </a>
+      <a href="/dashboard/history.html" class="mob-nav-btn active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        <span>Positions</span>
+      </a>
     </nav>
   </div>
 

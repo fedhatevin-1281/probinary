@@ -11,6 +11,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap"
     rel="stylesheet" />
+  <link rel="stylesheet" href="/dashboard/design-system.css" />
   <style>
     :root {
       --bg-main: #090514;
@@ -1172,6 +1173,7 @@
       display: none !important
     }
   </style>
+  <link rel="stylesheet" href="/dashboard/design-system.css" />
 </head>
 
 <body>
@@ -1293,7 +1295,7 @@
               <path d="M18 9l-5 5-4-4-6 6" />
             </svg></span> Trade
         </a>
-        <a href="/dashboard/scanner.html" class="nav-btn" id="navBot">
+        <a href="/dashboard/bot.html" class="nav-btn">
           <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="11" width="18" height="10" rx="2" />
@@ -1301,15 +1303,20 @@
               <path d="M12 7v4" />
               <line x1="8" y1="16" x2="8.01" y2="16" />
               <line x1="16" y1="16" x2="16.01" y2="16" />
-            </svg></span> Scanner <span
-            style="color: var(--accent-purple); font-size: 10px; margin-left: auto;">●</span>
+            </svg></span> Bot
+        </a>
+        <a href="/dashboard/scanner.html" class="nav-btn">
+          <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg></span> Scanner
         </a>
         <a href="/dashboard/history.html" class="nav-btn">
           <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-            </svg></span> Portfolio
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg></span> Positions
         </a>
         <a href="/dashboard/deposit.html" class="nav-btn">
           <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1378,7 +1385,7 @@
           <div id="sidebarBalanceAmount" class="mono"
             style="font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px;">$10,000.00.00</div>
           <a href="/dashboard/deposit.html" class="purple-btn"
-            style="width: 100%; padding: 6px 0; font-size: 11px; text-decoration: none;">
+            style="width: 100%; padding: 6px 0; font-size: 11px, text-decoration: none;">
             + Deposit
           </a>
         </div>
@@ -1399,7 +1406,7 @@
                 <path d="M18 9l-5 5-4-4-6 6" />
               </svg></span> Trade
           </a>
-          <a href="/dashboard/scanner.html" class="nav-btn" id="navBot">
+          <a href="/dashboard/bot.html" class="nav-btn" id="navBot">
             <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="11" width="18" height="10" rx="2" />
@@ -1407,15 +1414,20 @@
                 <path d="M12 7v4" />
                 <line x1="8" y1="16" x2="8.01" y2="16" />
                 <line x1="16" y1="16" x2="16.01" y2="16" />
-              </svg></span> Scanner <span
-              style="color: var(--accent-purple); font-size: 10px; margin-left: auto;">●</span>
+              </svg></span> Bot
           </a>
-          <a href="/dashboard/history.html" class="nav-btn">
+          <a href="/dashboard/scanner.html" class="nav-btn" id="navScanner">
             <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-              </svg></span> Portfolio
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg></span> Scanner
+          </a>
+          <a href="/dashboard/history.html" class="nav-btn" id="navPositions">
+            <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg></span> Positions
           </a>
           <a href="/dashboard/deposit.html" class="nav-btn">
             <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1438,16 +1450,16 @@
           <a href="/dashboard/history.html" class="nav-btn">
             <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg></span> History
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg></span> History
           </a>
           <a href="/dashboard/profile.html" class="nav-btn">
             <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg></span> Profile
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg></span> Profile
           </a>
         </nav>
       </div>
@@ -1585,7 +1597,7 @@
 
       <!-- Panel Header -->
       <div style="display: flex; align-items: center; justify-content: space-between;">
-        <span style="font-size: 14px; font-weight: 700; color: #fff;">Trade</span>
+        <span style="font-size: 14px; font-weight: 700, color: #fff;">Trade</span>
         <div style="display: flex; align-items: center; gap: 6px;">
           <div class="pill-btn" style="padding: 2px 8px; font-size: 10px;">
             <span style="color:var(--accent-purple);">●</span> <span id="panelBalTiny" class="mono">$0.00</span>
@@ -1643,7 +1655,7 @@
         <!-- BASE STAKE -->
         <div>
           <div
-            style="font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--text-gray); margin-bottom: 4px;">
+            style="font-size: 9px; font-weight:  700; text-transform: uppercase; color: var(--text-gray); margin-bottom: 4px;">
             BASE STAKE</div>
           <div
             style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-card-alt); border: 1px solid var(--border-card); border-radius: 6px; padding: 4px 8px;">
@@ -1717,7 +1729,7 @@
         <!-- MAX TRADES / SESSION -->
         <div>
           <div
-            style="display: flex; justify-content: space-between; align-items: center; font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--text-gray); margin-bottom: 4px;">
+            style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-gray);font-weight:700;text-transform:uppercase;margin-bottom:6px;">
             <span>MAX TRADES / SESSION</span>
             <span id="labelMaxTrades" style="color: #fff;" class="mono">28 trades</span>
           </div>
@@ -1965,9 +1977,9 @@
         </div>
         <div style="display: flex; gap: 6px;">
           <button type="button" class="pill-btn active" id="mobPosFilterOpen" onclick="mobFilterPositions('open')"
-            style="font-size: 10px; padding: 3px 9px;">Open</button>
+            style="font-size: 10px, padding: 3px 9px;">Open</button>
           <button type="button" class="pill-btn" id="mobPosFilterHistory" onclick="mobFilterPositions('history')"
-            style="font-size: 10px; padding: 3px 9px;">Closed</button>
+            style="font-size: 10px, padding: 3px 9px;">Closed</button>
         </div>
       </div>
 
@@ -2695,7 +2707,7 @@
         const counts = Array(10).fill(0);
         lastDigits.forEach(d => counts[d]++);
         const mostRecent = lastDigits[lastDigits.length - 1];
-        spotDigitText.textContent = mostRecent !== undefined ? mostRecent : '0';
+        const total = lastDigits.length || 1;
 
         digitTrackersRow.innerHTML = counts.map((count, d) => {
           const pct = lastDigits.length > 0 ? ((count / lastDigits.length) * 100).toFixed(1) : '10.0';
@@ -3254,7 +3266,7 @@
 
   <!-- ================================================================
        MOBILE SHELL JAVASCRIPT
-  ================================================================ -->
+  ========================================================= -->
   <script>
     (function () {
 
@@ -3359,8 +3371,8 @@
         mobCtx.lineTo(xOf(0), h - pad.b);
         mobCtx.closePath();
         const fillGrad = mobCtx.createLinearGradient(0, pad.t, 0, h);
-        fillGrad.addColorStop(0, 'rgba(168,85,247,0.22)');
-        fillGrad.addColorStop(1, 'rgba(168,85,247,0)');
+        fillGrad.addColorStop(0, 'rgba(168, 85, 247, 0.22)');
+        fillGrad.addColorStop(1, 'rgba(168, 85, 247, 0)');
         mobCtx.fillStyle = fillGrad;
         mobCtx.fill();
 
@@ -3625,7 +3637,7 @@
         const lbl = document.getElementById('mobBotMaxLabel');
         if (disp) disp.textContent = v + ' trades';
         if (lbl) lbl.textContent = v;
-        // Sync with desktop slider
+        // Sync with desktop
         const deskSlider = document.getElementById('sliderMaxTrades');
         if (deskSlider) deskSlider.value = v;
       });
@@ -3748,7 +3760,7 @@
             let history = [];
             try {
               const localHist = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
-              history = Array.isArray(localHist) ? localHist : [];
+              history = Array.isClass(localHist) ? localHist : [];
             } catch (_) { }
 
             if (!history.length) {
