@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
   <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/dashboard/design-system.css"/>
   <style>
     :root {
       --bg-main: #090514;
@@ -407,7 +408,7 @@
       }
 
       body {
-        background: #061b17;
+        background: var(--bg-main);
       }
 
       .top-nav {
@@ -415,8 +416,8 @@
         top: 0;
         height: 62px;
         padding: 0 12px;
-        background: #071713;
-        border-bottom-color: rgba(45, 212, 191, 0.14);
+        background: var(--bg-header);
+        border-bottom-color: var(--border-card);
       }
 
       .top-nav > div:first-child {
@@ -433,8 +434,8 @@
 
       #headerBalancePill {
         padding: 5px 8px !important;
-        background: rgba(16, 185, 129, 0.12);
-        border-color: rgba(16, 185, 129, 0.3);
+        background: var(--accent-purple-dim);
+        border-color: var(--border-accent);
       }
 
       #headerBalancePill span:nth-child(2) {
@@ -451,7 +452,7 @@
         flex-direction: column;
         padding: 0 0 86px;
         gap: 0;
-        background: #061b17;
+        background: var(--bg-main);
       }
 
       #tradeMain {
@@ -464,8 +465,8 @@
 
       #tradeMain > div:first-child {
         padding: 10px 12px 8px;
-        background: #09251f;
-        border-bottom: 1px solid rgba(45, 212, 191, 0.12);
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border-card);
       }
 
       #tradeMain > div:first-child > div:first-child {
@@ -478,14 +479,14 @@
         padding: 9px 14px;
         border-radius: 18px;
         font-size: 11px;
-        background: rgba(14, 44, 37, 0.92);
+        background: var(--bg-card-alt);
       }
 
       #tradeMain > div:first-child > div:first-child .pill-btn.active {
-        color: #04211a;
-        background: linear-gradient(135deg, #5eead4, #14b8a6);
-        border-color: #2dd4bf;
-        box-shadow: 0 0 14px rgba(45, 212, 191, 0.28);
+        color: var(--text-inverse);
+        background: var(--accent-gradient);
+        border-color: var(--accent-purple);
+        box-shadow: var(--shadow-glow);
       }
 
       #tradeMain > div:first-child > div:last-child {
@@ -496,8 +497,8 @@
 
       #tradeMain > div:first-child > div:last-child .pill-btn {
         padding: 8px 12px;
-        background: rgba(14, 44, 37, 0.92);
-        border-color: rgba(45, 212, 191, 0.14);
+        background: var(--bg-card-alt);
+        border-color: var(--border-card);
       }
 
       #tradeMain > div:nth-child(2) {
@@ -511,8 +512,8 @@
         height: 280px !important;
         border: 0;
         border-radius: 0;
-        background: #061b17 !important;
-        border-bottom: 1px solid rgba(45, 212, 191, 0.14);
+        background: var(--bg-main) !important;
+        border-bottom: 1px solid var(--border-card);
       }
 
       #tradeMain > div:nth-child(4) {
@@ -525,7 +526,7 @@
         padding: 12px 12px 10px;
         border: 0;
         border-radius: 0;
-        background: #09251f;
+        background: var(--bg-header);
         overflow: hidden;
       }
 
@@ -537,7 +538,7 @@
       #tradeMain > div:nth-child(5) .digit-ring {
         width: 36px;
         height: 36px;
-        border-color: rgba(45, 212, 191, 0.18);
+        border-color: var(--border-card);
       }
 
       #tradeControls {
@@ -546,9 +547,9 @@
         margin: 0;
         padding: 14px 14px 18px !important;
         border: 0;
-        border-top: 1px solid rgba(45, 212, 191, 0.14);
+        border-top: 1px solid var(--border-card);
         border-radius: 18px 18px 0 0;
-        background: #071f19;
+        background: var(--bg-header);
         gap: 10px !important;
       }
 
@@ -564,7 +565,7 @@
         order: 1;
         padding: 3px !important;
         border-radius: 14px !important;
-        background: #0b2b23 !important;
+        background: var(--bg-card-alt) !important;
       }
 
       #tradeControls > div:nth-child(2) .pill-btn {
@@ -597,8 +598,8 @@
         min-height: 70px;
         padding: 8px 10px !important;
         border-radius: 12px !important;
-        border-color: rgba(45, 212, 191, 0.22) !important;
-        background: #08291f !important;
+        border-color: var(--border-accent) !important;
+        background: var(--bg-main) !important;
       }
 
       #manualModeContainer > div:nth-child(3) > div:nth-child(2) input {
@@ -611,9 +612,9 @@
 
       #manualModeContainer > div:nth-child(4) {
         padding: 12px;
-        border: 1px solid rgba(45, 212, 191, 0.16);
+        border: 1px solid var(--border-card);
         border-radius: 12px;
-        background: rgba(20, 38, 26, 0.7);
+        background: var(--bg-card);
       }
 
       #manualModeContainer > div:nth-child(5) {
@@ -624,8 +625,8 @@
         min-height: 76px;
         padding: 10px 12px !important;
         border-radius: 12px !important;
-        background: #08291f !important;
-        border-color: rgba(45, 212, 191, 0.18) !important;
+        background: var(--bg-main) !important;
+        border-color: var(--border-card) !important;
       }
 
       #manualModeContainer > div:nth-child(6) {
@@ -672,8 +673,8 @@
       align-items: center;
       justify-content: space-around;
       padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
-      background: rgba(7, 23, 19, 0.97);
-      border-top: 1px solid rgba(45, 212, 191, 0.22);
+      background: rgba(10, 6, 24, 0.97);
+      border-top: 1px solid var(--border-card);
       box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18);
       backdrop-filter: blur(14px);
     }
@@ -692,7 +693,7 @@
     }
 
     .mobile-bottom-nav a.active {
-      color: #2dd4bf;
+      color: var(--accent-lavender);
     }
 
     .mobile-bottom-nav svg {
@@ -705,6 +706,13 @@
         display: flex;
       }
     }
+    @media (max-width: 900px) {
+      .top-nav,
+      .app-layout {
+        display: flex !important;
+      }
+    }
+
     #headerSimBadge{display:none!important}
   </style>
 </head>

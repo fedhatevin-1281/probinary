@@ -2,13 +2,17 @@
   const allowed = new Set(['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com']);
   const user = JSON.parse(localStorage.getItem('probinary_user') || '{}');
   const email = String(user.email || '').trim().toLowerCase();
-  if (!allowed.has(email)) {
+  const isSimulationAccount = user.simulation === true || user.is80WinRate === true || allowed.has(email);
+  if (!isSimulationAccount) {
     window.location.href = '/auth/login.html?redirect=%2Fdashboard%2Fsimulation.html&reason=simulation_required';
     return;
   }
 
   const token = localStorage.getItem('auth_token');
-  let mode = localStorage.getItem('probinary_simulation_mode') || 'real';
+  const modeStorageKeys = ['probinary_account_mode', 'probinary_simulation_mode'];
+  let mode = localStorage.getItem(modeStorageKeys[0]) || localStorage.getItem(modeStorageKeys[1]) || 'real';
+  mode = mode === 'demo' ? 'demo' : 'real';
+  modeStorageKeys.forEach(key => localStorage.setItem(key, mode));
   let realBalance = 0;
   let demoBalance = 0;
   let pending = false;
@@ -38,7 +42,7 @@
 
   window.setMode = function (demo) {
     mode = demo ? 'demo' : 'real';
-    localStorage.setItem('probinary_simulation_mode', mode);
+    modeStorageKeys.forEach(key => localStorage.setItem(key, mode));
     render();
     setStatus(`Switched to ${mode.toUpperCase()} simulation wallet.`);
   };
@@ -55,6 +59,13 @@
   $('realDemoToggle')?.addEventListener('change', event => window.setMode(!event.target.checked));
   $('tabLive')?.addEventListener('click', () => window.setMode(false));
   $('tabDemo')?.addEventListener('click', () => window.setMode(true));
+
+  window.addEventListener('storage', event => {
+    if (!modeStorageKeys.includes(event.key)) return;
+    mode = event.newValue === 'demo' ? 'demo' : 'real';
+    modeStorageKeys.forEach(key => localStorage.setItem(key, mode));
+    render();
+  });
 
   async function placeSimulationTrade(direction) {
     if (pending) return;
