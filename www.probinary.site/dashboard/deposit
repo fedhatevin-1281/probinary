@@ -843,7 +843,7 @@
       }
 
       window.setMode = function(demo) {
-        const simulationOnly = ['martinluther200024@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(user.email || '').trim().toLowerCase());
+        const simulationOnly = ['martinluther200024@gmail.com', 'gideonkipngetich606@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(user.email || '').trim().toLowerCase());
         isDemo = simulationOnly || Boolean(demo);
         localStorage.setItem('probinary_account_mode', isDemo ? 'demo' : 'real');
         updateBalances();
