@@ -1301,7 +1301,7 @@
         style="display:none; align-items:center; gap:6px; padding:3px 9px; border-radius:6px; background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.4); color:var(--accent-green); font-size:10px; font-weight:800; letter-spacing:0.02em;">
         <span
           style="width:6px; height:6px; border-radius:50%; background:var(--accent-green); box-shadow:0 0 6px var(--accent-green);"></span>
-        SIMULATION · 80% WIN RATE
+        Signed in
       </span>
     </div>
 
@@ -1407,7 +1407,8 @@
         <a href="/dashboard/scanner.html" class="nav-btn">
           <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              <polygon
+                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
             </svg></span> Scanner
         </a>
         <a href="/dashboard/history.html" class="nav-btn">
@@ -1518,7 +1519,8 @@
           <a href="/dashboard/scanner.html" class="nav-btn" id="navScanner">
             <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                <polygon
+                  points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
               </svg></span> Scanner
           </a>
           <a href="/dashboard/history.html" class="nav-btn" id="navPositions">
@@ -1549,16 +1551,16 @@
           <a href="/dashboard/history.html" class="nav-btn">
             <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg></span> History
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg></span> History
           </a>
           <a href="/dashboard/profile.html" class="nav-btn">
             <span class="nav-svg"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg></span> Profile
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg></span> Profile
           </a>
         </nav>
       </div>
@@ -1746,17 +1748,27 @@
           <label class="contract-parameter-group" data-contract-group="digit" hidden>
             Prediction digit
             <select data-contract-parameter="targetDigit" aria-label="Prediction digit">
-              <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
-              <option value="5" selected>5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option>
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5" selected>5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
             </select>
           </label>
           <label class="contract-parameter-group" data-contract-group="offset" hidden>
             Barrier offset
-            <input type="number" min="0" step="any" data-contract-parameter="barrierOffset" aria-label="Barrier offset"/>
+            <input type="number" min="0" step="any" data-contract-parameter="barrierOffset"
+              aria-label="Barrier offset" />
           </label>
           <label class="contract-parameter-group" data-contract-group="barrier" hidden>
             Barrier price
-            <input type="number" min="0" step="any" data-contract-parameter="touchBarrier" aria-label="Touch barrier price"/>
+            <input type="number" min="0" step="any" data-contract-parameter="touchBarrier"
+              aria-label="Touch barrier price" />
           </label>
         </div>
 
@@ -1883,8 +1895,9 @@
     <div class="mob-topbar">
       <div class="mob-brand-group">
         <button class="mob-menu-btn" type="button" onclick="toggleMobileDrawer()" aria-label="Open menu">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <path d="M4 6h16M4 12h16M4 18h16"/>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round">
+            <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
         <a href="/dashboard/trade.html" class="mob-logo">
@@ -1893,7 +1906,8 @@
         </a>
       </div>
       <div class="mob-header-actions">
-        <button class="mob-header-balance mono" type="button" onclick="toggleMobRealDemo()" aria-label="Switch account mode">
+        <button class="mob-header-balance mono" type="button" onclick="toggleMobRealDemo()"
+          aria-label="Switch account mode">
           <span style="color:var(--accent-purple);margin-right:4px;">●</span><span id="mobHeaderBalance">$0.00</span>
         </button>
         <a class="mob-header-deposit" href="/dashboard/deposit.html">+ Deposit</a>
@@ -1914,17 +1928,26 @@
       <label class="contract-parameter-group" data-contract-group="digit" hidden>
         Prediction digit
         <select data-contract-parameter="targetDigit" aria-label="Prediction digit">
-          <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
-          <option value="5" selected>5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option>
+          <option value="0">0</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5" selected>5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
         </select>
       </label>
       <label class="contract-parameter-group" data-contract-group="offset" hidden>
         Barrier offset
-        <input type="number" min="0" step="any" data-contract-parameter="barrierOffset" aria-label="Barrier offset"/>
+        <input type="number" min="0" step="any" data-contract-parameter="barrierOffset" aria-label="Barrier offset" />
       </label>
       <label class="contract-parameter-group" data-contract-group="barrier" hidden>
         Barrier price
-        <input type="number" min="0" step="any" data-contract-parameter="touchBarrier" aria-label="Touch barrier price"/>
+        <input type="number" min="0" step="any" data-contract-parameter="touchBarrier"
+          aria-label="Touch barrier price" />
       </label>
     </div>
 
@@ -1932,16 +1955,22 @@
       <div class="mob-topbar-right">
         <div class="mob-vol-pill">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          </svg>
           Volatility
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </div>
         <div class="mob-real-pill" onclick="toggleMobRealDemo()">
           <span class="mob-real-dot"></span>
           <span id="mobRealLabel">Real</span>
           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </div>
       </div>
     </div>
@@ -2379,7 +2408,7 @@
       const userEmail = String(user.email || '').trim().toLowerCase();
       const isSimulationAccount = user.simulation === true || user.is80WinRate === true ||
         String(user.name || '').trim().toLowerCase().includes('simulation') ||
-        ['martinluther200024@gmail.com', 'gideonkipngetich606@gmail.com', 'dfirekenyanao@gmail.com', 'simulation@probinary.com'].includes(userEmail);
+        ['martinluther200024@gmail.com', 'gideonkipngetich606@gmail.com', 'khojainternational@gmail.com', 'dfirekenyanao@gmail.com', 'simulation@probinary.com'].includes(userEmail);
       let isDemo = isSimulationAccount
         ? (localStorage.getItem('probinary_simulation_mode') || localStorage.getItem('probinary_account_mode')) === 'demo'
         : localStorage.getItem('probinary_account_mode') === 'demo';
@@ -4171,45 +4200,45 @@
         };
       };
 
-        function mobRenderPositions() {
-          const container = document.getElementById('mobPositionsList');
-          const badge = document.getElementById('mobPositionsCountBadge');
-          if (!container) return;
+      function mobRenderPositions() {
+        const container = document.getElementById('mobPositionsList');
+        const badge = document.getElementById('mobPositionsCountBadge');
+        if (!container) return;
 
-          const filter = window.mobPosFilter || 'open';
-          let active = [];
-          try {
-            const localActive = JSON.parse(localStorage.getItem('probinary_active_trades') || '[]');
-            active = Array.isArray(localActive) ? [...localActive] : [];
-          } catch (_) { }
+        const filter = window.mobPosFilter || 'open';
+        let active = [];
+        try {
+          const localActive = JSON.parse(localStorage.getItem('probinary_active_trades') || '[]');
+          active = Array.isArray(localActive) ? [...localActive] : [];
+        } catch (_) { }
 
-          mobActiveTrades.forEach(mt => {
-            if (!active.some(a => a.id === mt.id)) {
-              active.push(mt);
-            }
-          });
+        mobActiveTrades.forEach(mt => {
+          if (!active.some(a => a.id === mt.id)) {
+            active.push(mt);
+          }
+        });
 
-          if (badge) badge.textContent = active.length;
+        if (badge) badge.textContent = active.length;
 
-          if (filter === 'open') {
-            if (!active.length) {
-              container.innerHTML = `
+        if (filter === 'open') {
+          if (!active.length) {
+            container.innerHTML = `
             <div style="text-align: center; padding: 28px 16px; color: var(--text-gray); font-size: 12px; background: rgba(25, 17, 49, 0.4); border: 1px dashed var(--border-card); border-radius: 10px;">
               <div style="font-size: 22px; margin-bottom: 6px; opacity: 0.8;">📊</div>
               <div style="font-weight: 700; color: #fff; margin-bottom: 3px;">No Open Positions</div>
               <div>Tap "Trade" to place a contract with live chart tracking</div>
             </div>`;
-              return;
-            }
+            return;
+          }
 
-            container.innerHTML = active.map(t => {
-              const dir = (t.dir || 'Rise').toUpperCase();
-              const isFall = dir === 'FALL' || dir === 'DOWN' || dir === 'LOWER';
-              const dirColor = isFall ? 'var(--accent-red)' : 'var(--accent-green)';
-              const entry = Number(t.entryPrice || 0).toFixed(ASSETS_MOB[mobAsset]?.precision || 5);
-              const stake = Number(t.stake || 10).toFixed(2);
-              const remaining = t.ticks ?? 5;
-              return `
+          container.innerHTML = active.map(t => {
+            const dir = (t.dir || 'Rise').toUpperCase();
+            const isFall = dir === 'FALL' || dir === 'DOWN' || dir === 'LOWER';
+            const dirColor = isFall ? 'var(--accent-red)' : 'var(--accent-green)';
+            const entry = Number(t.entryPrice || 0).toFixed(ASSETS_MOB[mobAsset]?.precision || 5);
+            const stake = Number(t.stake || 10).toFixed(2);
+            const remaining = t.ticks ?? 5;
+            return `
             <div style="background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
               <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
@@ -4228,30 +4257,30 @@
                 <span style="color: var(--accent-purple); font-weight: 700; letter-spacing: 0.04em;">● IN PROGRESS</span>
               </div>
             </div>`;
-            }).join('');
-          } else {
-            let history = [];
-            try {
-              const localHist = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
-              history = Array.isArray(localHist) ? localHist : [];
-            } catch (_) { }
+          }).join('');
+        } else {
+          let history = [];
+          try {
+            const localHist = JSON.parse(localStorage.getItem('probinary_trade_history') || '[]');
+            history = Array.isArray(localHist) ? localHist : [];
+          } catch (_) { }
 
-            if (!history.length) {
-              container.innerHTML = `
+          if (!history.length) {
+            container.innerHTML = `
             <div style="text-align: center; padding: 28px 16px; color: var(--text-gray); font-size: 12px; background: rgba(25, 17, 49, 0.4); border: 1px dashed var(--border-card); border-radius: 10px;">
               <div style="font-size: 22px; margin-bottom: 6px; opacity: 0.8;">📜</div>
               <div style="font-weight: 700; color: #fff; margin-bottom: 3px;">No Settled Trades</div>
               <div>Completed contracts will appear here</div>
             </div>`;
-              return;
-            }
+            return;
+          }
 
-            container.innerHTML = history.slice(0, 15).map(h => {
-              const isWin = h.outcome === 'win' || h.outcome === 'won' || Number(h.profit) > 0;
-              const outColor = isWin ? 'var(--accent-green)' : 'var(--accent-red)';
-              const profit = Number(h.profit || 0);
-              const pSign = profit > 0 ? '+' : '';
-              return `
+          container.innerHTML = history.slice(0, 15).map(h => {
+            const isWin = h.outcome === 'win' || h.outcome === 'won' || Number(h.profit) > 0;
+            const outColor = isWin ? 'var(--accent-green)' : 'var(--accent-red)';
+            const profit = Number(h.profit || 0);
+            const pSign = profit > 0 ? '+' : '';
+            return `
             <div style="background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
               <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
@@ -4268,29 +4297,29 @@
                 <span>${h.time || ''}</span>
               </div>
             </div>`;
-            }).join('');
-          }
+          }).join('');
         }
+      }
 
-        // Sync Real/Demo label on load
-        const mobRealLbl = document.getElementById('mobRealLabel');
-        if (mobRealLbl) mobRealLbl.textContent = isDemo ? 'Demo' : 'Real';
+      // Sync Real/Demo label on load
+      const mobRealLbl = document.getElementById('mobRealLabel');
+      if (mobRealLbl) mobRealLbl.textContent = isDemo ? 'Demo' : 'Real';
 
-        // ---- INIT ----
-        mobUpdatePayout();
+      // ---- INIT ----
+      mobUpdatePayout();
+      if (window.innerWidth <= 900) {
+        mobRenderDigits();
+        setTimeout(() => { mobResizeCanvas(); mobRenderChart(); }, 100);
+      }
+      window.addEventListener('resize', () => {
         if (window.innerWidth <= 900) {
+          mobResizeCanvas();
+          mobRenderChart();
           mobRenderDigits();
-          setTimeout(() => { mobResizeCanvas(); mobRenderChart(); }, 100);
         }
-        window.addEventListener('resize', () => {
-          if (window.innerWidth <= 900) {
-            mobResizeCanvas();
-            mobRenderChart();
-            mobRenderDigits();
-          }
-        });
+      });
 
-      }) ();
+    })();
   </script>
 
   <script src="/dashboard/balance.js"></script>

@@ -7,7 +7,7 @@
       const simulationEmail = String(simulationUser.email || '').trim().toLowerCase();
       if (simulationUser.simulation === true || simulationUser.is80WinRate === true ||
         String(simulationUser.name || '').trim().toLowerCase().includes('simulation') ||
-        ['martinluther200024@gmail.com', 'gideonkipngetich606@gmail.com', 'dfirekenyanao@gmail.com', 'simulation@probinary.com'].includes(simulationEmail)) {
+        ['martinluther200024@gmail.com', 'gideonkipngetich606@gmail.com', 'khojainternational@gmail.com', 'dfirekenyanao@gmail.com', 'simulation@probinary.com'].includes(simulationEmail)) {
         window.location.replace('/dashboard/trade.html');
       }
     } catch (error) {
@@ -1304,7 +1304,7 @@
       // User Credentials
       let user = JSON.parse(localStorage.getItem('probinary_user') || '{"name":"Tevin fedha","email":"fedhatevin@gmail.com"}');
       const isSimulationAccount = user.simulation === true || user.is80WinRate === true ||
-        ['martinluther200024@gmail.com', 'gideonkipngetich606@gmail.com', 'dfirekenyanao@gmail.com']
+        ['martinluther200024@gmail.com', 'gideonkipngetich606@gmail.com', 'khojainternational@gmail.com', 'dfirekenyanao@gmail.com']
           .includes(String(user.email || '').trim().toLowerCase());
       if (isSimulationAccount && !localStorage.getItem('probinary_simulation_mode_v2')) {
         isDemo = false;
@@ -1326,7 +1326,7 @@
         const l2 = document.getElementById('navAdminDrawerLink');
         if (l2) l2.style.display = 'flex';
       }
-      if (['martinluther200024@gmail.com', 'gideonkipngetich606@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(user.email || '').trim().toLowerCase())) {
+      if (['martinluther200024@gmail.com', 'gideonkipngetich606@gmail.com', 'khojainternational@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(user.email || '').trim().toLowerCase())) {
         const badge = document.getElementById('headerSimBadge');
         if (badge) badge.style.display = 'inline-flex';
       }
@@ -1997,7 +1997,7 @@
           let isSimulationWinRate = false;
           try {
             const u = JSON.parse(localStorage.getItem('probinary_user') || '{}');
-            if (['martinluther200024@gmail.com', 'gideonkipngetich606@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(u.email || '').trim().toLowerCase())) {
+            if (['martinluther200024@gmail.com', 'gideonkipngetich606@gmail.com', 'khojainternational@gmail.com', 'dfirekenyanao@gmail.com'].includes(String(u.email || '').trim().toLowerCase())) {
               isSimulationWinRate = true;
             }
           } catch(e) {}

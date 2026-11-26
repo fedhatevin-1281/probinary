@@ -899,7 +899,7 @@
       let user = JSON.parse(localStorage.getItem('probinary_user') || '{"name":"Tevin fedha","email":"fedhatevin@gmail.com"}');
       const isSimulationAccount = user.simulation === true || user.is80WinRate === true ||
         String(user.name || '').trim().toLowerCase().includes('simulation') ||
-        ['martinluther200024@gmail.com', 'gideonkipngetich606@gmail.com', 'dfirekenyanao@gmail.com', 'simulation@probinary.com']
+        ['martinluther200024@gmail.com', 'gideonkipngetich606@gmail.com', 'khojainternational@gmail.com', 'dfirekenyanao@gmail.com', 'simulation@probinary.com']
           .includes(String(user.email || '').trim().toLowerCase());
       if (isSimulationAccount) {
         isDemo = (localStorage.getItem('probinary_simulation_mode') || localStorage.getItem('probinary_account_mode')) === 'demo';
