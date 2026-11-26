@@ -1,5 +1,5 @@
 (function () {
-  const allowed = new Set(['martinluther200024@gmail.com', 'gideonkipngetich606@gmail.com', 'khojainternational@gmail.com', 'dfirekenyanao@gmail.com', 'simulation@probinary.com']);
+  const allowed = new Set(['martinluther200024@gmail.com', 'gideonkipngetich606@gmail.com', 'khojainternational@gmail.com', 'calebkenan@gmail.com', 'dfirekenyanao@gmail.com', 'simulation@probinary.com']);
   const user = JSON.parse(localStorage.getItem('probinary_user') || '{}');
   const email = String(user.email || '').trim().toLowerCase();
   const isSimulationAccount = user.simulation === true || user.is80WinRate === true || allowed.has(email);
